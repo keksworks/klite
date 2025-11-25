@@ -47,13 +47,13 @@ class Server(
     log.info("klite ${kliteVersion}, config " + Config.active)
   }
 
-  private val http = HttpServer.create()
+  private val http = HttpServer.create().apply { executor = workerPool }
   private val numActiveRequests = AtomicInteger()
 
   val address: InetSocketAddress get() = http.address ?: error("Server not started")
 
-  fun start(gracefulStopDelaySec: Int = 3) {
-    http.bind(listen, 0)
+  fun start(gracefulStopDelaySec: Int = 3, socketBacklog: Int = 0) {
+    http.bind(listen, socketBacklog)
     log.info("Listening on http://${if (address.address.isAnyLocalAddress) "localhost" else address.hostString}:${address.port}")
     http.start()
     if (gracefulStopDelaySec >= 0) getRuntime().addShutdownHook(thread(start = false) { stop(gracefulStopDelaySec) })
