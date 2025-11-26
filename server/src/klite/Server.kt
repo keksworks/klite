@@ -6,6 +6,7 @@ import klite.StatusCode.Companion.NoContent
 import klite.StatusCode.Companion.NotFound
 import klite.StatusCode.Companion.OK
 import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineStart.UNDISPATCHED
 import java.lang.Runtime.getRuntime
 import java.lang.Thread.currentThread
 import java.net.InetSocketAddress
@@ -88,7 +89,7 @@ class Server(
   private fun addContext(prefix: String, config: RouterConfig, extraCoroutineContext: CoroutineContext = EmptyCoroutineContext, handler: Handler) {
     http.createContext(prefix) { ex ->
       val requestId = requestIdGenerator(ex.requestHeaders)
-      requestScope.launch(ThreadNameContext(requestId) + extraCoroutineContext) {
+      requestScope.launch(ThreadNameContext(requestId) + extraCoroutineContext, start = UNDISPATCHED) {
         httpExchangeCreator.call(ex, config, sessionStore, requestId).handler()
       }
     }
