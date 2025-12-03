@@ -80,7 +80,7 @@ class PooledDataSource(
         }
       }
       try { conn.checkBySetApplicationName() } catch (e: Exception) {
-        log.warn("Dropping failed $conn, age ${conn.ageMs / 1000}s: $e")
+        log.warn("Dropping failed $conn, age ${conn.ageMs / 1000}s, available: ${available.size}/$size: $e")
         size.decrementAndGet()
         conn = null
       }
