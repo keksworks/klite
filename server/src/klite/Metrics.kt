@@ -33,6 +33,7 @@ fun Router.metrics(path: String = "/metrics", annotations: List<Annotation> = em
     }
   }
 
+  // TODO: add Prometheus-style output formatter
   add(Route(GET, pathParamRegexer.from(path), annotations) {
     Metrics.data
   })
