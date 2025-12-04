@@ -50,7 +50,7 @@ class Server(
   }
 
   private val http = HttpServer.create().apply { executor = workerPool }
-  private val numActiveRequests = AtomicInteger().also { Metrics.register("activeRequests") { it.get() } }
+  private val requestsActive = AtomicInteger().also { Metrics.register("requestsActive") { it.get() } }
 
   val address: InetSocketAddress get() = http.address ?: error("Server not started")
 
@@ -66,7 +66,7 @@ class Server(
 
   fun stop(delaySec: Int = 1) {
     log.info("Stopping gracefully")
-    http.stop(if (numActiveRequests.get() == 0) 0 else delaySec)
+    http.stop(if (requestsActive.get() == 0) 0 else delaySec)
     onStopHandlers.reversed().forEach { it.run() }
   }
 
@@ -98,7 +98,7 @@ class Server(
 
   private suspend fun runHandler(exchange: HttpExchange, route: Route, pathParams: PathParams) {
     try {
-      numActiveRequests.incrementAndGet()
+      requestsActive.incrementAndGet()
       exchange.route = route
       exchange.pathParams = pathParams
       val result = route.decoratedHandler.invoke(exchange)
@@ -109,7 +109,7 @@ class Server(
       handleError(exchange, e)
     } finally {
       exchange.close()
-      numActiveRequests.decrementAndGet()
+      requestsActive.decrementAndGet()
     }
   }
 

@@ -26,11 +26,10 @@ fun sampleServer(port: Int = Config.port): Server {
     use(DBModule(PooledDataSource())) // configure a DataSource
     use<RequestTransactionHandler>() // runs each request in a transaction
 
+    metrics()
     assets("/", AssetsHandler(Path.of("public"), useIndexForUnknownPaths = true))
 
     register(httpClient())
-
-    metrics()
 
     before<AdminChecker>()
     after { ex, err -> ex.header("X-Error", err?.message ?: "none") }

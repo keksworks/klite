@@ -47,7 +47,7 @@ fun Router.metrics(path: String = "/metrics", annotations: List<Annotation> = em
   })
 }
 
-class OpenMetricsRenderer(override val contentType: String = "application/openmetrics-text"): BodyRenderer {
+class OpenMetricsRenderer(override val contentType: String = "application/openmetrics-text; version=1.0.0"): BodyRenderer {
   override fun render(output: OutputStream, value: Any?) {
     val data = value as? Map<*, *> ?: return
     render(output, "", data)

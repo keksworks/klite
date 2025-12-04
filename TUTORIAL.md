@@ -385,7 +385,7 @@ Then no extra validation code is needed in route handlers, which is easy to forg
 
 ## Metrics
 
-You can add the built-in `metrics()` handler after other contexts to expose important health metrics there that your monitoring tools can read and log, e.g. Prometheus.
+You can add the built-in `metrics()` handler outside of other contexts to expose important health metrics there that your monitoring tools can read and log, e.g. Prometheus.
 
 Use the `Metrics.register()` function to register custom metrics that you want to track.
 
