@@ -74,14 +74,14 @@ class PooledDataSource(
         } catch (e: Exception) {
           size.decrementAndGet(); throw e
         } else {
-          size.decrementAndGet()
+          val newSize = size.decrementAndGet()
           available.poll(timeout.inWholeMilliseconds, MILLISECONDS) ?:
-            throw SQLTimeoutException("No available connection after $timeout; used: ${used.size}/$size")
+            throw SQLTimeoutException("No available connection after $timeout; used: ${used.size}/$newSize")
         }
       }
       try { conn.checkBySetApplicationName() } catch (e: Exception) {
-        log.warn("Dropping failed $conn, age ${conn.ageMs / 1000}s, available: ${available.size}/$size: $e")
-        size.decrementAndGet()
+        val newSize = size.decrementAndGet()
+        log.warn("Dropping failed $conn, age ${conn.ageMs / 1000}s, available: ${available.size}/$newSize: $e")
         conn = null
       }
     } while (conn == null)

@@ -2,6 +2,7 @@
 * server: HttpServer now accepts connections inside of workerPool, not single thread - for better scalability under very heavy load
 * server: start() method now accepts socketBacklog parameter that can be fine-tuned if you have 1000s of parallel connections
 * jdbc: changesets now support providing multiple comma-separated contexts
+* jdbc: PooledDataSource now logs number of connections in the pool when dropping previous ones
 
 # 1.7.1
 * GitHub organization changed to keksworks - update your dependency organization
