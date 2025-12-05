@@ -38,7 +38,7 @@ class PooledDataSource(
 
   init {
     Metrics.register("dbPool") {
-      mapOf("max" to maxSize, "size" to size.get(), "available" to available.size, "used" to used.size, "count" to counter.get(), "dropped" to dropped.get())
+      mapOf("max" to maxSize, "size" to size.get(), "available" to available.size, "used" to used.size, "total" to counter.get(), "dropped" to dropped.get())
     }
   }
 
