@@ -7,6 +7,7 @@
 * jdbc: `metrics()` for PooledDataSource connection pool include `"count"` and `"dropped"` metrics now
 * jdbc: changesets now support providing multiple comma-separated contexts
 * jdbc: PooledDataSource now logs number of connections in the pool when dropping previous ones
+* jdbc: BaseCrudRepository.get(forUpdate = true) now uses "for no key update" for Postgres to avoid unnecessary child rows locking
 
 # 1.7.1
 * GitHub organization changed to keksworks - update your dependency organization
