@@ -41,7 +41,7 @@ fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotation
     }
   }
 
-  renderers.addFirst(OpenMetricsRenderer(keyPrefix = keyPrefix))
+  renderers.add(0, OpenMetricsRenderer(keyPrefix = keyPrefix))
   add(Route(GET, pathParamRegexer.from(path), annotations) {
     Metrics.data
   })
