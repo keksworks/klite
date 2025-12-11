@@ -37,7 +37,7 @@ fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotation
   Runtime.getRuntime().let {
     val mb = 1024f * 1024f
     Metrics.register("heapMb") {
-      mapOf("used" to (it.totalMemory() - it.freeMemory()) / mb, "total" to it.totalMemory() / mb, "max" to it.maxMemory() / mb)
+      mapOf("used" to (it.totalMemory() - it.freeMemory()) / mb, "size" to it.totalMemory() / mb, "max" to it.maxMemory() / mb)
     }
   }
 
@@ -51,6 +51,11 @@ class OpenMetricsRenderer(
   override val contentType: String = "application/openmetrics-text",
   private val keyPrefix: String = "",
 ): BodyRenderer {
+  override fun render(e: HttpExchange, code: StatusCode, value: Any?) {
+    val contentType = if (e.requestType?.startsWith(contentType) == true) contentType else MimeTypes.text
+    e.startResponse(code, contentType = contentType).use { render(it, value) }
+  }
+
   override fun render(output: OutputStream, value: Any?) {
     val data = value as? Map<*, *> ?: return
     render(output, keyPrefix, data)
