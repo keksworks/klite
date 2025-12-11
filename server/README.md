@@ -128,7 +128,7 @@ get("/hello") {
 
 The latter will be even better once [string template processors](https://youtrack.jetbrains.com/issue/KT-64632/Support-Java-21-StringTemplate.Processor) become available in Kotlin.
 
-## Running behind a https proxy
+## Running behind a https proxy / load balancer
 
 In most production environments your app will be running behind a load balancer and https proxy.
 Proxies will forward some standard headers, that your app will need to understand:
@@ -141,6 +141,14 @@ Proxies will forward some standard headers, that your app will need to understan
 ```
 
 Enable these only if you are sure that you will be running behind a trusted proxy in production.
+
+## Optional features you can enable
+
+* `enforceHttps()` - will redirect all http requests to https.
+* `enforceCanonicalHost(name)` - will redirect all requests to a provided canonical host name.
+* `useHashCodeAsETag()` - will add ETag headers based on response body hash code and respond with 304 Not Modified when applicable.
+* `metrics()` - adds a Prometheus-compatible metrics endpoint at `/metrics`.
+* [openApi()](../openapi) - will generate a Swagger/OpenAPI 3.0 spec for all routes in a context.
 
 ## Best practices
 
