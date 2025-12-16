@@ -78,8 +78,7 @@ class Router(
   }
 
   fun add(route: Route) = route.apply {
-    decoratedHandler = decorators.wrap(route.decoratedHandler)
-    routes += this
+    routes += decorateWith(decorators)
     log.info("$method $prefix$path")
   }
 
@@ -109,6 +108,10 @@ enum class RequestMethod(val hasBody: Boolean = true) {
 open class Route(val method: RequestMethod, val path: Regex, annotations: List<Annotation> = emptyList(), val handler: Handler): KAnnotatedElement {
   internal var decoratedHandler: Handler = handler
   override val annotations = anonymousHandlerAnnotations(handler) + annotations
+
+  internal fun decorateWith(decorators: List<Decorator>) = this.also {
+    decoratedHandler = decorators.wrap(decoratedHandler)
+  }
 
   private fun anonymousHandlerAnnotations(handler: Handler) =
     handler.javaClass.methods.find { it.name.startsWith("invoke") && it.annotations.isNotEmpty() }?.annotations?.toList() ?: emptyList()

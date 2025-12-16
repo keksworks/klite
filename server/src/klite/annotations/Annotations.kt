@@ -51,8 +51,7 @@ fun Router.annotated(path: String = "", routes: Any, annotations: List<Annotatio
     val a = f.kliteAnnotation ?: return@mapNotNull null
     val method = RequestMethod.valueOf(a.annotationClass.simpleName!!)
     val subPath = a.annotationClass.members.first().call(a) as String
-    val handler = classDecorators.wrap(FunHandler(routes, f))
-    subPath to Route(method, pathParamRegexer.from(path + subPath), annotations + f.annotations + cls.annotations, handler)
+    subPath to Route(method, pathParamRegexer.from(path + subPath), annotations + f.annotations + cls.annotations, FunHandler(routes, f)).decorateWith(classDecorators)
   }.sortedBy { it.first.replace(':', '~') }.forEach { add(it.second) }
 }
 
