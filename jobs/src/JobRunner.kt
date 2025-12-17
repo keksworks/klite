@@ -10,10 +10,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.atomic.AtomicLong
@@ -46,6 +43,14 @@ open class JobRunner(
   private val log = logger()
   private val seq = AtomicLong()
   private val runningJobs = ConcurrentHashMap.newKeySet<kotlinx.coroutines.Job>()
+
+  init {
+    (workerPool as? ThreadPoolExecutor)?.let {
+      Metrics.register("jobs") {
+        mapOf("active" to it.activeCount, "size" to it.poolSize, "max" to it.corePoolSize, "runs" to seq.get())
+      }
+    }
+  }
 
   override fun install(server: Server) {
     server.onStop(::gracefulStop)

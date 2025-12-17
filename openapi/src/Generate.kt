@@ -116,8 +116,8 @@ private fun toRequestBody(route: Route, annotation: RequestBody?): Map<String, A
   if (annotation != null && annotation.content.isNotEmpty())
     requestBody["content"] = annotation.content.associate {
       val content = it.toNonEmptyValues { it.name != "mediaType" }
-      if (it.schema.implementation != Void::class.java) content["schema"] = it.schema.implementation.createType().toJsonSchema()
-      else if (it.array.schema.implementation != Void::class.java) content["schema"] = Array::class.createType(arguments = listOf(KTypeProjection(null, it.array.schema.implementation.createType()))).toJsonSchema()
+      if (it.schema.implementation != Void::class) content["schema"] = it.schema.implementation.createType().toJsonSchema()
+      else if (it.array.schema.implementation != Void::class) content["schema"] = Array::class.createType(arguments = listOf(KTypeProjection(null, it.array.schema.implementation.createType()))).toJsonSchema()
       it.mediaType to content
     }
   if (bodyParam != null) requestBody.putIfAbsent("content", bodyParam.type.toJsonContent())

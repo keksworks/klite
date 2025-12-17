@@ -27,8 +27,10 @@ class AnnotationsTest {
     @GET("/hello/:world")
     fun generic(body: String,
                 @PathParam world: BigDecimal, @QueryParam date: LocalDate, @HeaderParam header: Long,
-                @CookieParam cookie: Locale, @AttrParam attr: BigInteger, @QueryParam list: List<Int>, @BodyParam file: FileUpload) =
-      "Hello $body $world $date $header $cookie $attr $list ${file.fileName}"
+                @CookieParam cookie: Locale, @AttrParam attr: BigInteger,
+                @QueryParam list: List<Int>, @QueryParam nullableList: List<String>? = null,
+                @BodyParam file: FileUpload) =
+      "Hello $body $world $date $header $cookie $attr $list $nullableList ${file.fileName}"
 
     @GET("/hello/specific") @CustomAnnotation("method") fun specific() = "Hello"
 
@@ -73,10 +75,11 @@ class AnnotationsTest {
     every { exchange.path("world") } returns "7.9e9"
     every { exchange.query("date") } returns "2021-10-21"
     every { exchange.queryList("list") } returns listOf("5", "77")
+    every { exchange.queryList("nullableList") } returns emptyList()
     every { exchange.header("header") } returns "42"
     every { exchange.cookie("cookie") } returns "et"
     every { exchange.attr<BigInteger>("attr") } returns BigInteger("90909")
-    runBlocking { expect(handler(exchange)).toEqual("Hello TheBody 7.9E+9 2021-10-21 42 et 90909 [5, 77] name.txt") }
+    runBlocking { expect(handler(exchange)).toEqual("Hello TheBody 7.9E+9 2021-10-21 42 et 90909 [5, 77] null name.txt") }
   }
 
   @Test fun `nicer exception if getting parameter value fails`() {

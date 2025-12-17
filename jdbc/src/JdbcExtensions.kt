@@ -140,7 +140,8 @@ fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, 
 fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): Int =
   upsertBatch(table, sequenceOf(values), uniqueFields, where, skipUpdateFields).first()
 
-private val isPostgres = Config.optional("DB_URL")?.startsWith("jdbc:postgres") == true
+// TODO: make it work per DataSource
+internal val isPostgres = Config.optional("DB_URL")?.startsWith("jdbc:postgres") == true
 
 fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Sequence<ValueMap>, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): IntArray {
   val where = whereConvert(where.map { (k, v) -> "$table.${q(name(k))}" to v })

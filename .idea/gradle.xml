@@ -4,10 +4,8 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
-        <option name="delegatedBuild" value="false" />
         <option name="distributionType" value="WRAPPED" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleJvm" value="11" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
@@ -27,6 +25,7 @@
             <option value="$PROJECT_DIR$/server" />
             <option value="$PROJECT_DIR$/slf4j" />
             <option value="$PROJECT_DIR$/smtp" />
+            <option value="$PROJECT_DIR$/xml" />
           </set>
         </option>
       </GradleProjectSettings>

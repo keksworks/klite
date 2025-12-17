@@ -31,7 +31,7 @@ tasks.jar {
     manifest {
       attributes(
         "Main-Class" to mainClassName,
-        "Class-Path" to File("$buildDir/libs/deps").listFiles()?.joinToString(" ") { "deps/${it.name}"}
+        "Class-Path" to File("$buildDir/libs/deps").listFiles()!!.joinToString(" ") { "deps/${it.name}" }
       )
     }
   }

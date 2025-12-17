@@ -15,9 +15,6 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
-
-typealias RequestModifier =  HttpRequest.Builder.() -> HttpRequest.Builder
 
 /**
  * Configure a default java.net.HttpClient in your registry with proper default timeout
@@ -41,7 +38,7 @@ open class TypedHttpClient(
   }
 
   private fun buildReq(urlSuffix: String) = HttpRequest.newBuilder().uri(URI("$urlPrefix$urlSuffix"))
-    .setHeader("Content-Type", "application/json; charset=UTF-8").setHeader("Accept", "application/json")
+    .contentType("application/json; charset=UTF-8").accept("application/json")
     .timeout(10.seconds).reqModifier()
 
   private suspend fun <T> request(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
@@ -109,10 +106,3 @@ open class TypedHttpClient(
     else -> body as T
   }
 }
-
-fun HttpClient.Builder.connectTimeout(duration: Duration): HttpClient.Builder = connectTimeout(duration.toJavaDuration())
-fun HttpRequest.Builder.timeout(duration: Duration): HttpRequest.Builder = timeout(duration.toJavaDuration())
-fun HttpRequest.Builder.authBearer(token: String) = setHeader("Authorization", "Bearer $token")
-
-inline fun httpClient(builder: HttpClient.Builder.() -> Unit = {}): HttpClient =
-  HttpClient.newBuilder().connectTimeout(5.seconds).apply(builder).build()

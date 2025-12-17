@@ -26,13 +26,21 @@ class PooledDataSource(
   val db: DataSource = ConfigDataSource(),
   val maxSize: Int = Config.dbPoolMaxSize,
   val timeout: Duration = 5.seconds,
+  val queryTimeout: Duration = timeout * 2,
   val leakCheckThreshold: Duration? = null
 ): DataSource by db, AutoCloseable {
   private val log = logger()
   private val counter = AtomicInteger()
+  private val dropped = AtomicInteger()
   internal val size = AtomicInteger()
   internal val available = ArrayBlockingQueue<PooledConnection>(maxSize)
   internal val used = ConcurrentHashMap<PooledConnection, Used>(maxSize)
+
+  init {
+    Metrics.register("dbPool") {
+      mapOf("max" to maxSize, "size" to size.get(), "available" to available.size, "used" to used.size, "total" to counter.get(), "dropped" to dropped.get())
+    }
+  }
 
   data class Used(val since: Long = currentTimeMillis(), val threadName: String = currentThread().name)
 
@@ -45,6 +53,7 @@ class PooledDataSource(
           if (runCatching { conn.isClosed }.getOrNull() == true) {
             log.warn("Dropping closed $conn, used for ${usedForMs / 1000}s, acquired by ${used.threadName}")
             size.decrementAndGet()
+            dropped.incrementAndGet()
             true
           } else {
             if (usedForMs >= it.inWholeMilliseconds)
@@ -67,14 +76,15 @@ class PooledDataSource(
         } catch (e: Exception) {
           size.decrementAndGet(); throw e
         } else {
-          size.decrementAndGet()
+          val newSize = size.decrementAndGet()
           available.poll(timeout.inWholeMilliseconds, MILLISECONDS) ?:
-            throw SQLTimeoutException("No available connection after $timeout; used: ${used.size}/$size")
+            throw SQLTimeoutException("No available connection after $timeout; used: ${used.size}/$newSize")
         }
       }
       try { conn.checkBySetApplicationName() } catch (e: Exception) {
-        log.warn("Dropping failed $conn, age ${conn.ageMs / 1000}s: $e")
-        size.decrementAndGet()
+        val newSize = size.decrementAndGet()
+        log.warn("Dropping failed $conn, age ${conn.ageMs / 1000}s, available: ${available.size}/$newSize: $e")
+        dropped.incrementAndGet()
         conn = null
       }
     } while (conn == null)
@@ -92,7 +102,7 @@ class PooledDataSource(
     val count = counter.incrementAndGet()
     val since = currentTimeMillis()
     init {
-      try { setNetworkTimeout(null, timeout.inWholeMilliseconds.toInt()) }
+      try { setNetworkTimeout(null, queryTimeout.inWholeMilliseconds.toInt()) }
       catch (e: Exception) { log.warn("Failed to set network timeout for $this: $e") }
     }
 

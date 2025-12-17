@@ -29,7 +29,7 @@ class PooledDataSourceTest {
     val conn = pooled.unwrap<Connection>()
     expect(conn).notToEqual(pooled)
     verify {
-      conn.setNetworkTimeout(null, 100)
+      conn.setNetworkTimeout(null, pool.queryTimeout.inWholeMilliseconds.toInt())
       conn.applicationName = Thread.currentThread().name
     }
     expect(pool.size.get()).toEqual(1)

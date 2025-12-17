@@ -1,0 +1,264 @@
+# Klite LLM's Guide
+
+This guide provides a summary of the Klite web framework and how to use it, based on the official documentation and the sample project.
+
+## 1. Introduction
+
+Klite is a lightweight, non-blocking HTTP framework for Kotlin. It has zero dependencies and uses the built-in `jdk.httpserver`. It is designed for simplicity, minimalism, and performance.
+
+**Key Features:**
+
+*   Minimalist and simple
+*   Zero dependencies
+*   Non-blocking and coroutine-based
+*   Modular architecture (JSON, JDBC, OpenAPI, etc.)
+*   Built-in dependency injection
+*   Configuration using `.env` files
+*   Route builders and annotated routes
+*   Built-in error handling and validation
+*   Session management
+*   Static asset serving
+
+## 2. Getting Started
+
+Add Klite to your `build.gradle.kts` file:
+
+```kotlin
+repositories {
+  mavenCentral()
+  maven { url = uri("https://jitpack.io") }
+}
+
+dependencies {
+  val kliteVersion = "main-SNAPSHOT" // Or a specific version
+  fun klite(module: String) = "com.github.keksworks.klite:klite-$module:$kliteVersion"
+  implementation(klite("server"))
+  implementation(klite("json")) // For JSON support
+  implementation(klite("jdbc")) // For database support
+}
+```
+
+Create a simple server in your `main` function:
+
+```kotlin
+import klite.Server
+
+fun main() {
+  Server().apply {
+    get("/hello") { "Hello, world!" }
+    start()
+  }
+}
+```
+
+## 3. Configuration
+
+Klite uses environment variables for configuration. You can use a `.env` file for development.
+
+```kotlin
+fun main() {
+  Config.useEnvFile() // Load .env file
+  Server().start()
+}
+```
+
+`.env` file example:
+
+```
+PORT=8080
+DB_URL=jdbc:postgresql://localhost:5432/mydb
+DB_USER=myuser
+DB_PASS=mypass
+```
+
+## 4. Routing
+
+Klite supports both a route builder DSL and annotated routes.
+
+### Route Builder
+
+```kotlin
+Server().apply {
+  context("/api") {
+    get("/hello") { "Hello, world!" }
+    post("/users") {
+      val user = body<User>()
+      // ...
+    }
+  }
+  start()
+}
+```
+
+### Annotated Routes
+
+Create a class with annotated methods:
+
+```kotlin
+import klite.annotations.*
+
+class UserRoutes(private val userRepository: UserRepository) {
+  @GET fun list() = userRepository.list()
+  @GET("/:id") fun get(@PathParam id: Id<User>) = userRepository.get(id)
+  @POST fun save(user: User) = userRepository.save(user)
+}
+```
+
+Register the annotated class in your server configuration:
+
+```kotlin
+Server().apply {
+  context("/api/users") {
+    annotated<UserRoutes>()
+  }
+  start()
+}
+```
+
+## 5. JSON
+
+Klite has a lightweight JSON module. To enable it, add the `klite-json` dependency and register the `JsonBody` handler.
+
+```kotlin
+Server().apply {
+  use<JsonBody>()
+  // ...
+}
+```
+
+Klite will automatically serialize and deserialize JSON data.
+
+## 6. Database (JDBC)
+
+Klite's JDBC module provides a simple and powerful way to work with databases.
+
+### Configuration
+
+Add the `klite-jdbc` dependency and configure the database connection in your `.env` file.
+
+### DB Module
+
+Register the `DBModule` and `DBMigrator` in your server configuration:
+
+```kotlin
+Server().apply {
+  if (Config.isDev) startDevDB()
+  use<DBModule>()
+  use<DBMigrator>()
+  // ...
+}
+```
+
+### Migrations
+
+Create a `db.sql` file in your resources directory with your database schema:
+
+```sql
+--changeset users
+create table users (
+  id bigint primary key,
+  name text not null
+);
+```
+
+### Repositories and Queries
+
+Create a repository class to access your data. You can extend `CrudRepository` for basic CRUD operations.
+
+```kotlin
+class UserRepository(db: DataSource): CrudRepository<User, Id<User>>(db, "users") {
+  // ...
+}
+```
+
+You can also use the `DataSource` directly to perform queries.
+
+**Inserting Data**
+
+```kotlin
+// insert all fields of an entity
+db.insert("table", entity.toValues())
+```
+
+**Querying Data**
+
+```kotlin
+// basic query from a table
+db.select<MyEntity>("table", "column" to value)
+
+// type-safe query
+db.select("table", MyEntity::column gte 123)
+
+// combine conditions with AND (they are "and"-ed together by default)
+db.select("table", MyEntity::column gte 123, MyEntity::other to something)
+
+// combine conditions with OR
+db.select("table", or(MyEntity::column gte 123, MyEntity::other to something))
+
+// more advanced query with joins and custom mapping
+db.select("table1 left join table2 on table1.id = table2.megaId", "table2.field" to value) {
+  create<MyEntity>(MyEntity::other to create<OtherEntity>("table2."))
+}.first()
+```
+
+For full control, you can write raw SQL using `db.query()` and `db.exec()`.
+
+## 7. Dependency Injection
+
+Klite has a simple built-in dependency injection mechanism. It automatically creates and injects dependencies declared in constructors.
+
+```kotlin
+class UserRoutes(private val userRepository: UserRepository) {
+  // ...
+}
+```
+
+You can register dependencies in the server configuration:
+
+```kotlin
+Server().apply {
+  register(UserRepository(instanceOf()))
+  // ...
+}
+```
+
+## 8. Error Handling
+
+Klite has built-in error handling. You can register custom error handlers for specific exceptions.
+
+```kotlin
+Server().apply {
+  errors.on<MyException>(StatusCode.BadRequest)
+  // ...
+}
+```
+
+## 9. Validation
+
+Klite uses Kotlin's type system for validation. You can create custom value types to enforce validation rules.
+
+```kotlin
+class Email(value: String): StringValue(value) {
+  init {
+    require(value.contains("@")) { "Invalid email" }
+  }
+}
+```
+
+## 10. Sample Project
+
+The `sample` project in the Klite repository is a great resource for learning how to use the framework. To run it:
+
+1.  Clone the Klite repository.
+2.  Open the project in IntelliJ IDEA.
+3.  Run the `main` function in `sample/src/Launcher.kt`.
+
+The sample project demonstrates many of the features of Klite, including:
+
+*   Annotated routes
+*   Database integration
+*   Dependency injection
+*   Error handling
+*   Server-Sent Events (SSE)
+*   OpenAPI documentation
+*   OAuth login

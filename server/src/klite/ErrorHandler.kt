@@ -36,7 +36,7 @@ open class ErrorHandler {
   fun on(e: KClass<out Throwable>, statusCode: StatusCode) { statusCodes[e] = statusCode }
   inline fun <reified T: Throwable> on(statusCode: StatusCode) { on(T::class, statusCode) }
 
-  private val ioErrorsToSkip = setOf("Broken pipe", "Stream is closed", "Connection reset", "Operation timed out")
+  private val ioErrorsToSkip = setOf("Broken pipe", "Stream is closed", "Connection reset", "Connection reset by peer", "Operation timed out")
 
   fun handle(exchange: HttpExchange, e: Throwable) {
     exchange.failure = e

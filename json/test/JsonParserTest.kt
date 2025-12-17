@@ -117,7 +117,9 @@ class JsonParserTest {
 
 data class Hello(@JsonProperty("hellou") val hello: String, val id: UUID, val date: LocalDate, val instant: Instant, val nested: Nested,
                  val array: List<Nested> = emptyList(), val map: Map<LocalDate, Nested> = emptyMap(), val nullable: String? = null,
-                 @JsonIgnore val ignore: Boolean = true, @JsonProperty(readOnly = true) val readOnly: Boolean = true, val isBoolean: Boolean = true)
+                 @JsonIgnore val ignore: Boolean = true, @JsonProperty(readOnly = true) val readOnly: Boolean = true, val isBoolean: Boolean = true) {
+  val computed get() = 1
+}
 data class Nested(val x: BigDecimal = ZERO, val y: Int = 123)
 data class TypedData<T>(val list: List<T>, val map: Map<String, T> = emptyMap())
 data class FieldRule<T: Comparable<T>>(val field: KProperty1<out Hello, T>, val limits: Ranges<T> = emptyMap())

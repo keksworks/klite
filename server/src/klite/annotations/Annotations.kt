@@ -11,7 +11,7 @@ import kotlin.reflect.KParameter
 import kotlin.reflect.KParameter.Kind.INSTANCE
 import kotlin.reflect.full.callSuspendBy
 import kotlin.reflect.full.functions
-import kotlin.reflect.full.isSuperclassOf
+import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaMethod
 import kotlin.reflect.jvm.jvmErasure
 
@@ -25,6 +25,7 @@ import kotlin.reflect.jvm.jvmErasure
 
 @Target(VALUE_PARAMETER) annotation class PathParam(val value: String = "")
 @Target(VALUE_PARAMETER) annotation class QueryParam(val value: String = "")
+/** Inside of body param, the body itself is unannotated */
 @Target(VALUE_PARAMETER) annotation class BodyParam(val value: String = "")
 @Target(VALUE_PARAMETER) annotation class HeaderParam(val value: String = "")
 @Target(VALUE_PARAMETER) annotation class CookieParam(val value: String = "")
@@ -50,8 +51,7 @@ fun Router.annotated(path: String = "", routes: Any, annotations: List<Annotatio
     val a = f.kliteAnnotation ?: return@mapNotNull null
     val method = RequestMethod.valueOf(a.annotationClass.simpleName!!)
     val subPath = a.annotationClass.members.first().call(a) as String
-    val handler = classDecorators.wrap(FunHandler(routes, f))
-    subPath to Route(method, pathParamRegexer.from(path + subPath), annotations + f.annotations + cls.annotations, handler)
+    subPath to Route(method, pathParamRegexer.from(path + subPath), annotations + f.annotations + cls.annotations, FunHandler(routes, f)).decorateWith(classDecorators)
   }.sortedBy { it.first.replace(':', '~') }.forEach { add(it.second) }
 }
 
@@ -86,7 +86,8 @@ class Param(val p: KParameter) {
       when (source) {
         is PathParam -> e.path(name)?.toType()
         is QueryParam ->
-          if (p.type.jvmErasure.isSuperclassOf(List::class)) e.queryList(name).map { Converter.from<Any>(it, p.type.arguments[0].type!!) }
+          if (p.type.jvmErasure.isSubclassOf(Iterable::class)) e.queryList(name)
+            .map { Converter.from<Any>(it, p.type.arguments[0].type!!) }.takeIf { it.isNotEmpty() || !p.type.isMarkedNullable }
           else (e.query(name)).let { if (e.isValueLessQueryParam(it)) true else it?.toType()
         }
         is HeaderParam -> e.header(name)?.toType()

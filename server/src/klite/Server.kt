@@ -6,6 +6,7 @@ import klite.StatusCode.Companion.NoContent
 import klite.StatusCode.Companion.NotFound
 import klite.StatusCode.Companion.OK
 import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineStart.UNDISPATCHED
 import java.lang.Runtime.getRuntime
 import java.lang.Thread.currentThread
 import java.net.InetSocketAddress
@@ -18,9 +19,12 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.primaryConstructor
 
+val Config.port: Int get() = optional("PORT", "8080").toInt()
+val Config.numWorkers: Int get() = optional("NUM_WORKERS")?.toInt() ?: getRuntime().availableProcessors()
+
 class Server(
-  val listen: InetSocketAddress = InetSocketAddress(Config.optional("PORT")?.toInt() ?: 8080),
-  val workerPool: ExecutorService = Executors.newWorkStealingPool(Config.optional("NUM_WORKERS")?.toInt() ?: getRuntime().availableProcessors()),
+  val listen: InetSocketAddress = InetSocketAddress(Config.port),
+  val workerPool: ExecutorService = Executors.newWorkStealingPool(Config.numWorkers),
   registry: MutableRegistry = DependencyInjectingRegistry().apply {
     register<RequestLogger>()
     register<TextBody>()
@@ -39,18 +43,19 @@ class Server(
   private val log = logger()
 
   init {
-    currentThread().name += "/" + requestIdGenerator.prefix
+    registry.register(requestIdGenerator)
+    currentThread().run { name = requestIdGenerator.prefix + "/" + name }
     val kliteVersion = javaClass.`package`.implementationVersion ?: "dev"
     log.info("klite ${kliteVersion}, config " + Config.active)
   }
 
-  private val http = HttpServer.create()
-  private val numActiveRequests = AtomicInteger()
+  private val http = HttpServer.create().apply { executor = workerPool }
+  private val requestsActive = AtomicInteger().also { Metrics.register("requestsActive") { it.get() } }
 
   val address: InetSocketAddress get() = http.address ?: error("Server not started")
 
-  fun start(gracefulStopDelaySec: Int = 3) {
-    http.bind(listen, 0)
+  fun start(gracefulStopDelaySec: Int = 3, socketBacklog: Int = 0) {
+    http.bind(listen, socketBacklog)
     log.info("Listening on http://${if (address.address.isAnyLocalAddress) "localhost" else address.hostString}:${address.port}")
     http.start()
     if (gracefulStopDelaySec >= 0) getRuntime().addShutdownHook(thread(start = false) { stop(gracefulStopDelaySec) })
@@ -61,7 +66,7 @@ class Server(
 
   fun stop(delaySec: Int = 1) {
     log.info("Stopping gracefully")
-    http.stop(if (numActiveRequests.get() == 0) 0 else delaySec)
+    http.stop(if (requestsActive.get() == 0) 0 else delaySec)
     onStopHandlers.reversed().forEach { it.run() }
   }
 
@@ -85,7 +90,7 @@ class Server(
   private fun addContext(prefix: String, config: RouterConfig, extraCoroutineContext: CoroutineContext = EmptyCoroutineContext, handler: Handler) {
     http.createContext(prefix) { ex ->
       val requestId = requestIdGenerator(ex.requestHeaders)
-      requestScope.launch(ThreadNameContext(requestId) + extraCoroutineContext) {
+      requestScope.launch(ThreadNameContext(requestId) + extraCoroutineContext, start = UNDISPATCHED) {
         httpExchangeCreator.call(ex, config, sessionStore, requestId).handler()
       }
     }
@@ -93,7 +98,7 @@ class Server(
 
   private suspend fun runHandler(exchange: HttpExchange, route: Route, pathParams: PathParams) {
     try {
-      numActiveRequests.incrementAndGet()
+      requestsActive.incrementAndGet()
       exchange.route = route
       exchange.pathParams = pathParams
       val result = route.decoratedHandler.invoke(exchange)
@@ -104,7 +109,7 @@ class Server(
       handleError(exchange, e)
     } finally {
       exchange.close()
-      numActiveRequests.decrementAndGet()
+      requestsActive.decrementAndGet()
     }
   }
 

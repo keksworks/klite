@@ -1,12 +1,42 @@
 # Unreleased
+* openapi: fix detection of default (undefined) schema implementation
+* server/openapi: fix analyzing of class-decorated handlers for OpenAPI generation
+
+# 1.7.2
+* server: HttpServer now accepts connections inside of workerPool, not single thread - for better scalability under very heavy load
+* server: `start()` method now accepts socketBacklog parameter that can be fine-tuned if you have 1000s of parallel connections
+* server/jobs: ensure that JobRunner logs with the same instanceId as the Server (they use the same RequestIdGenerator now)
+* server: `metrics()` can be provided with custom access annotations and includes `requestsActive` metric now
+* server: `metrics()` can output Prometheus/OpenMetrics format if `Accept` header requests it
+* jdbc: `metrics()` for PooledDataSource connection pool include `"count"` and `"dropped"` metrics now
+* jdbc: changesets now support providing multiple comma-separated contexts
+* jdbc: PooledDataSource now logs number of connections in the pool when dropping previous ones
+* jdbc: BaseCrudRepository.get(forUpdate = true) now uses "for no key update" for Postgres to avoid unnecessary child rows locking
+
+# 1.7.1
+* GitHub organization changed to keksworks - update your dependency organization
+* jdbc: PooledDataSource.queryTimeout can be configured separately from pool connection timeout
+* server: MultipartParser and MultipartRenderer now support binary data/files
+* server: nullable List of @QueryParam will now get null value if parameter is missing, not empty list
+* server: introduced Metrics for publishing of app metrics, and a metrics() handler
+* server: RequestTransactionHandler now supports exclude methods, to skip transactions for e.g. GET/HEAD requests
+* core: new extensions for easier working with Java HttpClient, like get()/post()/put()
+* xml: new module for fast and lightweight XML parsing
+* Java 25 support
+
+# 1.7.0
 * core: TSIDGenerator can now be used with custom classes outside TSID companion
 * core/jdbc: Any.toValues()/BaseCrudRepository.persister() will now return KProperty1 keys, not Strings for added type-safety.
-  If you need to use String keys, use `toValues().mapKeys { it.key.name }`
-  You may get "column specified more than once" errors if you have code like `entity.toValues() + ("hello" to 123)`, replace `"hello"` with `Entity::hello` in that case
+  - If you need to use String keys, use `toValues().mapKeys { it.key.name }`
+  - You may get "column specified more than once" errors if you have code like `entity.toValues() + ("hello" to 123)`, replace `"hello"` with `Entity::hello` in that case
+  - It is now recommended to use `toValues()` for both providing values and skipping them, e.g. `entity.toValues(Entity::field1 = "other value, skip = setOf(Entity::field2))` - this avoids creation of intermediate maps and is faster
+  - PropValue type alias now accepts 2 type arguments, so replace usages of `PropValue<T>` with `PropValue<T, *>`
+* json: `toJsonValues()` introduced for the cases when you want to modify how an entity is serialized into json (e.g. remove some keys)
 * jdbc: introduce @Column annotation to override DB column names for entity fields, previous internal typealias `Column` renamed to `ColName`
 * jdbc: make it possible to override how Enum/Array is stored using JdbcConverter, default to toString() for enums
 * jdbc: db.upsert() will now work as SQL MERGE for non-Postgres databases
 * server: use<>() call will fail if called inside context {} for Extensions that need Server-level initialization
+* server: allow body in DELETE requests, as sometimes people do that #117
 * json: improved detection if inline classes should be rendered as their value type or a string
 * jackson: DeserializationFeature.FAIL_ON_TRAILING_TOKENS is now enabled by default
 * smtp: SmtpEmailSender will now log the successful email sent (to address and subject)

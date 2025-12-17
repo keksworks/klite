@@ -136,7 +136,7 @@ open class TSGenerator(
     val defaultCustomTypes = mapOf(
       LocalDate::class to "`${tsDate}`",
       LocalTime::class to "`${tsTimeShort}`|`${tsTime}`",
-      LocalDateTime::class to "`${tsDate}T${tsTime}`",
+      LocalDateTime::class to "`${tsDate}T${tsTime}`|`${tsDate}T${tsTimeShort}`",
       OffsetDateTime::class to "`${tsDate}T${tsTime}+\${number}:\${number}`",
       Instant::class to "`${tsDate}T${tsTime}Z`",
       URL::class to tsUrl,

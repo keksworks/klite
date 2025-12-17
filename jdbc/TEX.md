@@ -33,9 +33,9 @@ while (rs.next()) {
 
 klite:
 ```kotlin
-db.select("select * from users", mapOf("email" to "hello@example.com"))
+db.query("select * from users", mapOf("email" to "hello@example.com"))
 
-db.query("users", mapOf("email" to "hello@example.com")) { // this == ResultSet
+db.select("users", mapOf("email" to "hello@example.com")) { // this == ResultSet
   User(getString("name"), getString("email"))
 }
 

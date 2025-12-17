@@ -9,6 +9,7 @@ interface SupportsContentType {
   val contentType: String
 }
 
+// TODO: support multiple content types with quality factors: application/openmetrics-text;version=1.0.0;escaping=allow-utf-8;q=0.6,application/openmetrics-text;version=0.0.1;q=0.5,text/plain;version=1.0.0;escaping=allow-utf-8;q=0.4,text/plain;version=0.0.4;q=0.3,*/*;q=0.2
 class Accept(val contentTypes: String?) {
   val isRelaxed get() = contentTypes == null || contentTypes.contains("*") || contentTypes.startsWith("text/html,")
   operator fun invoke(contentType: String) = contentTypes?.contains(contentType) ?: true

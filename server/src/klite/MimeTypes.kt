@@ -13,6 +13,7 @@ object MimeTypes {
   const val wwwForm = "application/x-www-form-urlencoded"
   const val formData = "multipart/form-data"
   const val eventStream = "text/event-stream"
+  const val binary = "application/octet-stream"
 
   var unknown = "application/octet-stream"
   var textCharset = Charsets.UTF_8

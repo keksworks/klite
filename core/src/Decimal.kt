@@ -8,7 +8,7 @@ import kotlin.math.sign
 
 /**
  * A decimal fixed-point number with 2 fraction digits, suitable for e.g. monetary amounts.
- * Lighter and faster than BigDecimal, but also having numeric equals.
+ * Lighter and faster than BigDecimal and also has numeric equality, so that 10 == 10.0 == 10.00.
  * Operations resulting in Long overflow will throw ArithmeticException.
  */
 class Decimal internal constructor(private val c: Long): Comparable<Decimal>, Number() {

@@ -14,6 +14,7 @@ class ValuesTest {
       SomeData::hello to "Hello", SomeData::world to 123, SomeData::nullable to null, SomeData::list to listOf(1, 2)))
     expect(data.toValues(SomeData::world to 124)).toEqual(mapOf(
       SomeData::hello to "Hello", SomeData::world to 124, SomeData::nullable to null, SomeData::list to listOf(1, 2)))
+    expect(data.toValues().create<SomeData>()).toEqual(data)
   }
 
   @Test fun toValuesSkipping() {

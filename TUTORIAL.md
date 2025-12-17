@@ -1,12 +1,12 @@
 # Klite Tutorial
 
-This tutorial will guide you through the process of creating a TODO REST API backend application using Kotlin & Klite, including Postgres database.
+This tutorial will guide you through the process of creating a TODO REST API backend application using Kotlin & Klite, including a Postgres database.
 
 As you will see, Klite is very small, but still provides turn-the-key features for modern web applications, more so than many other frameworks.
 
-To get more information about any class or function, navigate freely inside to see how it works and what optional parameters does it provide.
+To get more information about any class or function, navigate freely inside to see how it works and what optional parameters it takes.
 
-You can also use the [Klite + Svelte project template](https://github.com/codeborne/klite-starter) repo.
+You can also use the [Klite + Svelte project template](https://github.com/keksworks/klite-starter) repo.
 
 ## Dependencies
 
@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-  fun klite(module: String) = "com.github.codeborne.klite:klite-$module:LASTEST_VERSION_HERE"
+  fun klite(module: String) = "com.github.keksworks.klite:klite-$module:LASTEST_VERSION_HERE"
   implementation(klite("server"))
 }
 ```
@@ -64,6 +64,8 @@ This will start a server on the default port 8080.
 You can change the listening IP and port by passing it as an argument to the `Server` constructor.
 Passing `InetSocketAddress(0)` will bind to any available port.
 
+You can also pass `Server(workerPool = Executors.newVirtualThreadPerTaskExecutor())` if you want to run request handlers in JVM virtual threads.
+
 ## Config
 
 Most applications need some configuration. 12-factor applications use environment variables for configuration.
@@ -73,7 +75,7 @@ In development, it makes sense to use an `.env` file to set environment variable
 
 ```kotlin
 fun main() {
-  Config.useEnvFile() // loads .env file if it exists, and uses values from file only if they are not set in the environment
+  Config.useEnvFile() // loads .env file if it exists and uses values from the file only if they are not set in the environment
   Server().start()
 }
 ```
@@ -119,7 +121,7 @@ Add [klite-json](json) dependency to your `build.gradle.kts`:
 implementation(klite("json"))
 ```
 
-Note: [klite-jackson](jackson) and [klite-serialization](serialization) are alternatives, if you prefer more heavy-weight and harder to configure libraries.
+Note: [klite-jackson](jackson) and [klite-serialization](serialization) are alternatives if you prefer more heavy-weight and harder to configure libraries.
 
 Now you can register the `JsonBody` renderer and parser for the whole application:
 
@@ -135,7 +137,7 @@ Now you can register the `JsonBody` renderer and parser for the whole applicatio
 
 Klite [JsonMapper](json/src/JsonMapper.kt) will omit nulls by default to make responses smaller.
 
-You can now get the json response using `http://localhost:8080/api/todos`.
+You can now get the JSON response using `http://localhost:8080/api/todos`.
 
 ## Annotated routes
 
@@ -157,19 +159,19 @@ Then, you can register this class in the /api context:
 
 ```kotlin
   context("/api") {
-    useOnly<JsonBody>()
     annotated<TodoRoutes>("/todos")
   }
 ```
 
 This will add all annotated methods from `TodoRoutes` to the context as route handlers.
-In some frameworks, this can is called "Controller" or "Resource". You are free to use any name in Klite.
+In some other frameworks, these are called "Controller" or "Resource". You are free to use any name in Klite.
 
 ## Dependency injection
 
-Why not use `annotated(TodoRoutes())`? Because you may want Klite to create the instance and inject any dependencies into it that it declares as constructor parameters.
+Why not use `annotated(TodoRoutes())`?
+Because you may want Klite to create the instance and inject any dependencies into it that it declares as constructor parameters.
 
-Let's create a basic in-memory repository for storing of our todos:
+Let's create a basic in-memory repository for storing of our TODOs:
 
 ```kotlin
 class TodoRepository {
@@ -189,7 +191,7 @@ class TodoRoutes(private val repo: TodoRepository) {
 }
 ```
 
-`JsonBody` will deserialize Todo instance from json request automatically.
+`JsonBody` will deserialize Todo instance from JSON request automatically.
 
 Klite uses `Server.registry` for dependency injection.
 [Registry](core/src/Registry.kt) will create singleton classes recursively by default.
@@ -198,7 +200,7 @@ If you need to register instances of interfaces, you can use the `register()` fu
 
 ## Path parameters
 
-Let's add a route to get a single todo.
+Let's add a route to get a single TODO.
 
 First, our Todo class should have an id field:
 
@@ -207,7 +209,7 @@ typealias Id<T> = TSID<T>
 data class Todo(val item: String, val completedAt: Instant? = null, val id: Id<Todo> = Id())
 ```
 
-We use [TSID](core/src/TSID.kt) to generate unique and type-safe IDs for our todos, let's have it auto-generate when a new Todo is posted. Alternatively, you can use UUID or any type that you like.
+We use [TSID](core/src/TSID.kt) to generate unique and type-safe IDs for our TODOs, let's have it auto-generate when a new Todo is posted. Alternatively, you can use UUID or any type that you like.
 
 Let's add a corresponding method to the TodoRepository:
 
@@ -215,10 +217,10 @@ Let's add a corresponding method to the TodoRepository:
   fun get(id: Id<Todo>) = todos.first { it.id == id }
 ```
 
-Now, we can add a route to get a single todo by its id:
+Now, we can add a route to get a single TODO by its id:
 
 ```kotlin
-  @GET("/todos/:id") fun todoById(@PathParam id: Id<Todo>) = repo.get(id)
+  @GET("/:id") fun byId(@PathParam id: Id<Todo>) = repo.get(id)
 ```
 
 ## Database
@@ -266,7 +268,7 @@ DB_USER=todo
 DB_PASS=todo
 ```
 
-Now, we can reimplement TodoRepository to use the `todo` table in the DB:
+Now, we can reimplement TodoRepository to use the `todos` table in the DB:
 
 ```kotlin
 import klite.jdbc.*
@@ -282,7 +284,7 @@ See [klite-jdbc](jdbc) docs for more examples of how to use it.
 
 ## DB migrator
 
-If you ran the previous code, you probably have realized that the `todo` table does not exist in the database yet.
+If you ran the previous code, you probably have realized that the `todos` table does not exist in the database yet.
 
 Let's use [DBMigrator](jdbc/src/migrator/DBMigrator.kt) to create the table for us:
 
@@ -291,42 +293,44 @@ use<DBModule>()
 use<DBMigrator>()
 ```
 
-DBMigrator will look for `db.sql` file in the root of the classpath (resources, use the "db" directory if you have redefined Gradle source sets) and run it against the database, let's create it:
+DBMigrator will look for `db.sql` file in the root of the classpath (resources, use the `db` directory if you have redefined Gradle source sets above) and run it against the database, let's create it:
 
 ```sql
 --changeset todos
 create table todos (
   id bigint primary key,
   item text not null,
-  completed_at timestamptz
+  completedAt timestamptz
 );
 
 --changeset todos:initial-data context:dev
 insert into todos (id, item) values (123, 'Buy groceries');
 ```
 
-Later, you can add more changesets to the same file, and DBMigrator will run only new ones, or even extract them to separate files and use `--include file.sql`. See [ChangeSet](jdbc/src/migrator/ChangeSet.kt) for more attributes.
+Note that we use matching column names to the class properties, so that we can use `toValues()` method to insert the whole object. That avoids unnecessary remapping of names. If you need to use a different column name somewhere, you can use `@Column` annotation on a property.
+
+Later you can add more changesets to the same file, and DBMigrator will run only new ones, or even extract them to separate files and use `--include file.sql`. See [ChangeSet](jdbc/src/migrator/ChangeSet.kt) for more attributes.
 
 ## CrudRepository
 
-To make it even easier to implement repositories, klite-jdbc includes BaseCrudRepository:
+To make it even easier to implement repositories, [klite-jdbc](jdbc) includes BaseCrudRepository:
 
 ```kotlin
 data class Todo(...): BaseEntity<Id<Todo>>
 class TodoRepository(db: DataSource): BaseCrudRepository<Todo, Id<Todo>>(db, "todos")
 ```
 
-And then you will have the common list(), get(), save() methods already implemented for you.
+And then you will have the common `list()`, `get()`, `save()` methods already implemented for you.
 
 ## Transactions
 
 By default, JDBC Connections work in autoCommit mode, which means that every statement is a separate transaction.
 
-In real life it makes sense to use **transaction per request** model, which will issue a rollback automatically in case anything fails with an exception.
+In real life it makes sense to use a **transaction per-request** model, which will issue a rollback automatically in case anything fails with an exception.
 
 Add `use<RequestTransactionHandler>()`, which will do it for you.
 
-Then, @NoTransaction can be used to disable transaction for a specific route.
+Then, `@NoTransaction` can be used to disable transaction for a specific route.
 
 ## Error handling
 
@@ -338,16 +342,16 @@ You can register custom exception types to produce specific HTTP error responses
 errors.on<IllegalAccessException>(StatusCode.Forbidden)
 ```
 
-In fact, many Klite modules add their own error handlers, e.g. `require()` and `error()` will produce BadRequest 400 responses.
+In fact, many Klite modules add their own error handlers, e.g. Kotlin built-in functions `require()` and `error()` will produce BadRequest 400 responses.
 
 ## Converter & Validation
 
-Data validation is also already done by default, e.g. Kotlin nullability is respected and reported to the user automatically.
+Data validation is also already done by default, i.e. Kotlin nullability is respected and reported to the user automatically.
 
 The most convenient for additional validation is to use correct data types (e.g. Email, Phone, URL, not just String).
 
-With Klite, it's easy to add custom value types, that would work across request parameters, json and database columns.
-In fact, Klite already provides [Email, Phone, Password types](core/src/Types.kt).
+With Klite, it's easy to add custom value types that would work across request parameters, JSON and database columns.
+In fact, Klite already provides common [Email, Phone, Password types](core/src/Types.kt).
 
 Any type with String constructor or String static factory method will be supported by default.
 
@@ -365,7 +369,7 @@ Custom type creation can be registered with [Converter](core/src/Converter.kt):
 Converter.use { Locale.forLanguageTag(it.replace('_', '-')) }
 ```
 
-If value type are not enough, then add require calls to entity constructor:
+If you need additional validation, then add require calls to entity constructor:
 
 ```kotlin
 data class Todo(...) {
@@ -377,19 +381,46 @@ data class Todo(...) {
 
 Then no extra validation code is needed in route handlers, which is easy to forget.
 
-`JsonMapper.trimToNull` is enabled by default, so you get more clean data into your objects, and won't get empty strings into required (non-null) fields.
+`JsonMapper.trimToNull` is enabled by default, so you get more clean data into your objects, and won't get empty strings into required (non-null) fields — input Strings will be trimmed and converted to null if empty.
+
+## Metrics
+
+You can add the built-in `metrics()` handler outside of other contexts to expose important health metrics there that your monitoring tools can read and log, e.g. Prometheus.
+
+Use the `Metrics.register()` function to register custom metrics that you want to track.
+
+## Swagger / OpenAPI
+
+Add the optional module [openapi](openapi) to your `build.gradle.kts`:
+
+```kts
+implementation(klite("openapi"))
+```
+
+And then add `openApi()` handler to your API context:
+
+```kotlin
+context("/api") {
+  // your routes go first
+  openApi()
+}
+```
+
+This will expose `/api/openapi` endpoint with the OpenAPI 3.0 spec for all routes in the context, viewable with Swagger UI.
+
+Use Swagger annotations to customize the generated spec or hide any routes with `@Hidden`.
 
 ## Login/access/sessions
 
-To enable sessions support, pass a `SessionStore` implementation to Server's constructor:
+To enable session support, pass a `SessionStore` implementation to Server's constructor:
 
 ```kotlin
 Server(sessionStore = CookieSessionStore())
 ```
 
-CookieSessionStore will store session data in a cookie, which survives server restarts and works with multiple server instances. Session data is encrypted and cannot be tamprered with, but can be subject to replay attacks.
+`CookieSessionStore` will store session data in a cookie, which survives server restarts and works with multiple server instances. Session data is encrypted and cannot be tampered with, but can be subject to replay attacks if you rely on changes in the session state for security checks.
 
-Store as few data as possible in the session, and use it mostly for user identification and authorization.
+Store as few data as possible in the session and use it mostly for user identification and authorization.
 Any state-related data in session will be problematic with the browser's back button.
 
 Then you can use `session` object to store and retrieve session data, e.g:
@@ -403,7 +434,7 @@ Then you can use `session` object to store and retrieve session data, e.g:
 data class Credentials(val username: String, val password: Password)
 ```
 
-and then have a before handler to load current user:
+and then have a before handler to load the current user:
 
 ```kotlin
 context("/api") {
@@ -434,7 +465,7 @@ If you want to render HTML server-side, you can implement your own `BodyRenderer
   }
 ```
 
-You can now get the json response using `http://localhost:8080/html/klite`.
+You can now get the HTML response using `http://localhost:8080/html/klite`.
 
 Note the `+` before `path("name")`. This is a special operator to escape HTML characters in the string, import it from `klite.html.unaryPlus`.
 
@@ -448,6 +479,6 @@ Klite has a built-in static file server, which you can use to serve your fronten
   assets("/", AssetsHandler(Path.of("public"), useIndexForUnknownPaths = true))
 ```
 
-This adds its own context, it is a good idea to use `/` as the path, so that files are available from shorter URLs.
+This adds its own context; it is a good idea to use `/` as the path, so that files are available from shorter URLs.
 
 The latter parameter is useful for SPA (single-page applications), where the frontend router handles the URL.

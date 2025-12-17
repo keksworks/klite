@@ -28,6 +28,7 @@ data class ChangeSet(
   fun matches(contexts: Set<String>) =
     if (context == null) true
     else if (context.startsWith("!")) context.substring(1) !in contexts
+    else if (context.contains(",")) context.split(",").any { it.trim() in contexts }
     else context in contexts
 
   internal fun addLine(line: String) {

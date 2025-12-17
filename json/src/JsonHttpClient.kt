@@ -28,7 +28,7 @@ open class JsonHttpClient(
   http: HttpClient = registry!!.require(),
   val json: JsonMapper = registry!!.require()
 ): TypedHttpClient(urlPrefix, reqModifier, errorHandler, retryCount, retryAfter, maxLoggedLen, http, MimeTypes.json) {
-  override fun render(o: Any?) = if (o is String) o else json.render(o)
+  override fun render(o: Any?) = o as? String ?: json.render(o)
 
   @Suppress("UNCHECKED_CAST")
   override fun <T> parse(body: String, type: KType): T = when (type.classifier) {

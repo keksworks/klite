@@ -31,7 +31,10 @@ object Config {
     if (optional(env) == null) Config[env] = value
   }
 
-  /** @param force use to override already set env vars */
+  /**
+   * Use this as the first thing in your app before creating a Server instance.
+   * @param force use to override already set env vars
+   */
   fun useEnvFile(name: String = ".env", force: Boolean = false) = useEnvFile(File(name), force)
   fun useEnvFile(file: File, force: Boolean = false) {
     if (!force && !file.exists()) return logger().info("No ${file.absolutePath} found, skipping")

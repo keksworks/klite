@@ -1,4 +1,6 @@
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.tags.Tag
 import klite.HttpExchange
 import klite.MimeTypes
@@ -18,6 +20,9 @@ class APIRoutes(private val userRepository: UserRepository) {
   @GET("3") fun HttpExchange.asContext() = "${translate("hello")} $method $path"
 
   @GET("/user/:id") fun user(@PathParam id: Id<User>) = userRepository.get(id)
+
+  @POST("/xml") @RequestBody(content = [Content(mediaType = "application/xml")])
+  fun xml(@QueryParam hello: Boolean) = "OK"
 
   @GET("/suspend") suspend fun suspend(exchange: HttpExchange): String {
     delay(100)

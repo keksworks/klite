@@ -24,7 +24,7 @@ interface NullableId<ID>: BaseEntity<ID?> {
  * `add column updatedAt timestamptz not null default now()`, or use @Column annotation to give it a different name
  */
 interface UpdatableEntity {
-  var updatedAt: Instant?
+  var updatedAt: Instant? // initialize to null by default for new entities
 }
 
 @Deprecated("Declare your own Entity interface using BaseEntity and other interfaces", replaceWith = ReplaceWith("BaseEntity<UUID>"))
@@ -53,7 +53,8 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
   protected open fun ResultSet.mapper(): E = create(entityClass)
   protected open fun E.persister(): Map<out ColName, Any?> = toValues()
 
-  open fun get(id: ID, forUpdate: Boolean = false): E = db.select(selectFrom, id, "$table." + idProp.colName, if (forUpdate) "for update" else "") { mapper() }
+  open fun get(id: ID, forUpdate: Boolean = false): E = db.select(selectFrom, id, "$table." + idProp.colName,
+    if (forUpdate) (if (isPostgres) "for no key update" else "for update") else "") { mapper() }
 
   open fun list(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = defaultOrder): List<E> =
     db.select(selectFrom, where.filterNotNull(), suffix) { mapper() }

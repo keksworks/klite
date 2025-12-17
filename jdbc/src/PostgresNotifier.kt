@@ -15,17 +15,17 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 @Deprecated("Experimental", level = DeprecationLevel.WARNING)
-class PostgresNotifier<K: Any>(val events: Iterable<K>): Extension {
-  private val channels = events.associate { it.toString() to Channel<String>(UNLIMITED) }
+class PostgresNotifier<K: Any>(vararg channels: K): Extension {
+  private val channels = channels.associate { it.toString() to Channel<String>(UNLIMITED) }
   private lateinit var db: DataSource
 
-  fun send(event: K, payload: String = "") = db.notify(event.toString(), payload)
-  suspend fun receive(event: K) = channels[event.toString()]!!.receive()
+  fun send(channel: K, payload: String = "") = db.notify(channel.toString(), payload)
+  suspend fun receive(channel: K) = channels[channel.toString()]!!.receive()
 
   override fun install(server: Server) = server.run {
     db = require<DataSource>()
-    val listener = thread(name = this::class.simpleName) {
-      db.consumeNotifications(events.map { it.toString() }) {
+    val listener = thread(name = this::class.simpleName, isDaemon = true) {
+      db.consumeNotifications(channels.keys) {
         channels[it.name]?.trySend(it.parameter)
       }
     }
@@ -41,15 +41,15 @@ fun DataSource.notify(channel: String, payload: String = "") = withStatement("se
 }
 
 /** Dedicate a separate thread to listen to Postgres notifications and send them to the corresponding channels. */
-fun DataSource.consumeNotifications(events: Iterable<String>, timeout: Duration = 10.seconds, consumer: (notification: PGNotification) -> Unit) = withConnection {
-  listen(events)
+fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, consumer: (notification: PGNotification) -> Unit) = withConnection {
+  listen(channels)
   while (!Thread.interrupted()) {
     pgNotifications(timeout).forEach { consumer(it) }
   }
 }
 
-fun Connection.listen(events: Iterable<String>) = createStatement().use { s ->
-  events.forEach { s.execute("listen $it") }
+fun Connection.listen(channels: Iterable<String>) = createStatement().use { s ->
+  channels.forEach { s.execute("listen \"$it\"") }
 }
 
 fun Connection.pgNotifications(timeout: Duration): Array<PGNotification> =

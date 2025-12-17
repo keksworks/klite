@@ -1,8 +1,8 @@
 # <img src="logo.png" alt="Klite" width=128 height=128>
 
-[![Release](https://jitpack.io/v/codeborne/klite.svg)](https://jitpack.io/#codeborne/klite) [![Build & Test](https://github.com/codeborne/klite/actions/workflows/ci.yml/badge.svg)](https://github.com/codeborne/klite/actions/workflows/ci.yml)
+[![Release](https://jitpack.io/v/keksworks/klite.svg)](https://jitpack.io/#keksworks/klite) [![Build & Test](https://github.com/keksworks/klite/actions/workflows/ci.yml/badge.svg)](https://github.com/keksworks/klite/actions/workflows/ci.yml)
 
-Klite: a very light-weight (lite) non-blocking http framework for Kotlin coroutines on JVM.
+Klite: a very light-weight (lite) non-blocking http framework for Kotlin coroutines on JVM, batteries included.
 Probably the most sustainable JVM web framework (low resource usage and CO₂ emissions).
 
 Inspired by SparkJava, Jooby, etc, but [smaller, simpler and better](docs/Comparisons.md).
@@ -18,6 +18,7 @@ See the [Tutorial](TUTORIAL.md) to grasp the basics quickly.
 ```kotlin
 fun main() {
   Server().apply {
+    assets("/", AssetsHandler(Path.of("public"), useIndexForUnknownPaths = true))
     context("/api") {
       get("/hello") { "Hello, world!" }
     }
@@ -47,6 +48,8 @@ fun main() {
 * Not much need for documentation — the source code is short and readable.
 * Easy custom types instead of String, like Id, Phone, Email across web requests, json and DB
 
+[llms.txt](llms.txt) version
+
 ## Dependencies
 
 * Java 6+ built-in non-blocking jdk.httpserver
@@ -57,9 +60,10 @@ fun main() {
 * [core](core) - some reusable classes, e.g. Config. Don't depend on it directly.
 * [server](server) - the main server module. See [it's documentation](server). Zero external dependencies.
 * [json](json) - lightweight and easily configurable json parsing/rendering (usable *standalone*)
+* [xml](xml) - fast and lightweight xml parsing into data classes (usable *standalone*)
 * [csv](csv) - simple CSV parsing/generation (usable *standalone*)
 * [i18n](i18n) - simple server-side translations (for emails, etc)
-* [jdbc](jdbc) - provides JDBC extensions for DB access, transaction handling and migrations (usable *standalone*)
+* [jdbc](jdbc) - provides JDBC extensions for database access, transaction handling and migrations (usable *standalone*)
 * [jdbc-test](jdbc-test) - provides a way of testing your DB code using a real DB
 * [jobs](jobs) - provides a simple scheduled JobRunner
 * [oauth](oauth) - implements OAuth 2.0 login with several providers
@@ -79,7 +83,7 @@ These integrate with external libraries. All of this functionality is available 
 
 The main server module is only ~1000 lines of code.
 
-Klite powers a number of known production apps already.
+Klite powers a number of known production apps.
 Publicly announced at [KKON 2022](https://rheinwerk-kkon.de/programm/keks-klite/), see [the slides](https://docs.google.com/presentation/d/1m5UORE88nVRdZXyDEoj74c0alk1Ff_tX8mfB8oLMbk0).
 
 ## Performance
@@ -102,7 +106,11 @@ Tests ran on Ubuntu, Java 20, i9-9900T CPU from 2019.
 
 See [the sample project](sample) on how to build apps with Klite and run them in Docker.
 
-Klite builds are available from [jitpack](https://jitpack.io/#codeborne/klite), see also [changelog](CHANGELOG.md)
+There are open-source fully-fledged applications built with Klite (using Klite for backend):
+* [StoryTracker](https://github.com/keksworks/storytracker) - an agile project management tool
+* [AitaValida](https://github.com/keksworks/aitavalida) - voting compass application for Estonian elections
+
+Klite builds are available from [jitpack](https://jitpack.io/#keksworks/klite), see also [changelog](CHANGELOG.md)
 
 ```kotlin
   repositories {
@@ -112,7 +120,7 @@ Klite builds are available from [jitpack](https://jitpack.io/#codeborne/klite), 
 
   dependencies {
     val kliteVersion = "main-SNAPSHOT" // you can put a released tag or commit hash here
-    fun klite(module: String) = "com.github.codeborne.klite:klite-$module:$kliteVersion"
+    fun klite(module: String) = "com.github.keksworks.klite:klite-$module:$kliteVersion"
     implementation(klite("server"))
     // Plus any optional components with their own external dependencies, see above for list
     implementation(klite("json"))
@@ -143,9 +151,9 @@ If there is a problem with Jitpack, then it's possible to add the following to y
 
 ```kotlin
 sourceControl {
-  gitRepository(java.net.URI("https://github.com/codeborne/klite.git")) {
-    producesModule("com.github.codeborne.klite:server")
-    producesModule("com.github.codeborne.klite:jdbc")
+  gitRepository(java.net.URI("https://github.com/keksworks/klite.git")) {
+    producesModule("com.github.keksworks.klite:server")
+    producesModule("com.github.keksworks.klite:jdbc")
     // list all subprojects you depend on in build.gradle.kts, use their un-prefixed names, e.g. server, not klite-server
   }
 }

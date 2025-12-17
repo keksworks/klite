@@ -16,7 +16,7 @@ fun main() {
   sampleServer().start()
 }
 
-fun sampleServer(port: Int = 8080): Server {
+fun sampleServer(port: Int = Config.port): Server {
   Config.useEnvFile()
   return Server(listen = InetSocketAddress(port)).apply {
     use<JsonBody>() // enables parsing/sending of application/json requests/responses, depending on the Accept header
@@ -26,6 +26,7 @@ fun sampleServer(port: Int = 8080): Server {
     use(DBModule(PooledDataSource())) // configure a DataSource
     use<RequestTransactionHandler>() // runs each request in a transaction
 
+    metrics()
     assets("/", AssetsHandler(Path.of("public"), useIndexForUnknownPaths = true))
 
     register(httpClient())

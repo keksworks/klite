@@ -23,7 +23,7 @@ class SmtpEmailSenderTest {
 
   @Test fun defaultFrom() {
     val from = sender.defaultFrom
-    expect(from.address).toEqual("klite@codeborne.com")
+    expect(from.address).toEqual("klite@azib.net")
   }
 
   @Test fun `send plain text`() = runTest {

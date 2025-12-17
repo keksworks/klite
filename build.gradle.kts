@@ -6,8 +6,8 @@ plugins {
 }
 
 allprojects {
-  group = "com.github.codeborne.klite"
-  version = "main-SNAPSHOT" // see tags/releases
+  group = "com.github.keksworks.klite"
+  version = project.findProperty("version") ?: "main-SNAPSHOT" // see tags/releases
 }
 
 subprojects {
@@ -22,12 +22,15 @@ subprojects {
     val libs = rootProject.libs
     testImplementation(libs.junit)
     testRuntimeOnly(libs.junit.engine)
+    testRuntimeOnly(libs.junit.launcher)
     testImplementation(libs.atrium) {
       exclude("org.jetbrains.kotlin")
     }
     testImplementation(libs.mockk) {
       exclude("org.jetbrains.kotlin")
     }
+    testImplementation(libs.byte.buddy)
+    testImplementation(libs.byte.buddy.agent)
     testImplementation(libs.kotlinx.coroutines.test)
   }
 

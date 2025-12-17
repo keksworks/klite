@@ -1,11 +1,8 @@
 package klite.openapi
 
 import io.swagger.v3.oas.annotations.Hidden
-import klite.HttpExchange
-import klite.MimeTypes
+import klite.*
 import klite.RequestMethod.GET
-import klite.Route
-import klite.Router
 import klite.StatusCode.Companion.OK
 import klite.html.escapeJs
 import org.intellij.lang.annotations.Language
@@ -25,11 +22,12 @@ import org.intellij.lang.annotations.Language
  */
 // Generate entities separately, and reference them. To enable TS generation
 // TODO: support @Schema(description on data classes and fields)
+context(Server)
 fun Router.openApi(path: String = "/openapi", annotations: List<Annotation> = emptyList(), swaggerUIConfig: Map<String, Comparable<*>> = emptyMap()) {
   val hidden = annotations + Hidden()
-  add(Route(GET, "$path.json".toRegex(), hidden) { generateOpenAPI() })
-  add(Route(GET, "$path.html".toRegex(), hidden) { swaggerUI(path, swaggerUIConfig) })
-  add(Route(GET, path.toRegex(), hidden) {
+  add(Route(GET, pathParamRegexer.from("$path.json"), hidden) { generateOpenAPI() })
+  add(Route(GET, pathParamRegexer.from("$path.html"), hidden) { swaggerUI(path, swaggerUIConfig) })
+  add(Route(GET, pathParamRegexer.from(path), hidden) {
     if (accept(MimeTypes.html)) swaggerUI(path, swaggerUIConfig)
     else generateOpenAPI()
   })

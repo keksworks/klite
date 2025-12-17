@@ -1,6 +1,7 @@
 package klite.oauth
 
 import klite.*
+import klite.SnakeCase
 import klite.http.authBearer
 import klite.json.*
 import java.net.URI
