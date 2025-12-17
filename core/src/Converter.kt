@@ -46,11 +46,12 @@ object Converter {
   inline fun <reified T: Any> from(s: String) = from<T>(s, typeOf<T>())
 
   internal fun <T: Any> of(type: KType? = null, cls: KClass<T> = type!!.jvmErasure as KClass<T>) =
-    (converters[cls] ?: type?.forceInit()?.let { converters[cls] }) as FromStringConverter<T>? ?:
+    (converters[cls] ?: (type?.forceInit() ?: cls.forceInit()).let { converters[cls] }) as FromStringConverter<T>? ?:
     (findCreator(cls) ?: NoConverter(cls)).also { set(cls, it) }
 
+  private fun KClass<*>.forceInit() { companionObjectInstance }
   private fun KType.forceInit(): Unit = jvmErasure.let { cls ->
-    cls.companionObjectInstance
+    cls.forceInit()
     arguments.forEach { it.type?.forceInit() }
   }
 
