@@ -6,6 +6,8 @@ import klite.logger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.future.await
 import java.io.IOException
+import java.lang.StackWalker.Option.RETAIN_CLASS_REFERENCE
+import java.lang.reflect.Modifier.ABSTRACT
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -27,12 +29,12 @@ open class TypedHttpClient(
   val retryAfter: Duration = 1.seconds,
   private val maxLoggedLen: Int = 1000,
   val http: HttpClient,
-  val contentType: String
+  val contentType: String,
+  loggerName: String = StackWalker.getInstance(RETAIN_CLASS_REFERENCE).walk { stack -> stack.skip(2).filter {
+    it.className != TypedHttpClient::class.java.name && it.declaringClass.modifiers and ABSTRACT == 0
+  }.findFirst().get().className }
 ) {
   protected var trimToLog: String.() -> String = { if (length <= maxLoggedLen) this else substring(0, maxLoggedLen) + "…" }
-  private val loggerName = StackWalker.getInstance().walk { stack ->
-    stack.map { it.className }.filter { it != TypedHttpClient::class.java.name && it != javaClass.name }.findFirst().get()
-  }
   var logger = logger(loggerName).apply {
     if (urlPrefix.isNotEmpty()) info("Using $urlPrefix")
   }

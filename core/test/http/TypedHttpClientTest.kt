@@ -7,7 +7,7 @@ import java.net.http.HttpClient
 
 class TypedHttpClientTest {
   @Test fun `logger name should get container class name`() {
-    expect(TypedHttpClient(http = HttpClient.newHttpClient(), contentType = "").logger.name)
+    expect(object: TypedHttpClient(http = HttpClient.newHttpClient(), contentType = "") {}.logger.name)
       .toEqual(javaClass.name)
   }
 }
