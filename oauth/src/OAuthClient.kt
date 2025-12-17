@@ -68,7 +68,7 @@ class GoogleOAuthClient(httpClient: HttpClient): OAuthClient(
     val res = fetchProfileResponse(token)
     val email = Email(res.getString("email"))
     return UserProfile(provider, res.getString("id"), email,
-      res.getOrNull("givenName") ?: email.value.substringBefore("@").capitalize(), res.getOrNull("familyName") ?: "",
+      res.getOrNull("givenName") ?: email.extractName(), res.getOrNull("familyName") ?: "",
       res.getOrNull<String>("picture")?.let { URI(it) }, res.getLocale())
   }
 }
@@ -83,8 +83,8 @@ class MicrosoftOAuthClient(httpClient: HttpClient): OAuthClient(
 ) {
   override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val res = fetchProfileResponse(token)
-    val email = res.getOrNull("mail") ?: res.getOrNull<String>("userPrincipalName") ?: error("Cannot obtain user's email")
-    return UserProfile(provider, res.getString("id"), Email(email), res.getOrNull("givenName") ?: email.substringBefore("@").capitalize(), res.getOrNull("surname") ?: "",
+    val email = Email(res.getOrNull("mail") ?: res.getOrNull<String>("userPrincipalName") ?: error("Cannot obtain user's email"))
+    return UserProfile(provider, res.getString("id"), email, res.getOrNull("givenName") ?: email.extractName(), res.getOrNull("surname") ?: "",
       locale = res.getLocale("preferredLanguage"))
   }
 }
@@ -103,7 +103,7 @@ class FacebookOAuthClient(httpClient: HttpClient): OAuthClient(
     val avatarExists = avatarData?.getOrNull<Boolean>("is_silhouette") != true
     val email = Email(res.getString("email"))
     return UserProfile(provider, res.getString("id"),
-      email, res.getOrNull("firstName") ?: email.value.substringBefore("@").capitalize(), res.getOrNull("lastName") ?: "",
+      email, res.getOrNull("firstName") ?: email.extractName(), res.getOrNull("lastName") ?: "",
       avatarData?.getOrNull<String>("url")?.takeIf { avatarExists }?.let { URI(it) },
       res.getLocale())
   }
@@ -120,7 +120,7 @@ class AppleOAuthClient(httpClient: HttpClient): OAuthClient(
   override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val email = token.idToken!!.payload.email!!
     val user = exchange.bodyParams["user"]?.let { http.json.parse<AppleUserProfile>(it.toString()) }
-    return UserProfile(provider, token.idToken.payload.subject, email, user?.name?.firstName ?: email.value.substringBefore("@").capitalize(), user?.name?.lastName ?: "")
+    return UserProfile(provider, token.idToken.payload.subject, email, user?.name?.firstName ?: email.extractName(), user?.name?.lastName ?: "")
   }
 
   data class AppleUserProfile(val name: AppleUserName, val email: Email)
@@ -129,3 +129,10 @@ class AppleOAuthClient(httpClient: HttpClient): OAuthClient(
 
 data class OAuthTokenResponse(val accessToken: String, val expiresIn: Int, val scope: String? = null, val tokenType: String? = null, val idToken: JWT? = null, val refreshToken: String? = null)
 data class UserProfile(val provider: String, override val id: String, override val email: Email, override val firstName: String, override val lastName: String, val avatarUrl: URI? = null, val locale: Locale? = null): OAuthUser
+
+internal fun Email.extractName(): String {
+  val localPart = value.substringBefore("@")
+  return localPart.replaceFirstChar {
+    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+  }
+}
