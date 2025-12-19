@@ -17,12 +17,12 @@ fun RouterConfig.enforceCanonicalHost(host: String) = before { e ->
   if (e.host != host) e.redirect(e.protocol + "://" + host + e.path + e.query, StatusCode.PermanentRedirect)
 }
 
-fun RouterConfig.basicAuth(realm: String = "Auth", authChecker: (name: String, password: Password) -> Boolean) = before { e ->
+fun RouterConfig.basicAuth(realm: String = "Auth", userProvider: (name: String, password: Password) -> Any?) = before { e ->
   val auth = e.header("Authorization")
   if (auth?.startsWith("Basic ") == true) {
     val (user, password) = String(auth.substringAfter(" ").base64Decode()).split(':', limit = 2)
-    if (authChecker(user, Password(password))) {
-      e.attr("authUser", user)
+    userProvider(user, Password(password))?.let {
+      e.attr("user", user)
       return@before
     }
   }
@@ -31,7 +31,7 @@ fun RouterConfig.basicAuth(realm: String = "Auth", authChecker: (name: String, p
 }
 
 fun RouterConfig.basicAuth(users: Map<String, Password>, realm: String = "Auth") = basicAuth(realm) { name, password ->
-  users[name] == password
+  if (users[name] == password) name else null
 }
 
 fun RouterConfig.useHashCodeAsETag() = decorator { e, handler ->
