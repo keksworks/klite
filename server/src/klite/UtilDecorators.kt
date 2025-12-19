@@ -20,9 +20,9 @@ fun RouterConfig.enforceCanonicalHost(host: String) = before { e ->
 fun RouterConfig.basicAuth(realm: String = "Auth", userProvider: (name: String, password: Password) -> Any?) = before { e ->
   val auth = e.header("Authorization")
   if (auth?.startsWith("Basic ") == true) {
-    val (user, password) = String(auth.substringAfter(" ").base64Decode()).split(':', limit = 2)
-    userProvider(user, Password(password))?.let {
-      e.attr("user", user)
+    val (name, password) = String(auth.substringAfter(" ").base64Decode()).split(':', limit = 2)
+    userProvider(name, Password(password))?.let {
+      e.attr("user", it)
       return@before
     }
   }
