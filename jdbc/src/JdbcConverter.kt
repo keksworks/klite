@@ -23,9 +23,15 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure
+import kotlin.time.ExperimentalTime
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+import kotlin.uuid.toJavaUuid
+import kotlin.uuid.toKotlinUuid
 
 typealias ToJdbcConverter<T> = (T, Connection?) -> Any
 
+@ExperimentalUuidApi @ExperimentalTime
 object JdbcConverter {
   val nativeTypes: MutableSet<KClass<*>> = mutableSetOf(
     UUID::class, BigDecimal::class, BigInteger::class, LocalDate::class, LocalDateTime::class, LocalTime::class, OffsetDateTime::class
@@ -34,10 +40,13 @@ object JdbcConverter {
 
   init {
     use<Instant> { v, _ -> v.atOffset(UTC) }
+    use<kotlin.time.Instant> { v, _ -> Timestamp(v.toEpochMilliseconds()) }
+    use<Uuid> { v, _ -> v.toJavaUuid() }
 
     val toString: ToJdbcConverter<Any> = { v, _ -> v.toString() }
     use<Period>(toString)
     use<Duration>(toString)
+    use<kotlin.time.Duration>(toString)
     use<Currency>(toString)
     use<Locale>(toString)
     use<URL>(toString)
@@ -64,12 +73,12 @@ object JdbcConverter {
 
   private fun arrayType(c: Class<*>?): String = when {
     c == null -> "varchar"
-    UUID::class.java.isAssignableFrom(c) -> "uuid"
+    UUID::class.java.isAssignableFrom(c) || Uuid::class.java.isAssignableFrom(c) -> "uuid"
     Number::class.java.isAssignableFrom(c) || c.isPrimitive -> "numeric"
     LocalDate::class.java.isAssignableFrom(c) -> "date"
     LocalTime::class.java.isAssignableFrom(c) -> "time"
     LocalDateTime::class.java.isAssignableFrom(c) -> "timestamp"
-    Instant::class.java.isAssignableFrom(c) -> "timestamptz"
+    Instant::class.java.isAssignableFrom(c) || kotlin.time.Instant::class.java.isAssignableFrom(c) -> "timestamptz"
     c.isAnnotationPresent(JvmInline::class.java) -> arrayType(c.declaredFields.find { it.modifiers and STATIC == 0 }?.type)
     else -> "varchar"
   }
@@ -85,6 +94,8 @@ object JdbcConverter {
 
   fun from(v: Any?, target: KClass<*>?): Any? = when(target) {
     Instant::class -> (v as? Timestamp)?.toInstant()
+    kotlin.time.Instant::class -> (v as? Timestamp)?.let { kotlin.time.Instant.fromEpochMilliseconds(v.time) }
+    Uuid::class -> (v as? UUID)?.toKotlinUuid()
     LocalDate::class -> (v as? Date)?.toLocalDate()
     LocalTime::class -> (v as? Time)?.toLocalTime()
     LocalDateTime::class -> (v as? Timestamp)?.toLocalDateTime()
