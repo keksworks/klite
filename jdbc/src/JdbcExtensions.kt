@@ -28,13 +28,11 @@ typealias ValueMap = Map<out ColName, *>
 @Deprecated(replaceWith = ReplaceWith("ValueMap"), message = "Use ValueMap instead")
 typealias Values = ValueMap
 
-// TODO: return streaming sequences instead of in-memory Lists, be able to convert sequence to json
-
 fun <R, ID> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, id: ID, column: String = "id", @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): R =
   select(table, listOf(column to id), suffix, ArrayList(1), mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
 
 fun <R, C: MutableCollection<R>> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
-  query(selectFrom + q(table), where, suffix, into, mapper)
+  querySeq(selectFrom + q(table), where, suffix, mapper).toCollection(into)
 
 inline fun <R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = "", noinline mapper: Mapper<R>): List<R> =
   select(table, where.filterNotNull(), suffix, mapper = mapper)
@@ -48,22 +46,26 @@ inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) t
 inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   select(table, *where, suffix = suffix) { create() }
 
-fun <R, C: MutableCollection<R>> DataSource.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
-  whereConvert(where).let { where ->
-  withStatement("$select${whereExpr(where)} $suffix") {
-    setAll(whereValues(where))
+fun <R> DataSource.querySeq(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> = sequence {
+  val w = whereConvert(where)
+  withStatement("$select${whereExpr(w)} $suffix") {
+    setAll(whereValues(w))
     executeQuery().run {
       populatePgColumnNameIndex(select)
-      into.also { process(it::add, mapper) }
+      yield(mapper())
     }
   }
 }
+
+@Deprecated("use querySeq instead", replaceWith = ReplaceWith("querySeq(select, where, suffix, mapper).toCollection(into)"))
+fun <R, C: MutableCollection<R>> DataSource.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
+  querySeq(select, where, suffix, mapper).toCollection(into)
 
 inline fun <R> DataSource.query(@Language("SQL") select: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = "", noinline mapper: Mapper<R>): List<R> =
   query(select, where.filterNotNull(), suffix, mapper = mapper)
 
 fun <R> DataSource.query(@Language("SQL") select: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>) =
-  query(select, where, suffix, mutableListOf(), mapper) as List<R>
+  querySeq(select, where, suffix, mapper).toList()
 
 inline fun <reified R> DataSource.query(@Language("SQL") select: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   query(select, where, suffix = suffix) { create() }
@@ -72,10 +74,6 @@ inline fun <reified R> DataSource.query(@Language("SQL") select: String, vararg 
   query(select, *where, suffix = suffix) { create() }
 
 fun DataSource.count(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList()) = query("select count(*) from $table", where) { getLong(1) }.first()
-
-internal inline fun <R> ResultSet.process(consumer: (R) -> Unit = {}, mapper: Mapper<R>) {
-  while (next()) consumer(mapper())
-}
 
 fun DataSource.exec(@Language("SQL") expr: String, vararg values: Any?): Int = exec(expr, values.asSequence())
 fun DataSource.exec(@Language("SQL") expr: String, values: Sequence<Any?> = emptySequence(), keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): Int =
