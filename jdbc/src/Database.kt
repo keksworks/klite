@@ -17,22 +17,14 @@ class Database(val db: DataSource) {
 
     fun <R> list(mapper: Mapper<R>): Sequence<R> = sequence {
       val qWhere = whereConvert(where)
-      val sql = "$select${whereExpr(qWhere)} $suffix"
-
-      val tx = Transaction.current()
-      val closeConnection = tx?.db != db
-      val conn = if (closeConnection) db.connection else tx.connection
-
-      try {
-        conn.prepareStatement(sql).use { stmt ->
+      db.withConnection {
+        prepareStatement("${select}${whereExpr(qWhere)} ${suffix}").use { stmt ->
           stmt.setAll(whereValues(qWhere))
           stmt.executeQuery().use { rs ->
             rs.populatePgColumnNameIndex(select)
             while (rs.next()) yield(mapper(rs))
           }
         }
-      } finally {
-        if (closeConnection) conn.close()
       }
     }
   }

@@ -54,7 +54,7 @@ class Transaction(val db: DataSource): AutoCloseable {
   fun detachFromThread() = threadLocal.remove()
 }
 
-fun <R> DataSource.withConnection(block: Connection.() -> R): R {
+inline fun <R> DataSource.withConnection(block: Connection.() -> R): R {
   val tx = Transaction.current()
   return if (tx?.db == this) tx.connection.block()
          else connection.use(block)
