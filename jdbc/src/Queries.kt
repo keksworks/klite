@@ -18,6 +18,7 @@ typealias ValueMap = Map<out ColName, *>
 @Deprecated(replaceWith = ReplaceWith("ValueMap"), message = "Use ValueMap instead")
 typealias Values = ValueMap
 
+@Deprecated("use selectSeq instead", replaceWith = ReplaceWith("selectSeq(table, listOf(column to id), suffix, mapper).first()"))
 fun <R, ID> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, id: ID, column: String = "id", @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): R =
   selectSeq(table, listOf(column to id), suffix, mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
 

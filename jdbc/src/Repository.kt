@@ -53,13 +53,14 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
   protected open fun ResultSet.mapper(): E = create(entityClass)
   protected open fun E.persister(): Map<out ColName, Any?> = toValues()
 
-  open fun get(id: ID, forUpdate: Boolean = false): E = db.select(selectFrom, id, "$table." + idProp.colName,
-    if (forUpdate) (if (isPostgres) "for no key update" else "for update") else "") { mapper() }
+  open fun get(id: ID, forUpdate: Boolean = false): E =
+    db.select(selectFrom).where(idProp to id).let { if (forUpdate) it.forUpdate() else it }.map { mapper() }.one()
 
-  open fun list(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = defaultOrder): List<E> =
-    db.select(selectFrom, where.filterNotNull(), suffix) { mapper() }
+  open fun seq(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = defaultOrder): Sequence<E> =
+    db.select(selectFrom).where(where.filterNotNull()).suffix(suffix).map { mapper() }.run()
 
-  open fun by(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): E? = list(*where, suffix = suffix).firstOrNull()
+  open fun list(vararg where: PropValue<E, *>?): List<E> = seq(*where).toList()
+  open fun by(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): E? = seq(*where, suffix = suffix).firstOrNull()
   open fun count(vararg where: PropValue<E, *>?): Long = db.count(selectFrom, where.filterNotNull())
 
   open fun save(entity: E): Int {

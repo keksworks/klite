@@ -22,8 +22,9 @@ class Database private constructor(val db: DataSource) {
     fun where(where: Where) = this.also { this.where += whereConvert(where) }
     fun where(vararg where: ColValue?) = where(where.filterNotNull())
 
-    fun suffix(@Language("SQL", prefix = selectFromTable) suffix: String) = this.also { this.suffix += suffix }
-    fun order(by: String, asc: Boolean = true) = this.also { suffix = "order by $by" + (if (asc) "" else " desc" ) }
+    fun suffix(@Language("SQL", prefix = selectFromTable) suffix: String) = this.also { this.suffix.append(' ').append(suffix) }
+    fun order(by: String, asc: Boolean = true) = suffix("order by $by" + (if (asc) "" else " desc" ))
+    fun forUpdate(subject: String = if (isPostgres) "no key" else "") = suffix("for $subject update")
 
     fun <T> map(mapper: Mapper<T>) = (this as Query<T>).also { this.mapper = mapper }
   }
@@ -33,10 +34,10 @@ class Database private constructor(val db: DataSource) {
     protected var mapper: Mapper<R>
   ) {
     protected val where = mutableListOf<ColValue>()
-    protected var suffix = ""
+    protected var suffix = StringBuilder()
 
     fun run(): Sequence<R> = sequence {
-      db.withStatement("${select}${whereExpr(where)} $suffix") {
+      db.withStatement("${select}${whereExpr(where)}$suffix") {
         setAll(whereValues(where))
         executeQuery().use { rs ->
           rs.populatePgColumnNameIndex(select.toString())
