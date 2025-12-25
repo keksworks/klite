@@ -10,11 +10,12 @@ class GeneratedKey<T: Any>(val convertTo: KClass<T>? = null) {
 @Suppress("UNCHECKED_CAST")
 internal fun Statement.processGeneratedKeys(values: Sequence<ValueMap>) {
   val i = values.iterator()
-  generatedKeys.process {
+  val rs = generatedKeys
+  while (rs.next()) {
     i.next().forEach { (k, v) ->
       val n = name(k)
       (v as? GeneratedKey<Any>)?.let {
-        val value = if (it.convertTo != null) getString(n) else getObject(n)
+        val value = if (it.convertTo != null) rs.getString(n) else rs.getObject(n)
         it.value = JdbcConverter.from(value, it.convertTo) as Any
       }
     }

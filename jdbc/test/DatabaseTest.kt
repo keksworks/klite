@@ -13,9 +13,9 @@ class DatabaseTest {
   val db = mockk<DataSource>(relaxed = true)
   val database = Database(db)
 
-  @Test fun list() {
+  @Test fun map() {
     val rs = mockk<ResultSet>(relaxed = true)
-    every { db.connection.prepareStatement(any()) } returns mockk(relaxed = true) {
+    every { db.connection.prepareStatement(any(), any<Int>()) } returns mockk(relaxed = true) {
       every { executeQuery() } returns rs
     }
     every { rs.next() } returnsMany listOf(true, true, false)
