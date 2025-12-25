@@ -8,10 +8,13 @@ class Database private constructor(val db: DataSource) {
     fun of(db: DataSource) = Database(db)
   }
 
-  fun query(@Language("SQL") select: String) = Query(StringBuilder(select))
-  fun select(@Language("SQL", prefix = selectFrom) table: String) = Query(StringBuilder(selectFrom).append(q(table)))
+  fun query(@Language("SQL") select: String) = Query<Any>(StringBuilder(select))
+  fun select(@Language("SQL", prefix = selectFrom) table: String) = Query<Any>(StringBuilder(selectFrom).append(q(table)))
 
-  inner class Query internal constructor(@Language("SQL") select: StringBuilder): QueryExecutor(select) {
+  inner class Query<R> internal constructor(
+    @Language("SQL") select: StringBuilder,
+    mapper: Mapper<R> = { create() }
+  ): QueryExecutor<R>(select, mapper) {
     fun join(@Language("SQL", prefix = selectFrom) table: String, on: String) = this.also {
       select.append(" join ").append(q(table)).append(" on ").append(on)
     }
@@ -21,13 +24,18 @@ class Database private constructor(val db: DataSource) {
 
     fun suffix(@Language("SQL", prefix = selectFromTable) suffix: String) = this.also { this.suffix += suffix }
     fun order(by: String, asc: Boolean = true) = this.also { suffix = "order by $by" + (if (asc) "" else " desc" ) }
+
+    fun <T> map(mapper: Mapper<T>) = (this as Query<T>).also { this.mapper = mapper }
   }
 
-  open inner class QueryExecutor internal constructor(@Language("SQL") val select: StringBuilder) {
+  open inner class QueryExecutor<R> internal constructor(
+    @Language("SQL") val select: StringBuilder,
+    protected var mapper: Mapper<R>
+  ) {
     protected val where = mutableListOf<ColValue>()
     protected var suffix = ""
 
-    fun <R> map(mapper: Mapper<R>): Sequence<R> = sequence {
+    fun run(): Sequence<R> = sequence {
       db.withStatement("${select}${whereExpr(where)} $suffix") {
         setAll(whereValues(where))
         executeQuery().use { rs ->
@@ -37,10 +45,9 @@ class Database private constructor(val db: DataSource) {
       }
     }
 
-    inline fun <reified R> map(): Sequence<R> = map { create() }
+    fun list() = run().toList()
 
-    fun <R> one(mapper: Mapper<R>) = map(mapper).firstOrNull() ?: throw NoSuchElementException("Not found")
-    inline fun <reified R> one(): R = one { create() }
+    fun one() = run().firstOrNull() ?: throw NoSuchElementException("Not found")
   }
 }
 

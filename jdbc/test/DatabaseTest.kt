@@ -20,10 +20,10 @@ class DatabaseTest {
     every { rs.next() } returnsMany listOf(true, true, false)
     every { rs.getInt("id") } returnsMany listOf(1, 2)
 
-    val results = db.select("users").where("id" to 1).map { getInt("id") }
+    val result = db.select("table").where("id" to 1).map { getInt("id") }.run()
     verify(exactly = 0) { rs.close() }
 
-    expect(results.toList()).toContainExactly(1, 2)
+    expect(result.toList()).toContainExactly(1, 2)
 
     verify { rs.close() }
     verify { db.connection.close() }
