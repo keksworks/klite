@@ -1,4 +1,4 @@
-# Unreleased
+# 1.7.3
 * openapi: fix detection of default (undefined) schema implementation
 * openapi: better support for annotation instances created directly in Kotlin code
 * server/openapi: fix analyzing of class-decorated handlers for OpenAPI generation
