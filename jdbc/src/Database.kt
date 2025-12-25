@@ -12,7 +12,9 @@ class Database private constructor(val db: DataSource) {
   fun select(@Language("SQL", prefix = selectFrom) table: String) = Query(StringBuilder(selectFrom).append(q(table)))
 
   inner class Query internal constructor(@Language("SQL") select: StringBuilder): QueryExecutor(select) {
-    //fun join(table: String, on: String) = select.append(" join ").append(q(table)).append(" on ").append(on)
+    fun join(@Language("SQL", prefix = selectFrom) table: String, on: String) = this.also {
+      select.append(" join ").append(q(table)).append(" on ").append(on)
+    }
 
     fun where(where: Where) = this.also { this.where += whereConvert(where) }
     fun where(vararg where: ColValue?) = where(where.filterNotNull())
