@@ -11,19 +11,16 @@ class Database(val db: DataSource) {
     private val where = mutableListOf<ColValue>()
     private var suffix = ""
 
-    fun where(where: Where) = this.also { this.where += where }
+    fun where(where: Where) = this.also { this.where += whereConvert(where) }
     fun where(vararg where: ColValue?) = where(where.filterNotNull())
     fun order(by: String, asc: Boolean = true) = this.also { suffix = "order by $by" + (if (asc) "" else " desc" ) }
 
     fun <R> list(mapper: Mapper<R>): Sequence<R> = sequence {
-      val qWhere = whereConvert(where)
-      db.withConnection {
-        prepareStatement("${select}${whereExpr(qWhere)} ${suffix}").use { stmt ->
-          stmt.setAll(whereValues(qWhere))
-          stmt.executeQuery().use { rs ->
-            rs.populatePgColumnNameIndex(select)
-            while (rs.next()) yield(mapper(rs))
-          }
+      db.withStatement("${select}${whereExpr(where)} $suffix") {
+        setAll(whereValues(where))
+        executeQuery().use { rs ->
+          rs.populatePgColumnNameIndex(select)
+          while (rs.next()) yield(rs.mapper())
         }
       }
     }

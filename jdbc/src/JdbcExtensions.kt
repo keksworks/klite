@@ -97,7 +97,7 @@ fun DataSource.execBatch(@Language("SQL") expr: String, values: Sequence<Sequenc
   }
 }
 
-fun <R> DataSource.withStatement(@Language("SQL") sql: String, keys: Int = NO_GENERATED_KEYS, block: PreparedStatement.() -> R): R = withConnection {
+inline fun <R> DataSource.withStatement(@Language("SQL") sql: String, keys: Int = NO_GENERATED_KEYS, block: PreparedStatement.() -> R): R = withConnection {
   try {
     prepareStatement(sql, keys).use { it.block() }
   } catch (e: SQLException) {
