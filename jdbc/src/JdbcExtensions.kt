@@ -29,10 +29,13 @@ typealias ValueMap = Map<out ColName, *>
 typealias Values = ValueMap
 
 fun <R, ID> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, id: ID, column: String = "id", @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): R =
-  select(table, listOf(column to id), suffix, ArrayList(1), mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
+  selectSeq(table, listOf(column to id), suffix, mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
+
+internal fun <R> DataSource.selectSeq(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> =
+  querySeq(selectFrom + q(table), where, suffix, mapper)
 
 fun <R, C: MutableCollection<R>> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
-  querySeq(selectFrom + q(table), where, suffix, mapper).toCollection(into)
+  selectSeq(table, where, suffix, mapper).toCollection(into)
 
 inline fun <R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = "", noinline mapper: Mapper<R>): List<R> =
   select(table, where.filterNotNull(), suffix, mapper = mapper)
@@ -46,7 +49,7 @@ inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) t
 inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   select(table, *where, suffix = suffix) { create() }
 
-fun <R> DataSource.querySeq(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> = sequence {
+internal fun <R> DataSource.querySeq(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> = sequence {
   val w = whereConvert(where)
   withStatement("$select${whereExpr(w)} $suffix") {
     setAll(whereValues(w))
@@ -57,7 +60,7 @@ fun <R> DataSource.querySeq(@Language("SQL") select: String, where: Where = empt
   }
 }
 
-@Deprecated("use querySeq instead", replaceWith = ReplaceWith("querySeq(select, where, suffix, mapper).toCollection(into)"))
+// @Deprecated("use querySeq instead", replaceWith = ReplaceWith("querySeq(select, where, suffix, mapper).toCollection(into)"))
 fun <R, C: MutableCollection<R>> DataSource.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
   querySeq(select, where, suffix, mapper).toCollection(into)
 
@@ -73,7 +76,7 @@ inline fun <reified R> DataSource.query(@Language("SQL") select: String, where: 
 inline fun <reified R> DataSource.query(@Language("SQL") select: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   query(select, *where, suffix = suffix) { create() }
 
-fun DataSource.count(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList()) = query("select count(*) from $table", where) { getLong(1) }.first()
+fun DataSource.count(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList()) = querySeq("select count(*) from $table", where) { getLong(1) }.first()
 
 fun DataSource.exec(@Language("SQL") expr: String, vararg values: Any?): Int = exec(expr, values.asSequence())
 fun DataSource.exec(@Language("SQL") expr: String, values: Sequence<Any?> = emptySequence(), keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): Int =
