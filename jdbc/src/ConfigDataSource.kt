@@ -26,7 +26,7 @@ open class ConfigDataSource(
   init {
     user?.let { props["user"] = it }
     pass?.let { props["password"] = it }
-    if (url.startsWith("jdbc:postgresql") && "autosave" !in props) {
+    if (isPostgres && "autosave" !in props) {
       // handle "cached plan must not change result type" Postgres error if schema changes
       // https://stackoverflow.com/questions/2783813/postgres-error-cached-plan-must-not-change-result-type
       props["autosave"] = "conservative"
@@ -35,11 +35,10 @@ open class ConfigDataSource(
       props["readOnly"] = "true"
       props["readOnlyMode"] = "always"
     }
-  }
-
-  init {
     log.info("Connecting to $url${user?.let { ", user: $user" } ?: ""}")
   }
+
+  val isPostgres get() = url.startsWith("jdbc:postgresql")
 
   fun waitForAcceptConnections(numTries: Int = Config.optional("DB_WAIT_TRIES", "10").toInt(), timeoutMs: Long = 1000L) {
     var tries = 1
