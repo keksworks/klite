@@ -11,7 +11,6 @@ import javax.sql.DataSource
 
 class DatabaseTest {
   val db = mockk<DataSource>(relaxed = true)
-  val database = Database(db)
 
   @Test fun map() {
     val rs = mockk<ResultSet>(relaxed = true)
@@ -21,7 +20,7 @@ class DatabaseTest {
     every { rs.next() } returnsMany listOf(true, true, false)
     every { rs.getInt("id") } returnsMany listOf(1, 2)
 
-    val results = database.select("users").where("id" to 1).map { getInt("id") }
+    val results = db.select("users").where("id" to 1).map { getInt("id") }
     verify(exactly = 0) { rs.close() }
 
     expect(results.toList()).toContainExactly(1, 2)

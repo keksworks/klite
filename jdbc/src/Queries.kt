@@ -22,8 +22,9 @@ fun <R, ID> DataSource.select(@Language("SQL", prefix = selectFrom) table: Strin
   selectSeq(table, listOf(column to id), suffix, mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
 
 internal fun <R> DataSource.selectSeq(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> =
-  querySeq(selectFrom + q(table), where, suffix, mapper)
+  select(table).where(where).suffix(suffix).map(mapper)
 
+@Deprecated("use selectSeq instead", replaceWith = ReplaceWith("selectSeq(table, where, suffix, mapper).toCollection(into)"))
 fun <R, C: MutableCollection<R>> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
   selectSeq(table, where, suffix, mapper).toCollection(into)
 
@@ -39,18 +40,10 @@ inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) t
 inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   select(table, *where, suffix = suffix) { create() }
 
-internal fun <R> DataSource.querySeq(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> = sequence {
-  val w = whereConvert(where)
-  withStatement("$select${whereExpr(w)} $suffix") {
-    setAll(whereValues(w))
-    executeQuery().run {
-      populatePgColumnNameIndex(select)
-      yield(mapper())
-    }
-  }
-}
+internal fun <R> DataSource.querySeq(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> =
+  query(select).where(where).suffix(suffix).map(mapper)
 
-// @Deprecated("use querySeq instead", replaceWith = ReplaceWith("querySeq(select, where, suffix, mapper).toCollection(into)"))
+@Deprecated("use querySeq instead", replaceWith = ReplaceWith("querySeq(select, where, suffix, mapper).toCollection(into)"))
 fun <R, C: MutableCollection<R>> DataSource.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
   querySeq(select, where, suffix, mapper).toCollection(into)
 
