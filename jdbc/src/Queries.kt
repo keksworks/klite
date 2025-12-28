@@ -1,5 +1,7 @@
 package klite.jdbc
 
+import klite.jdbc.dsl.query
+import klite.jdbc.dsl.select
 import org.intellij.lang.annotations.Language
 import java.sql.ResultSet
 import javax.sql.DataSource

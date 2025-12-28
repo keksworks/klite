@@ -1,6 +1,7 @@
 package klite.jdbc
 
 import klite.PropValue
+import klite.jdbc.dsl.select
 import klite.publicProperties
 import klite.toValues
 import org.intellij.lang.annotations.Language

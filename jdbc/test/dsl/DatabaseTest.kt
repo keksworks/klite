@@ -1,4 +1,4 @@
-package klite.jdbc
+package klite.jdbc.dsl
 
 import ch.tutteli.atrium.api.fluent.en_GB.toContainExactly
 import ch.tutteli.atrium.api.verbs.expect

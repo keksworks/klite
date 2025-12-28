@@ -1,5 +1,6 @@
-package klite.jdbc
+package klite.jdbc.dsl
 
+import klite.jdbc.*
 import org.intellij.lang.annotations.Language
 import javax.sql.DataSource
 
@@ -73,7 +74,7 @@ class Database private constructor(val db: DataSource) {
     override val where = mutableListOf<ColValue>() // TODO: not public
     override val values = mutableMapOf<ColName, Any?>() // TODO: not public
 
-    fun run() = db.exec("update ${q(table)}" + setExpr(values) + whereExpr(where), setValues(values), whereValues(where))
+    fun run() = db.exec("update ${q(table)}" + setExpr(values) + whereExpr(where), setValues(values) + whereValues(where))
   }
 
   inner class Delete internal constructor(@Language("SQL", prefix = "delete from") val table: String): WhereHandler<Delete> {
