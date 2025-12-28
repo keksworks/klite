@@ -10,9 +10,11 @@ class Database private constructor(val db: DataSource) {
 
   fun query(@Language("SQL") select: String) = Query<Any>(StringBuilder(select))
   fun select(@Language("SQL", prefix = selectFrom) table: String) = Query<Any>(StringBuilder(selectFrom).append(q(table)))
-  
-  fun update(@Language("SQL", prefix = "update") table: String) = Dml(StringBuilder("update " + q(table)))
-  fun delete(@Language("SQL", prefix = "delete from") table: String) = Dml(StringBuilder("delete from " + q(table)))
+
+  fun update(@Language("SQL", prefix = "update") table: String) = Update(table)
+  fun delete(@Language("SQL", prefix = "delete from") table: String) = Delete(table)
+  fun insert(@Language("SQL", prefix = "insert into") table: String) = Insert(table)
+  fun upsert(@Language("SQL", prefix = "merge into") table: String, uniqueFields: Set<ColName> = setOf("id")) = Update(table) // TODO
 
   inner class Query<R> internal constructor(
     @Language("SQL") select: StringBuilder,
@@ -52,7 +54,7 @@ class Database private constructor(val db: DataSource) {
     fun one() = run().firstOrNull() ?: throw NoSuchElementException("Not found")
   }
 
-  interface WhereHandler<P: WhereHandler<P>> {
+  internal interface WhereHandler<P: WhereHandler<P>> {
     val where: MutableList<ColValue>
 
     fun where(where: Where): P = (this as P).also { this.where += whereConvert(where) }
@@ -60,14 +62,30 @@ class Database private constructor(val db: DataSource) {
     fun where(where: ColValue?): P = (this as P).also { where?.let { this.where += it } }
   }
 
-  inner class Dml internal constructor(@Language("SQL") val expr: StringBuilder): WhereHandler<Dml> {
+  internal interface ValuesHandler<P: ValuesHandler<P>> {
+    val values: MutableMap<ColName, Any?>
+
+    fun set(value: ColValue) = (this as P).also { values += value }
+    fun set(vararg values: ColValue) = (this as P).also { values.forEach { v -> this.values += v } }
+  }
+
+  inner class Update internal constructor(@Language("SQL", prefix = "update") val table: String): WhereHandler<Update>, ValuesHandler<Update> {
     override val where = mutableListOf<ColValue>() // TODO: not public
-    protected val values = mutableMapOf<ColName, Any?>()
+    override val values = mutableMapOf<ColName, Any?>() // TODO: not public
 
-    fun set(value: ColValue) = this.also { values += value }
-    fun set(vararg values: ColValue) = this.also { values.forEach { v -> this.values += v } }
+    fun run() = db.exec("update ${q(table)}" + setExpr(values) + whereExpr(where), setValues(values), whereValues(where))
+  }
 
-    fun run() = db.exec(expr.toString() + setExpr(values) + whereExpr(where), setValues(values), whereValues(where))
+  inner class Delete internal constructor(@Language("SQL", prefix = "delete from") val table: String): WhereHandler<Delete> {
+    override val where = mutableListOf<ColValue>() // TODO: not public
+
+    fun run() = db.exec("delete from ${q(table)}" + whereExpr(where), whereValues(where))
+  }
+
+  inner class Insert internal constructor(@Language("SQL", prefix = "insert into") val table: String): ValuesHandler<Insert> {
+    override val values = mutableMapOf<ColName, Any?>() // TODO: not public
+
+    fun run() = db.exec(insertExpr(table, values), setValues(values))
   }
 }
 
