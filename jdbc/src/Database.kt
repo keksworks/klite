@@ -24,9 +24,9 @@ class Database private constructor(val db: DataSource) {
     fun where(where: ColValue?) = this.also { where?.let { this.where += it } }
 
     fun suffix(@Language("SQL", prefix = selectFromTable) suffix: String) = this.also { this.suffix.append(' ').append(suffix) }
-    fun order(by: String, asc: Boolean = true) = suffix("order by $by" + (if (asc) "" else " desc" ))
-    fun groupBy(vararg columns: ColName) = suffix("group by " + columns.joinToString())
-    fun forUpdate(subject: String = if (isPostgres) "no key" else "") = suffix("for $subject update")
+    fun order(by: ColName, asc: Boolean = true) = suffix("order by " + q(name(by)) + (if (asc) "" else " desc" ))
+    fun groupBy(vararg cols: ColName) = suffix("group by " + cols.joinToString { q(name(it)) })
+    fun forUpdate(lockMode: String = if (isPostgres) "no key" else "") = suffix("for $lockMode update")
 
     fun <T> map(mapper: Mapper<T>) = (this as Query<T>).also { this.mapper = mapper }
   }
