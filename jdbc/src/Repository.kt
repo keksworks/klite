@@ -30,7 +30,7 @@ interface UpdatableEntity {
 @Deprecated("Declare your own Entity interface using BaseEntity and other interfaces", replaceWith = ReplaceWith("BaseEntity<UUID>"))
 interface Entity: BaseEntity<UUID>
 
-abstract class BaseRepository(protected val db: DataSource, val table: String) {
+abstract class BaseRepository(protected val db: DataSource, @Language("SQL", prefix = selectFrom) val table: String) {
   protected open val orderAsc get() = "order by createdAt"
   protected open val orderDesc get() = "$orderAsc desc"
 }
@@ -40,7 +40,7 @@ abstract class CrudRepository<E: Entity>(db: DataSource, table: String): BaseCru
   override fun generateId() = UUID.randomUUID()
 }
 
-abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: String): BaseRepository(db, table) {
+abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, @Language("SQL", prefix = selectFrom) table: String): BaseRepository(db, table) {
   @Suppress("UNCHECKED_CAST")
   protected open val entityClass = this::class.supertypes.first().arguments.first().type!!.classifier as KClass<E>
   protected open val idProp = entityClass.publicProperties[BaseEntity<*>::id.name]!!
@@ -48,7 +48,7 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
 
   override val orderAsc get() = "order by $table.createdAt"
   open val defaultOrder get() = orderDesc
-  open val selectFrom @Language("SQL", prefix = "select * from ") get() = table
+  open val selectFrom @Language("SQL", prefix = klite.jdbc.selectFrom) get() = table
 
   protected open fun ResultSet.mapper(): E = create(entityClass)
   protected open fun E.persister(): Map<out ColName, Any?> = toValues()
