@@ -11,7 +11,8 @@ class Database private constructor(val db: DataSource) {
   fun query(@Language("SQL") select: String) = Query<Any>(StringBuilder(select))
   fun select(@Language("SQL", prefix = selectFrom) table: String) = Query<Any>(StringBuilder(selectFrom).append(q(table)))
   
-  fun update(@Language("SQL", prefix = selectFrom) table: String) = Dml(StringBuilder("update " + q(table)))
+  fun update(@Language("SQL", prefix = "update") table: String) = Dml(StringBuilder("update " + q(table)))
+  fun delete(@Language("SQL", prefix = "delete from") table: String) = Dml(StringBuilder("delete from " + q(table)))
 
   inner class Query<R> internal constructor(
     @Language("SQL") select: StringBuilder,
