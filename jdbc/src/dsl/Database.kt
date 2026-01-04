@@ -2,6 +2,7 @@ package klite.jdbc.dsl
 
 import klite.jdbc.*
 import org.intellij.lang.annotations.Language
+import java.sql.ResultSet
 import javax.sql.DataSource
 
 class Database private constructor(val db: DataSource) {
@@ -9,18 +10,20 @@ class Database private constructor(val db: DataSource) {
     fun of(db: DataSource) = Database(db)
   }
 
-  fun query(@Language("SQL") select: String) = Query<Any>(StringBuilder(select))
-  fun select(@Language("SQL", prefix = selectFrom) table: String) = Query<Any>(StringBuilder(selectFrom).append(q(table)))
+  fun query(@Language("SQL") select: String) = Query(StringBuilder(select))
+  fun select(@Language("SQL", prefix = selectFrom) table: String) = Query(StringBuilder(selectFrom).append(q(table)))
 
   fun update(@Language("SQL", prefix = "update") table: String) = Update(table)
   fun delete(@Language("SQL", prefix = "delete from") table: String) = Delete(table)
   fun insert(@Language("SQL", prefix = "insert into") table: String) = Insert(table)
   fun upsert(@Language("SQL", prefix = "merge into") table: String, uniqueFields: Set<ColName> = setOf("id")) = Update(table) // TODO
 
-  inner class Query<R> internal constructor(
-    @Language("SQL") select: StringBuilder,
-    mapper: Mapper<R> = { create() }
-  ): QueryExecutor<R>(select, mapper), WhereHandler<Query<R>> {
+  inner class Query internal constructor(
+    @Language("SQL") private val select: StringBuilder
+  ): WhereHandler<Query> {
+    override val where = mutableListOf<ColValue>() // TODO: not public
+    private var suffix = StringBuilder()
+
     fun join(@Language("SQL", prefix = selectFrom) table: String, on: String) = this.also {
       select.append(" join ").append(q(table)).append(" on ").append(on)
     }
@@ -30,17 +33,7 @@ class Database private constructor(val db: DataSource) {
     fun groupBy(vararg cols: ColName) = suffix("group by " + cols.joinToString { q(name(it)) })
     fun forUpdate(lockMode: String = if (isPostgres) "no key" else "") = suffix("for $lockMode update")
 
-    fun <T> map(mapper: Mapper<T>) = (this as Query<T>).also { this.mapper = mapper }
-  }
-
-  open inner class QueryExecutor<R> internal constructor(
-    @Language("SQL") val select: StringBuilder,
-    protected var mapper: Mapper<R>
-  ) {
-    val where = mutableListOf<ColValue>() // TODO: not public
-    protected var suffix = StringBuilder()
-
-    fun run(): Sequence<R> = sequence {
+    fun <R> map(mapper: Mapper<R>): Sequence<R> = sequence {
       db.withStatement("${select}${whereExpr(where)}$suffix") {
         setAll(whereValues(where))
         executeQuery().use { rs ->
@@ -50,9 +43,7 @@ class Database private constructor(val db: DataSource) {
       }
     }
 
-    fun list() = run().toList()
-
-    fun one() = run().firstOrNull() ?: throw NoSuchElementException("Not found")
+    fun run(): Sequence<ResultSet> = map { this }
   }
 
   internal interface WhereHandler<P: WhereHandler<P>> {

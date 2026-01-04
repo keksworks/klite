@@ -55,10 +55,10 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, @Langua
   protected open fun E.persister(): Map<out ColName, Any?> = toValues()
 
   open fun get(id: ID, forUpdate: Boolean = false): E =
-    db.select(selectFrom).where(idProp to id).let { if (forUpdate) it.forUpdate() else it }.map { mapper() }.one()
+    db.select(selectFrom).where(idProp to id).let { if (forUpdate) it.forUpdate() else it }.map { mapper() }.first()
 
   open fun seq(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = defaultOrder): Sequence<E> =
-    db.select(selectFrom).where(where.filterNotNull()).suffix(suffix).map { mapper() }.run()
+    db.select(selectFrom).where(where.filterNotNull()).suffix(suffix).map { mapper() }
 
   open fun list(vararg where: PropValue<E, *>?): List<E> = seq(*where).toList()
   open fun by(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): E? = seq(*where, suffix = suffix).firstOrNull()

@@ -28,7 +28,7 @@ class DatabaseTest {
     every { rs.next() } returnsMany listOf(true, true, false)
     every { rs.getInt("id") } returnsMany listOf(1, 2)
 
-    val result = db.select("table").join("table2", "on xxx").where("id" to 1).map { getInt("id") }.run()
+    val result = db.select("table").join("table2", "on xxx").where("id" to 1).map { getInt("id") }.toList()
     // val result = db.select("table", "id" to 1) { getInt("id") }
     verify(exactly = 0) { rs.close() }
 

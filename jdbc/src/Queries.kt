@@ -25,7 +25,7 @@ fun <R, ID> DataSource.select(@Language("SQL", prefix = selectFrom) table: Strin
   selectSeq(table, listOf(column to id), suffix, mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
 
 internal fun <R> DataSource.selectSeq(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> =
-  select(table).where(where).suffix(suffix).map(mapper).run()
+  select(table).where(where).suffix(suffix).map(mapper)
 
 @Deprecated("use selectSeq instead", replaceWith = ReplaceWith("selectSeq(table, where, suffix, mapper).toCollection(into)"))
 fun <R, C: MutableCollection<R>> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
@@ -44,7 +44,7 @@ inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) t
   select(table, *where, suffix = suffix) { create() }
 
 internal fun <R> DataSource.querySeq(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): Sequence<R> =
-  query(select).where(where).suffix(suffix).map(mapper).run()
+  query(select).where(where).suffix(suffix).map(mapper)
 
 @Deprecated("use querySeq instead", replaceWith = ReplaceWith("querySeq(select, where, suffix, mapper).toCollection(into)"))
 fun <R, C: MutableCollection<R>> DataSource.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
