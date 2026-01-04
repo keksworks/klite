@@ -2,7 +2,6 @@ package klite.json
 
 import klite.*
 import java.io.Writer
-import java.util.*
 import java.util.AbstractMap.SimpleImmutableEntry
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
@@ -17,8 +16,9 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
   private fun writeValue(o: Any?) {
     when (val o = opts.values.to(o)) {
       is CharSequence -> writeString(o.toString())
-      is Iterable<*> -> writeArray(o)
-      is Array<*> -> writeArray(Arrays.asList(*o))
+      is Iterable<*> -> writeArray(o.iterator())
+      is Sequence<*> -> writeArray(o.iterator())
+      is Array<*> -> writeArray(o.iterator())
       is Map<*, *> -> writeObjectEntries(o.asSequence())
       null, is Number, is Boolean -> write(o.toString())
       else ->
@@ -44,9 +44,8 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
     write('\"')
   }
 
-  private fun writeArray(o: Iterable<*>) {
+  private fun writeArray(i: Iterator<*>) {
     write('[')
-    val i = o.iterator()
     if (i.hasNext()) writeValue(i.next())
     i.forEachRemaining { write(','); writeValue(it) }
     write(']')
