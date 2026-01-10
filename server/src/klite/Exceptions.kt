@@ -1,7 +1,7 @@
 package klite
 
 open class NoStackTraceException(message: String? = null, cause: Throwable? = null): Exception(message, cause) {
-  override fun fillInStackTrace() = this
+  override fun fillInStackTrace(): Throwable = if (Config.isDev) super.fillInStackTrace() else this
 }
 
 open class StatusCodeException(val statusCode: StatusCode, content: String? = null, cause: Throwable? = null): NoStackTraceException(content, cause)

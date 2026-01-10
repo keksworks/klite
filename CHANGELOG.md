@@ -1,3 +1,6 @@
+# Unreleased
+* server: StatusCodeExceptions will now contain stack trace in dev mode
+
 # 1.7.3
 * openapi: fix detection of default (undefined) schema implementation
 * openapi: better support for annotation instances created directly in Kotlin code
