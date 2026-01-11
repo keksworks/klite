@@ -5,7 +5,6 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEndWith
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toStartWith
 import ch.tutteli.atrium.api.verbs.expect
-import klite.ForbiddenException
 import klite.json.JsonMapper
 import klite.json.parse
 import klite.slf4j.KliteLogger
@@ -32,9 +31,12 @@ class StackTraceOptimizingJsonLoggerTest {
   }
 
   @Test fun `empty stack`() {
-    StackTraceOptimizingJsonLogger("MyLogger").print("", ForbiddenException())
+    val noStackException = object: Exception() {
+      override fun fillInStackTrace(): Throwable = this
+    }
+    StackTraceOptimizingJsonLogger("MyLogger").print("", noStackException)
     val json = out.toString(UTF_8)
-    expect(json).toEqual("""{"error":"klite.ForbiddenException","stack":[]}""" + "\n")
+    expect(json).toEqual("""{"error":"${noStackException::class.java.name}","stack":[]}""" + "\n")
     JsonMapper().parse<Any>(json)
   }
 
