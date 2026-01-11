@@ -4,6 +4,7 @@ import klite.StatusCode.Companion.TooManyRequests
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.ceil
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -59,6 +60,8 @@ fun RouterConfig.rateLimit(limit: Int, window: Duration) {
   val limits = Cache<String, RateLimit>(expiration = window * 3, prolongOnAccess = true)
   val rate = limit.toDouble() / window.inWholeNanoseconds
   val maxTokens = limit.toDouble()
+  val requestsLimited = AtomicLong()
+  Metrics.register("requestsLimited") { requestsLimited.get() }
 
   decorator { e, handler ->
     val limiter = limits.getOrSet(e.remoteAddress) { RateLimit(maxTokens, System.nanoTime()) }
@@ -69,6 +72,7 @@ fun RouterConfig.rateLimit(limit: Int, window: Duration) {
       limiter.lastRefill = now
       if (limiter.tokens >= 1) limiter.tokens -= 1
       else {
+        requestsLimited.incrementAndGet()
         val retryAfter = ceil((1 - limiter.tokens) / rate / 1e9).toInt()
         e.header("Retry-After", retryAfter.toString())
         throw StatusCodeException(TooManyRequests)
