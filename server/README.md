@@ -148,6 +148,7 @@ Enable these only if you are sure that you will be running behind a trusted prox
 * `enforceCanonicalHost(name)` - will redirect all requests to a provided canonical host name.
 * `basicAuth()` - to enforce a basic auth in the context
 * `useHashCodeAsETag()` - will add ETag headers based on response body hash code and respond with 304 Not Modified when applicable.
+* `rateLimit()` - to rate limit requests for each unique IP
 * `metrics()` - adds a Prometheus-compatible metrics endpoint at `/metrics`.
 * [openApi()](../openapi) - will generate a Swagger/OpenAPI 3.0 spec for all routes in a context.
 
