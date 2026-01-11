@@ -2,7 +2,6 @@ package klite.jdbc
 
 import klite.*
 import kotlinx.coroutines.withContext
-import javax.sql.DataSource
 import kotlin.reflect.full.hasAnnotation
 
 /**
@@ -11,14 +10,13 @@ import kotlin.reflect.full.hasAnnotation
  */
 class RequestTransactionHandler(val exclude: Set<RequestMethod> = emptySet()): Extension {
   override fun install(config: RouterConfig) = config.run {
-    val db = registry.require<DataSource>()
-    decorator { exchange, handler -> decorate(db, exchange, handler) }
+    decorator { exchange, handler -> decorate(exchange, handler) }
   }
 
-  suspend fun decorate(db: DataSource, e: HttpExchange, handler: Handler): Any? {
+  suspend fun decorate(e: HttpExchange, handler: Handler): Any? {
     if (e.method in exclude || e.route.hasAnnotation<NoTransaction>()) return handler(e)
 
-    val tx = Transaction(db)
+    val tx = Transaction()
     return withContext(TransactionContext(tx)) {
       try {
         handler(e).also {

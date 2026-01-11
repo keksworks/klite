@@ -22,7 +22,7 @@ class RequestTransactionHandlerTest {
 
   @Test fun `commit on success`() {
     runBlocking {
-      expect(txHandler.decorate(db, exchange) { Transaction.current()!!.connection }).toEqual(db.connection)
+      expect(txHandler.decorate(exchange) { Transaction.current()!!.connection(db) }).toEqual(db.connection)
       expect(Transaction.current()).toEqual(null)
     }
     verify { db.connection.commit() }
@@ -31,8 +31,8 @@ class RequestTransactionHandlerTest {
   @Test fun `commit on redirect`() {
     expect {
       runBlocking {
-        txHandler.decorate(db, exchange) {
-          Transaction.current()!!.connection
+        txHandler.decorate(exchange) {
+          Transaction.current()!!.connection(db)
           throw StatusCodeException(Found, "http://www")
         }
       }
@@ -44,8 +44,8 @@ class RequestTransactionHandlerTest {
   @Test fun `rollback on error`() {
     expect {
       runBlocking {
-        txHandler.decorate(db, exchange) {
-          Transaction.current()!!.connection
+        txHandler.decorate(exchange) {
+          Transaction.current()!!.connection(db)
           error("Kaboom")
         }
       }

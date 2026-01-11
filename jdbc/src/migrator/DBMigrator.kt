@@ -18,7 +18,7 @@ open class DBMigrator(
   private val log = logger()
   private val repository = ChangeSetRepository(db)
 
-  private val tx = Transaction(db)
+  private val tx = Transaction()
   private var history = mutableMapOf<String, ChangeSet>()
 
   override fun run() = migrate()
