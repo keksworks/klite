@@ -26,9 +26,9 @@ fun Server.metrics(path: String = "/metrics", befores: Router.() -> Unit = {}) {
   }
 }
 
-context(Server)
+context(server: Server)
 fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotations: List<Annotation> = emptyList()) {
-  (workerPool as? ForkJoinPool)?.let {
+  (server.workerPool as? ForkJoinPool)?.let {
     Metrics.register("workerPool") {
       mapOf("active" to it.activeThreadCount, "size" to it.poolSize, "max" to it.parallelism)
     }
@@ -41,8 +41,8 @@ fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotation
     }
   }
 
-  renderers.add(0, OpenMetricsRenderer(keyPrefix = keyPrefix))
-  add(Route(GET, pathParamRegexer.from(path), annotations) {
+  this.renderers.add(0, OpenMetricsRenderer(keyPrefix = keyPrefix))
+  add(Route(GET, this.pathParamRegexer.from(path), annotations) {
     Metrics.data
   })
 }

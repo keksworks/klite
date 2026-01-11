@@ -53,7 +53,7 @@ subprojects {
     compilerOptions {
       jvmTarget.set(JvmTarget.JVM_11)
       freeCompilerArgs.addAll(
-        "-Xcontext-receivers",
+        "-Xcontext-parameters",
         "-opt-in=kotlin.ExperimentalStdlibApi",
         "-opt-in=kotlin.uuid.ExperimentalUuidApi",
         "-opt-in=kotlin.time.ExperimentalTime",

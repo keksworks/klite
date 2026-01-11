@@ -27,21 +27,21 @@ import kotlin.reflect.KType
 import kotlin.reflect.KTypeProjection
 import kotlin.reflect.full.*
 
-context(HttpExchange)
+context(e: HttpExchange)
 internal fun Router.generateOpenAPI() = mapOf(
   "openapi" to "3.1.0",
-  "info" to route.findAnnotation<Info>()?.toNonEmptyValues(),
-  "servers" to listOf(mapOf("url" to fullUrl(prefix))),
+  "info" to e.route.findAnnotation<Info>()?.toNonEmptyValues(),
+  "servers" to listOf(mapOf("url" to e.fullUrl(prefix))),
   "tags" to toTags(routes),
   "components" to mapOfNotNull(
-    "securitySchemes" to route.findAnnotations<SecurityScheme>().associate { s ->
+    "securitySchemes" to e.route.findAnnotations<SecurityScheme>().associate { s ->
       s.name to s.toNonEmptyValues { it.name != "paramName" }.let { it + ("name" to s.paramName) }
     }.takeIf { it.isNotEmpty() }
   ).takeIf { it.isNotEmpty() },
   "paths" to routes.filter { !it.hasAnnotation<Hidden>() }.groupBy { pathParamRegexer.toOpenApi(it.path) }.mapValues { (_, routes) ->
     routes.associate(::toOperation)
   },
-) + (route.findAnnotation<OpenAPIDefinition>()?.let {
+) + (e.route.findAnnotation<OpenAPIDefinition>()?.let {
   it.toNonEmptyValues() + ("security" to it.security.toList().toSecurity())
 } ?: emptyMap())
 
