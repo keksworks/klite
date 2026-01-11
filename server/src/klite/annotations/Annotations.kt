@@ -62,7 +62,7 @@ private val packageName = GET::class.java.packageName
 private val KAnnotatedElement.kliteAnnotation get() = annotations.filter { it.annotationClass.java.packageName == packageName }
   .let { if (it.size > 1) error("$this cannot have multiple klite annotations: $it") else it.firstOrNull() }
 
-class FunHandler(val instance: Any, val f: KFunction<*>): Handler {
+class FunHandler(val instance: Any, val f: KFunction<*>): suspend (HttpExchange) -> Any? {
   val params = f.parameters.map(::Param)
   override suspend fun invoke(e: HttpExchange): Any? = try {
     val args = params.associate { p -> p.p to p.valueFrom(e, instance) }.filter { !it.key.isOptional || it.value != null }

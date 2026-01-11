@@ -17,7 +17,7 @@ open class AssetsHandler(
   val indexHeaders: Map<String, String> = mapOf("Cache-Control" to "max-age=0, must-revalidate"),
   val useChunkedResponseForFilesLargerThan: Long = 30 * (1L shl 20),
   val headerModifier: HttpExchange.(file: Path) -> Unit = {}
-): Handler {
+): (HttpExchange) -> Any? {
   protected val log = logger()
   val path = path.normalize()
 
@@ -25,7 +25,7 @@ open class AssetsHandler(
     if (!path.isDirectory()) log.warn("Assets path ${path.toAbsolutePath()} is not a readable directory")
   }
 
-  override suspend fun invoke(exchange: HttpExchange) {
+  override fun invoke(exchange: HttpExchange) {
     if (exchange.method != GET && exchange.method != HEAD) throw NotFoundException(exchange.method.name)
     try {
       var file = (path / exchange.path.substring(1)).normalize()
