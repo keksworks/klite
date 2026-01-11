@@ -58,7 +58,7 @@ open class JobRunner(
 
   internal fun runInTransaction(job: Job, start: CoroutineStart = DEFAULT): kotlinx.coroutines.Job {
     val threadName = ThreadNameContext("${requestIdGenerator.prefix}/${job.name}#${seq.incrementAndGet()}")
-    val tx = if (job.noTransaction) null else Transaction(db)
+    val tx = if (job.noTransaction) null else Transaction()
     return launch(threadName + TransactionContext(tx), start) {
       var commit = true
       try {

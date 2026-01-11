@@ -15,14 +15,14 @@ abstract class DBTest {
     init {
       Config["ENV"] = "test"
       Config.useEnvFile()
-      startDevDB()
+      DockerCompose.startDB()
     }
 
     @JvmStatic protected val db: DataSource by lazy { DBModule().dataSource }
   }
 
   @BeforeEach open fun startTx() {
-    Transaction(db).attachToThread()
+    Transaction().attachToThread()
   }
 
   @AfterEach open fun rollbackTx() {
