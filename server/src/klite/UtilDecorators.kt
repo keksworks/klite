@@ -4,7 +4,6 @@ import klite.StatusCode.Companion.TooManyRequests
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.ceil
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -57,12 +56,12 @@ fun HttpExchange.lastModified(at: Instant): String = DateTimeFormatter.RFC_1123_
 }
 
 fun RouterConfig.rateLimit(limit: Int, window: Duration) {
-  val limits = ConcurrentHashMap<String, RateLimit>()
+  val limits = Cache<String, RateLimit>(expiration = window * 3, prolongOnAccess = true)
   val rate = limit.toDouble() / window.inWholeNanoseconds
   val maxTokens = limit.toDouble()
 
   decorator { e, handler ->
-    val limiter = limits.getOrPut(e.remoteAddress) { RateLimit(maxTokens, System.nanoTime()) }
+    val limiter = limits.getOrSet(e.remoteAddress) { RateLimit(maxTokens, System.nanoTime()) }
     synchronized(limiter) {
       val now = System.nanoTime()
       val refill = (now - limiter.lastRefill) * rate
