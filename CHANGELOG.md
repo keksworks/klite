@@ -1,5 +1,6 @@
 # Unreleased
 * server: StatusCodeExceptions will now contain stack trace in dev mode
+* json: Sequence can now be rendered to json directly (as an array)
 
 # 1.7.3
 * openapi: fix detection of default (undefined) schema implementation
