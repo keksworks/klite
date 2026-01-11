@@ -18,6 +18,7 @@ typealias OriginalHttpExchange = com.sun.net.httpserver.HttpExchange
 typealias Headers = com.sun.net.httpserver.Headers
 operator fun Headers.plusAssign(headers: Map<String, String>) = headers.forEach { (k, v) -> set(k, v) }
 
+@Suppress("UNCHECKED_CAST")
 open class HttpExchange(
   internal val original: OriginalHttpExchange,
   internal val config: RouterConfig,
@@ -48,7 +49,6 @@ open class HttpExchange(
 
   inline fun <reified T: Any> body(): T = body(typeOf<T>())
 
-  @Suppress("UNCHECKED_CAST")
   fun <T: Any> body(type: KType): T {
     if (type.classifier == String::class) return requestStream.reader().use { it.readText() } as T
     if (type.classifier == ByteArray::class) return requestStream.readBytes() as T
@@ -60,13 +60,14 @@ open class HttpExchange(
   val rawBody by lazy { body<String>() }
 
   val bodyParams: Map<String, Any?> by lazy { body() }
-  /** e.g. form param, passed in body */ @Suppress("UNCHECKED_CAST")
+  /** e.g. form param, passed in body */
   fun <T> body(param: String): T = bodyParams[param] as T
 
   val attrs: MutableMap<Any, Any?> = mutableMapOf()
-  @Suppress("UNCHECKED_CAST")
   fun <T> attr(key: Any): T = attrs[key] as T
   fun attr(key: Any, value: Any?) = attrs.put(key, value)
+  inline fun <reified T: Any> attr(): T = attr(T::class)
+  inline fun <reified T: Any> attrPut(value: T) = attr(T::class, value)
 
   val headers: Headers get() = original.requestHeaders
   fun header(key: String): String? = headers.getFirst(key)

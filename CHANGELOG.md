@@ -1,5 +1,6 @@
 # Unreleased
 * server: StatusCodeExceptions will now contain stack trace in dev mode
+* server: HttpExchange.attr/attrPut can be used for class-based attributes
 * json: Sequence can now be rendered to json directly (as an array)
 
 # 1.7.3

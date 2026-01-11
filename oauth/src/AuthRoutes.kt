@@ -17,4 +17,5 @@ fun HttpExchange.initSession(user: OAuthUser) {
   session["userId"] = user.id.toString()
   session["started"] = currentTimeMillis().toString()
   attr("user", user)
+  attrPut(user)
 }

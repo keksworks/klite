@@ -23,6 +23,7 @@ fun RouterConfig.basicAuth(realm: String = "Auth", userProvider: (name: String, 
     val (name, password) = String(auth.substringAfter(" ").base64Decode()).split(':', limit = 2)
     userProvider(name, Password(password))?.let {
       e.attr("user", it)
+      e.attrPut(it)
       return@before
     }
   }
