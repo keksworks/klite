@@ -17,8 +17,9 @@ import kotlin.coroutines.CoroutineContext
 class Transaction(val db: DataSource): AutoCloseable {
   companion object {
     private val log = logger()
-    private val threadLocal = ThreadLocal<Transaction>()
-    fun current(): Transaction? = threadLocal.get()
+    private val threadLocal = ThreadLocal.withInitial { LinkedHashMap<DataSource, Transaction>() }
+    fun current(db: DataSource): Transaction? = threadLocal.get()[db]
+    fun current(): Transaction? = threadLocal.get().values.lastOrNull()
   }
 
   private var conn: Connection? = null
@@ -50,12 +51,17 @@ class Transaction(val db: DataSource): AutoCloseable {
   fun commit() = conn?.commit()
   fun rollback() = conn?.rollback()
 
-  fun attachToThread() = this.also { threadLocal.set(it) }
-  fun detachFromThread() = threadLocal.remove()
+  fun attachToThread() = this.also { threadLocal.get()[db] = it }
+
+  fun detachFromThread() {
+    val map = threadLocal.get()
+    if (map[db] == this) map.remove(db)
+    if (map.isEmpty()) threadLocal.remove()
+  }
 }
 
 fun <R> DataSource.withConnection(block: Connection.() -> R): R {
-  val tx = Transaction.current()
+  val tx = Transaction.current(this)
   return if (tx?.db == this) tx.connection.block()
          else connection.use(block)
 }
@@ -63,6 +69,6 @@ fun <R> DataSource.withConnection(block: Connection.() -> R): R {
 class TransactionContext(val tx: Transaction? = Transaction.current()): ThreadContextElement<Transaction?>, AbstractCoroutineContextElement(Key) {
   companion object Key: CoroutineContext.Key<TransactionContext>
 
-  override fun updateThreadContext(context: CoroutineContext) = Transaction.current().also { tx?.attachToThread() }
-  override fun restoreThreadContext(context: CoroutineContext, oldState: Transaction?) { oldState?.attachToThread() ?: tx?.detachFromThread() }
+  override fun updateThreadContext(context: CoroutineContext) = tx.also { it?.attachToThread() }
+  override fun restoreThreadContext(context: CoroutineContext, oldState: Transaction?) { tx?.detachFromThread() }
 }
