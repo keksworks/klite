@@ -1,4 +1,4 @@
-FROM amazoncorretto:17-alpine3.20 as build
+FROM amazoncorretto:25-alpine3.20 as build
 
 WORKDIR /app
 RUN apk add binutils # for objcopy, needed by jlink
