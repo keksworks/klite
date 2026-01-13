@@ -9,6 +9,7 @@ import java.text.ParseException
 import kotlin.reflect.*
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
+import kotlin.reflect.jvm.javaField
 
 private const val EOF = '\uFFFF'
 
@@ -65,7 +66,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
       val key = mapTypes?.first.from(opts.keys.from(readString()))!!
       nextNonSpace().expect(':')
 
-      val prop = props?.get(key)
+      val prop = props?.get(key)?.takeIf { it.javaField != null }
       val value = readValue(substituteArguments(mapTypes?.second ?: prop?.returnType, typeParams))
       if (prop == null || prop.findAnnotation<JsonProperty>()?.readOnly != true && !prop.hasAnnotation<JsonIgnore>())
         map[prop?.name ?: key] = value
