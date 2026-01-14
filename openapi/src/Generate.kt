@@ -83,6 +83,7 @@ private fun toParameterIn(paramAnnotation: Annotation?) = when(paramAnnotation) 
 
 private fun KType.toJsonSchema(response: Boolean = false): Map<String, Any?>? {
   val cls = classifier as? KClass<*> ?: return null
+  if (cls.qualifiedName?.startsWith("kotlin.Function") == true) return null // workaround for https://youtrack.jetbrains.com/issue/KT-83608
   return when {
     cls == Nothing::class -> mapOf("type" to "null")
     cls == Boolean::class -> mapOf("type" to "boolean")
