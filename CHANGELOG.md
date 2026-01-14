@@ -3,6 +3,7 @@
 * server: HttpExchange.attr/attrPut can be used for class-based attributes
 * server: introduce `rateLimit()` decorator
 * jdbc: Transaction now supports multiple DataSources (one connection per each)
+* jdbc: Postgres: unwrap `PGobject` values automatically for non-standard types like `citext`
 * json: Sequence can now be rendered to json directly (as an array)
 
 # 1.7.3

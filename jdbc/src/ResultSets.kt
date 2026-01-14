@@ -14,13 +14,19 @@ fun <T> ResultSet.get(column: String, type: KType): T = JdbcConverter.from(when 
   Int::class -> getIntOrNull(column)
   Decimal::class -> getDecimalOrNull(column)
   Instant::class -> getTimestamp(column)
-  else -> getObject(column)
+  else -> getObjectUnwrapped(column)
 }, type) as T
 
 inline operator fun <reified T> ResultSet.get(column: String): T = get(column, typeOf<T>())
 
 fun <T> ResultSet.getOptional(column: String, type: KType): Result<T> = runCatching { get(column, type) }
 inline fun <reified T> ResultSet.getOptional(column: String): Result<T> = getOptional(column, typeOf<T>())
+
+fun ResultSet.getObjectUnwrapped(column: String): Any? {
+  val o = getObject(column)
+  return if (o != null && o.javaClass.simpleName == "PGobject") o.javaClass.getMethod("getValue").invoke(o)
+         else o
+}
 
 fun ResultSet.getUuid(column: String = "id") = getString(column).uuid
 fun ResultSet.getUuidOrNull(column: String = "id") = getString(column)?.uuid
