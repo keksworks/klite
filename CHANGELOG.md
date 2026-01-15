@@ -2,6 +2,7 @@
 * server: StatusCodeExceptions will now contain stack trace in dev mode
 * server: HttpExchange.attr/attrPut can be used for class-based attributes
 * server: introduce `rateLimit()` decorator
+* server: support for UTF-8 fileName (in Content-Disposition header)
 * jdbc: Transaction now supports multiple DataSources (one connection per each)
 * jdbc: Postgres: unwrap `PGobject` values automatically for non-standard types like `citext`
 * json: Sequence can now be rendered to json directly (as an array)
