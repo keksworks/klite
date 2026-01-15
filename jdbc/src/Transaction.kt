@@ -21,7 +21,7 @@ class Transaction: AutoCloseable {
     fun current(): Transaction? = threadLocal.get()
   }
 
-  private val connections = HashMap<DataSource, Connection>()
+  private val connections = mutableMapOf<DataSource, Connection>()
   fun connection(db: DataSource): Connection = connections.getOrPut(db) {
     db.connection.apply { autoCommit = false }
   }
@@ -46,9 +46,9 @@ class Transaction: AutoCloseable {
     detachFromThread()
   }
 
-  fun connections(each: (Connection) -> Unit) = connections.values.forEach(each)
-  fun commit() = connections { it.commit() }
-  fun rollback() = connections { it.rollback() }
+  fun connections(each: (Map.Entry<DataSource, Connection>) -> Unit) = connections.forEach(each)
+  fun commit() = connections { (_, conn) -> conn.commit() }
+  fun rollback() = connections { (_, conn) -> conn.rollback() }
 
   fun attachToThread() = this.also { threadLocal.set(it) }
   fun detachFromThread() = threadLocal.remove()
