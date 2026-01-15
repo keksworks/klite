@@ -83,15 +83,15 @@ class HttpExchangeTest {
   }
 
   @Test fun `response content-disposition`() {
-    exchange.fileName("hello.xml")
+    exchange.fileName("hellö.xml")
     verify {
-      original.responseHeaders.set("Content-disposition", "attachment; filename=\"hello.xml\"")
+      original.responseHeaders.set("Content-disposition", "attachment; filename*=UTF-8''hell%C3%B6.xml")
       original.responseHeaders.set("Content-type", "text/xml; charset=UTF-8")
     }
 
     exchange.fileName("mega.pdf", attachment = false)
     verify {
-      original.responseHeaders.set("Content-disposition", "filename=\"mega.pdf\"")
+      original.responseHeaders.set("Content-disposition", "filename*=UTF-8''mega.pdf")
       original.responseHeaders.set("Content-type", "application/pdf")
     }
   }
