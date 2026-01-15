@@ -1,4 +1,4 @@
-# Unreleased
+# 1.8.0
 * server: StatusCodeExceptions will now contain stack trace in dev mode
 * server: HttpExchange.attr/attrPut can be used for class-based attributes
 * server: introduce `rateLimit()` decorator
