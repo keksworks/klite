@@ -46,8 +46,9 @@ class Transaction: AutoCloseable {
     detachFromThread()
   }
 
-  fun commit() = connections.forEach { (_, conn) -> conn.commit() }
-  fun rollback() = connections.forEach { (_, conn) -> conn.rollback() }
+  fun connections(each: (Connection) -> Unit) = connections.values.forEach(each)
+  fun commit() = connections { it.commit() }
+  fun rollback() = connections { it.rollback() }
 
   fun attachToThread() = this.also { threadLocal.set(it) }
   fun detachFromThread() = threadLocal.remove()
