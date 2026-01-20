@@ -6,13 +6,14 @@ plugins {
 }
 
 allprojects {
-  group = "com.github.keksworks.klite"
+  group = "io.github.keksworks.klite"
   version = project.findProperty("version") ?: "main-SNAPSHOT" // see tags/releases
 }
 
 subprojects {
   apply(plugin = "kotlin")
   apply(plugin = "maven-publish")
+  apply(plugin = "signing")
 
   repositories {
     mavenCentral()
@@ -73,6 +74,7 @@ subprojects {
 
   java {
     withSourcesJar()
+    withJavadocJar()
   }
 
   tasks.named<Jar>("sourcesJar") {

@@ -1,3 +1,6 @@
+# Unreleased
+* server: map FileNotFoundException and NoSuchFileException to 404 status code by default
+
 # 1.8.0
 * server: StatusCodeExceptions will now contain stack trace in dev mode
 * server: HttpExchange.attr/attrPut can be used for class-based attributes

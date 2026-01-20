@@ -4,6 +4,8 @@ import klite.StatusCode.Companion.BadRequest
 import klite.StatusCode.Companion.InternalServerError
 import klite.StatusCode.Companion.NotFound
 import klite.StatusCode.Companion.UnprocessableEntity
+import java.io.FileNotFoundException
+import java.nio.file.NoSuchFileException
 import kotlin.reflect.KClass
 import kotlin.reflect.full.superclasses
 
@@ -15,6 +17,8 @@ open class ErrorHandler {
   private val log = logger()
   private val handlers = mutableMapOf<KClass<out Throwable>, ThrowableHandler<Throwable>>()
   private val statusCodes = mutableMapOf<KClass<out Throwable>, StatusCode>(
+    NoSuchFileException::class to NotFound,
+    FileNotFoundException::class to NotFound,
     IllegalArgumentException::class to BadRequest,
     IllegalStateException::class to BadRequest,
     BusinessException::class to UnprocessableEntity
