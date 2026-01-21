@@ -34,9 +34,9 @@ open class TSIDGenerator(
   @Volatile private var lastTime = 0L
   var deterministic: AtomicLong? = null
 
-  open fun generateValue(): Long {
+  open fun generateValue(createdAt: Long = currentTimeMillis()): Long {
     deterministic?.let { return it.incrementAndGet() }
-    val time = (currentTimeMillis() - epoch) shl randomBits
+    val time = (createdAt - epoch) shl randomBits
     if (time != lastTime) {
       counter.set(random.nextInt())
       lastTime = time
