@@ -13,7 +13,6 @@ import java.net.URL
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 import java.time.*
-import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.PathWalkOption.INCLUDE_DIRECTORIES
 import kotlin.io.path.extension
 import kotlin.io.path.walk
@@ -34,7 +33,6 @@ open class TSGenerator(
   private val customTypes = defaultCustomTypes + customTypes
   private val usedCustomTypes = mutableSetOf<String>()
 
-  @OptIn(ExperimentalPathApi::class)
   open fun printFrom(dir: Path) {
     dir.walk(INCLUDE_DIRECTORIES).filter { it.extension == "class" }.sorted().forEach {
       val className = dir.relativize(it).toString().removeSuffix(".class").replace(File.separatorChar, '.')
