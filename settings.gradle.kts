@@ -15,7 +15,7 @@ dependencyResolutionManagement {
       library("junit", "org.junit.jupiter", "junit-jupiter").versionRef(junit5)
       library("junit-api", "org.junit.jupiter", "junit-jupiter-api").versionRef(junit5)
       library("junit-engine", "org.junit.jupiter", "junit-jupiter-engine").versionRef(junit5)
-      library("junit-launcher", "org.junit.platform:junit-platform-launcher:1.13.4")
+      library("junit-launcher", "org.junit.platform:junit-platform-launcher:6.0.2")
       library("atrium", "ch.tutteli.atrium:atrium-fluent:1.3.0-alpha-2")
 
       library("mockk", "io.mockk:mockk:1.14.9")
