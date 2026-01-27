@@ -18,7 +18,7 @@ dependencyResolutionManagement {
       library("junit-launcher", "org.junit.platform:junit-platform-launcher:1.13.4")
       library("atrium", "ch.tutteli.atrium:atrium-fluent:1.3.0-alpha-2")
 
-      library("mockk", "io.mockk:mockk:1.14.7")
+      library("mockk", "io.mockk:mockk:1.14.9")
       // TODO: remove when mockk upgrades to support Java 25: https://github.com/mockk/mockk/issues/1434
       val byteBuddy = version("byte-buddy", "1.17.8")
       library("byte-buddy", "net.bytebuddy", "byte-buddy").versionRef(byteBuddy)
