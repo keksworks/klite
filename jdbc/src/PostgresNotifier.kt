@@ -1,14 +1,12 @@
 package klite.jdbc
 
-import klite.Extension
-import klite.Server
-import klite.register
-import klite.require
+import klite.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import org.postgresql.PGConnection
 import org.postgresql.PGNotification
 import java.sql.Connection
+import java.sql.SQLException
 import javax.sql.DataSource
 import kotlin.concurrent.thread
 import kotlin.time.Duration
@@ -41,10 +39,19 @@ fun DataSource.notify(channel: String, payload: String = "") = withStatement("se
 }
 
 /** Dedicate a separate thread to listen to Postgres notifications and send them to the corresponding channels. */
-fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, consumer: (notification: PGNotification) -> Unit) = withConnection {
-  listen(channels)
-  while (!Thread.interrupted()) {
-    pgNotifications(timeout).forEach { consumer(it) }
+fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, consumer: (notification: PGNotification) -> Unit) {
+  val thread = Thread.currentThread()
+  while (!thread.isInterrupted) {
+    try {
+      withConnection {
+        listen(channels)
+        while (!thread.isInterrupted) {
+          pgNotifications(timeout).forEach { consumer(it) }
+        }
+      }
+    } catch (ex: SQLException) {
+      logger<PostgresNotifier<*>>().warn("Notification listener interrupted due to ${ex.message}. Retrying...", ex)
+    }
   }
 }
 

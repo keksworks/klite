@@ -17,6 +17,6 @@ internal fun Class<*>.nonAnonymousName(): String {
 
 inline fun System.Logger.debug(msg: String) = log(DEBUG, msg)
 inline fun System.Logger.info(msg: String) = log(INFO, msg)
-inline fun System.Logger.warn(msg: String) = log(WARNING, msg)
+inline fun System.Logger.warn(msg: String, e: Throwable? = null) = log(WARNING, msg, e)
 inline fun System.Logger.error(msg: String, e: Throwable? = null) = log(ERROR, msg, e)
 inline fun System.Logger.error(e: Throwable) = log(ERROR, e.message ?: e.javaClass.name, e)
