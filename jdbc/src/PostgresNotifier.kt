@@ -1,6 +1,7 @@
 package klite.jdbc
 
 import klite.*
+import klite.jdbc.PooledDataSource.PooledConnection
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import org.postgresql.PGConnection
@@ -45,6 +46,7 @@ fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duratio
     try {
       withConnection {
         listen(channels)
+        unwrapOrNull<PooledConnection>()?.longUsed = true
         while (!thread.isInterrupted) {
           pgNotifications(timeout).forEach { consumer(it) }
         }

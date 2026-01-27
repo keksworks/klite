@@ -2,6 +2,7 @@
 * server: map FileNotFoundException and NoSuchFileException to 404 status code by default
 * core: TSIDGenerator.generateValue() can now accept desired timestamp instead of current one
 * jdbc: `PostgresNotifier.consumeNotifications()` will now reconnect automatically if connection is lost
+* jdbc: `PooledConnection.longUsed` can now be used to mark connections not to trigger `leakChecker`
 
 # 1.8.0
 * server: StatusCodeExceptions will now contain stack trace in dev mode

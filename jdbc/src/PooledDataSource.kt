@@ -56,7 +56,7 @@ class PooledDataSource(
             dropped.incrementAndGet()
             true
           } else {
-            if (usedForMs >= it.inWholeMilliseconds)
+            if (usedForMs >= it.inWholeMilliseconds && !conn.longUsed)
               log.error("Possible leaked $conn, used for ${usedForMs / 1000}s, acquired by ${used.threadName}")
             false
           }
@@ -101,6 +101,7 @@ class PooledDataSource(
   inner class PooledConnection(private val conn: Connection): Connection by conn {
     val count = counter.incrementAndGet()
     val since = currentTimeMillis()
+    var longUsed = false
     init {
       try { setNetworkTimeout(null, queryTimeout.inWholeMilliseconds.toInt()) }
       catch (e: Exception) { log.warn("Failed to set network timeout for $this: $e") }
@@ -112,6 +113,7 @@ class PooledDataSource(
 
     override fun close() {
       try {
+        longUsed = false
         if (used.remove(this) != null) {
           if (!conn.autoCommit) conn.rollback()
           available += this
