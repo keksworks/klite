@@ -50,7 +50,9 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
   open val defaultOrder get() = orderDesc
   open val selectFrom @Language("SQL", prefix = "select * from ") get() = table
 
+  /** Override to customize how entity properties are being converted to table columns during queries */
   protected open fun ResultSet.mapper(): E = create(entityClass)
+  /** Override to customize how table columns are being converted to entity properties during inserts/updates */
   protected open fun E.persister(): Map<out ColName, Any?> = toValues()
 
   open fun get(id: ID, forUpdate: Boolean = false): E = db.select(selectFrom, id, "$table." + idProp.colName,
