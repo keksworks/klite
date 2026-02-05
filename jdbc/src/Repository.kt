@@ -40,6 +40,7 @@ abstract class CrudRepository<E: Entity>(db: DataSource, table: String): BaseCru
   override fun generateId() = UUID.randomUUID()
 }
 
+/** Extend to get basic CRUD operations, override functions to customize queries and mapping */
 abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: String): BaseRepository(db, table) {
   @Suppress("UNCHECKED_CAST")
   protected open val entityClass = this::class.supertypes.first().arguments.first().type!!.classifier as KClass<E>

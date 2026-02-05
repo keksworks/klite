@@ -84,7 +84,7 @@ conversion of entities to Maps for use with insert/update/upsert.
 
 ## Base entity classes and repositories
 
-[BaseRepository](src/Repository.kt) and [CrudRepository](src/Repository.kt) are provided for convenience.
+[BaseRepository](src/Repository.kt) and [BaseCrudRepository](src/Repository.kt) are provided for convenience.
 
 They work with entity classes implementing `BaseEntity<ID>`, where you can provide your own ID class, like UUID or [TSID](../core/src/TSID.kt).
 
