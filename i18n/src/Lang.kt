@@ -1,5 +1,6 @@
 package klite.i18n
 
+import klite.Config
 import klite.HttpExchange
 import klite.json.JsonMapper
 import klite.json.parse
@@ -9,7 +10,8 @@ private typealias MutableTranslations = MutableMap<String, Any>
 
 object Lang {
   const val COOKIE = "LANG"
-  var jsonMapper = JsonMapper(trimToNull = false)
+  val jsonMapper = JsonMapper(trimToNull = false)
+  private val suffixes: List<String> = Config.optional("LANG_LOAD_SUFFIXES", "").split(',').filter { it.isNotEmpty() }
 
   val available: List<String> = load("langs")
   private val translations = loadTranslations()
@@ -23,7 +25,11 @@ object Lang {
     translations(lang).invoke(key, substitutions)
 
   private fun loadTranslations(): Map<String, Translations> {
-    val loaded = available.associateWith { lang -> load<MutableTranslations>(lang) }
+    val loaded = available.associateWith { lang ->
+      load<MutableTranslations>(lang).also {
+        suffixes.forEach { suffix -> merge(it, load<MutableTranslations>("$lang-$suffix")) }
+      }
+    }
     val default = loaded[available[0]]!!
     available.drop(1).forEach { lang -> merge(loaded[lang] as MutableTranslations, default) }
     return loaded
