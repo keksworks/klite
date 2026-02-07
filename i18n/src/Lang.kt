@@ -1,6 +1,5 @@
 package klite.i18n
 
-import klite.Config
 import klite.HttpExchange
 import klite.json.JsonMapper
 import klite.json.parse
@@ -10,11 +9,11 @@ private typealias MutableTranslations = MutableMap<String, Any>
 
 object Lang {
   const val COOKIE = "LANG"
-  val jsonMapper = JsonMapper(trimToNull = false)
-  private val suffixes: List<String> = Config.optional("LANG_LOAD_SUFFIXES", "").split(',').filter { it.isNotEmpty() }
+  var jsonMapper = JsonMapper(trimToNull = false)
+  var jsonFiles: (lang: String) -> List<String> = { lang -> listOf("$lang.json") }
 
-  val available: List<String> = load("langs")
-  private val translations = loadTranslations()
+  val available: List<String> = load("langs.json")
+  private val translations by lazy { loadTranslations() }
 
   fun takeIfAvailable(lang: String?) = lang?.takeIf { available.contains(it) }
   fun ensureAvailable(requestedLang: String?) = takeIfAvailable(requestedLang) ?: available.first()
@@ -25,11 +24,9 @@ object Lang {
     translations(lang).invoke(key, substitutions)
 
   private fun loadTranslations(): Map<String, Translations> {
-    val loaded = available.associateWith { lang ->
-      load<MutableTranslations>(lang).also {
-        suffixes.forEach { suffix -> merge(it, load<MutableTranslations>("$lang-$suffix")) }
-      }
-    }
+    val loaded = available.associateWith { lang -> mutableMapOf<String, Any>().also {
+      jsonFiles(lang).forEach { file -> merge(it, load<MutableTranslations>(file)) }
+    }}
     val default = loaded[available[0]]!!
     available.drop(1).forEach { lang -> merge(loaded[lang] as MutableTranslations, default) }
     return loaded
@@ -46,8 +43,8 @@ object Lang {
     }
   }
 
-  private inline fun <reified T: Any> load(lang: String): T = jsonMapper.parse(
-    javaClass.getResourceAsStream("/$lang.json") ?: error("/$lang.json not found in classpath"))
+  private inline fun <reified T: Any> load(filePath: String): T = jsonMapper.parse(
+    javaClass.getResourceAsStream("/$filePath") ?: error("$filePath not found in classpath"))
 }
 
 private fun Translations.resolve(key: String) =

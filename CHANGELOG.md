@@ -3,7 +3,7 @@
 * core: TSIDGenerator.generateValue() can now accept desired timestamp instead of current one
 * jdbc: `PostgresNotifier.consumeNotifications()` will now reconnect automatically if connection is lost
 * jdbc: `PooledConnection.longUsed` can now be used to mark connections not to trigger `leakChecker`
-* i18n: LANG_LOAD_SUFFIXES can be configured to load additional language files, e.g. for server-side-only translations
+* i18n: setting of Lang.jsonFiles can be used to load additional language files, e.g. for server-side-only translations
 
 # 1.8.0
 * server: StatusCodeExceptions will now contain stack trace in dev mode
