@@ -1,5 +1,6 @@
 # Unreleased
 * jdbc: support for null conversion of @JvmInline classes (e.g. TSID) when reading from DB
+* server: detectBrowser() will not detect bots in addition to the browser version they emulate
 
 # 1.8.1
 * server: map FileNotFoundException and NoSuchFileException to 404 status code by default
