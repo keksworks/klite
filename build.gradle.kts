@@ -48,11 +48,11 @@ subprojects {
     }
   }
 
-  java.sourceCompatibility = JavaVersion.VERSION_11
+  java.sourceCompatibility = JavaVersion.VERSION_17
 
   tasks.withType<KotlinCompile> {
     compilerOptions {
-      jvmTarget.set(JvmTarget.JVM_11)
+      jvmTarget.set(JvmTarget.JVM_17)
       freeCompilerArgs.addAll(
         "-Xcontext-parameters",
         "-opt-in=kotlin.ExperimentalStdlibApi",

@@ -3,7 +3,7 @@ rootProject.name = "klite"
 dependencyResolutionManagement {
   versionCatalogs {
     create("libs") {
-      version("kotlin", "2.3.0")
+      version("kotlin", "2.3.20")
 
       val coroutines = version("coroutines", "1.9.0")
       library("kotlinx-coroutines", "org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8").versionRef(coroutines)
@@ -11,11 +11,11 @@ dependencyResolutionManagement {
       library("kotlinx-serialization-json", "org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
       library("kotlinx-datetime", "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
 
-      val junit5 = version("junit", "5.13.4")
+      val junit5 = version("junit", "6.0.3")
       library("junit", "org.junit.jupiter", "junit-jupiter").versionRef(junit5)
       library("junit-api", "org.junit.jupiter", "junit-jupiter-api").versionRef(junit5)
       library("junit-engine", "org.junit.jupiter", "junit-jupiter-engine").versionRef(junit5)
-      library("junit-launcher", "org.junit.platform:junit-platform-launcher:1.13.4")
+      library("junit-launcher", "org.junit.platform:junit-platform-launcher:6.0.3")
       library("atrium", "ch.tutteli.atrium:atrium-fluent:1.3.0-alpha-2")
 
       library("mockk", "io.mockk:mockk:1.14.9")
@@ -34,7 +34,7 @@ dependencyResolutionManagement {
 
       library("hikari", "com.zaxxer:HikariCP:7.0.2")
       library("liquibase-core", "org.liquibase:liquibase-core:5.0.1")
-      library("postgresql", "org.postgresql:postgresql:42.7.9")
+      library("postgresql", "org.postgresql:postgresql:42.7.10")
     }
   }
 }
