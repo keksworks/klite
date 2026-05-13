@@ -20,6 +20,7 @@ open class CorsHandler(
     val origin = exchange.header("Origin") ?: return
     if (allowedOrigins == null || allowedOrigins.contains(origin)) {
       exchange.header("Access-Control-Allow-Origin", origin)
+      exchange.header("Vary", "Origin")
       if (allowCredentials) exchange.header("Access-Control-Allow-Credentials", "true")
     } else throw ForbiddenException()
 
