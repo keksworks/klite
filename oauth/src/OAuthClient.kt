@@ -92,9 +92,9 @@ class MicrosoftOAuthClient(httpClient: HttpClient): OAuthClient(
 /** https://developers.facebook.com/apps/ */
 class FacebookOAuthClient(httpClient: HttpClient): OAuthClient(
   "email public_profile",
-  "https://www.facebook.com/v12.0/dialog/oauth",
-  "https://graph.facebook.com/v12.0/oauth/access_token",
-  "https://graph.facebook.com/v12.0/me?fields=id,first_name,last_name,email,picture,locale",
+  "https://www.facebook.com/v22.0/dialog/oauth",
+  "https://graph.facebook.com/v22.0/oauth/access_token",
+  "https://graph.facebook.com/v22.0/me?fields=id,first_name,last_name,email,picture",
   httpClient
 ) {
   override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
