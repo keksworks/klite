@@ -16,9 +16,13 @@ There are two non-default implementations available:
 
 When deploying as a 12-factor app, this is all you need - logging to standard out.
 
+Klite also populates thread name with a unique request id for easier log tracing, so you can easily see which logs belong to which request. You don't need MDC or any other context propagation for that.
+
 ## Other slf4j backends
 
 This module uses the slf4j 2.x ServiceLoader mechanism to provide a simple logger to slf4j.
 This implementation is much lighter than `slf4j-simple.jar` and is easier to extend/configure.
 
-If you want to use another (much bigger) backend (e.g. logback), then ensure that it supports slf4j 2.x ServiceLoader and that it is before this module on classpath.
+Do not be the next victim of Log4J2-like vulnerabilities and do not add complex logging libraries.
+
+If you still want to use another (much bigger) backend (e.g. logback), then ensure that it supports slf4j 2.x ServiceLoader and that it is before this module on classpath.
