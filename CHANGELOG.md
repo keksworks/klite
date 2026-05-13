@@ -6,6 +6,7 @@
 * server: KeyCipher/CookieSessionStore now uses GCM mode for better security (cannot decrypt old cookies)
 * oauth: verify that returned id_token is not expired
 * oauth: use random state parameter for better security
+* jdbc: any() operator now quotes column names if necessary
 
 # 1.8.1
 * server: map FileNotFoundException and NoSuchFileException to 404 status code by default
