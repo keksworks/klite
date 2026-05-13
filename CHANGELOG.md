@@ -1,4 +1,4 @@
-# Unreleased
+# 1.8.2
 * JDK 17+ is now required
 * jdbc: support for null conversion of @JvmInline classes (e.g. TSID) when reading from DB
 * server: detectBrowser() will not detect bots in addition to the browser version they emulate
