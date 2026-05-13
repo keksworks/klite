@@ -5,6 +5,7 @@
 * server: KeyGenerator can now use non-default salt using KEY_SALT
 * server: KeyCipher/CookieSessionStore now uses GCM mode for better security (cannot decrypt old cookies)
 * oauth: verify that returned id_token is not expired
+* oauth: use random state parameter for better security
 
 # 1.8.1
 * server: map FileNotFoundException and NoSuchFileException to 404 status code by default

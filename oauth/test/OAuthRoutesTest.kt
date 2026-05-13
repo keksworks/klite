@@ -32,10 +32,11 @@ class OAuthRoutesTest {
   }
   val routes = OAuthRoutes(userProvder, registry)
 
-  @Test fun `accept user user`() {
+  @Test fun `accept user`() {
     every { userProvder.provide(any(), any(), any()) } returns user
+    every { exchange.session["oauth_123"] } returns "/path"
 
-    expect { runBlocking { routes.accept("code", "/path", exchange) } }.toThrow<RedirectException>()
+    expect { runBlocking { routes.accept("code", "123", exchange) } }.toThrow<RedirectException>()
 
     verify {
       userProvder.provide(user.copy(locale = Locale.ENGLISH), token, exchange)
