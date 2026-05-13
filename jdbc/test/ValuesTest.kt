@@ -23,14 +23,14 @@ class ValuesTest {
     val rs = mockk<ResultSet>()
     expect(rs.create(SomeData::hello to "Hello", SomeData::world to 42, SomeData::nullable to null,
       SomeData::list to listOf(9), SomeData::propName to "propName"))
-      .toEqual(SomeData("Hello", 42, list = listOf(9), propName = "propName"))
+      .toEqual(SomeData("Hello", 42, list = [9], propName = "propName"))
   }
 
   data class SomeData(
     val hello: String,
     val world: Int,
     val nullable: String? = null,
-    val list: List<Int> = listOf(1, 2),
+    val list: List<Int> = [1, 2],
     @Column("colName") val propName: String
   )
 }
