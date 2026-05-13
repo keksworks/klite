@@ -60,7 +60,8 @@ class Router(
   parsers: List<BodyParser>
 ): RouterConfig(registry, pathParamRegexer, decorators, renderers, parsers) {
   private val log = logger()
-  val routes = mutableListOf<Route>() // TODO: use ExplicitBackingFields feature when it is more stable for immutable getter
+  val routes: List<Route>
+    field = mutableListOf<Route>()
 
   internal fun route(exchange: HttpExchange): Pair<Route, PathParams>? {
     val suffix = exchange.path.removePrefix(prefix)
