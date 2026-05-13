@@ -2,6 +2,7 @@
 * JDK 17+ is now required
 * jdbc: support for null conversion of @JvmInline classes (e.g. TSID) when reading from DB
 * server: detectBrowser() will not detect bots in addition to the browser version they emulate
+* server: KeyGenerator can now use non-default salt using KEY_SALT
 * server: KeyCipher/CookieSessionStore now uses GCM mode for better security (cannot decrypt old cookies)
 
 # 1.8.1
