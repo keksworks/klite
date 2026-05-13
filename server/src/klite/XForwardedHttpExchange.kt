@@ -1,5 +1,6 @@
 package klite
 
+/** Use this class if you are 100% your application will be only accessible behind a trusted reverse proxy */
 open class XForwardedHttpExchange(original: OriginalHttpExchange, config: RouterConfig, sessionStore: SessionStore?, requestId: String):
   HttpExchange(original, config, sessionStore, requestId) {
   companion object {
