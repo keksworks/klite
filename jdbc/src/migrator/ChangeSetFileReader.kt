@@ -69,6 +69,7 @@ open class ChangeSetFileReader(
 
   private fun String.substitute() = substRegex.replace(this) {
     val key = it.groupValues[1]
-    substitutions[key] ?: Config.optional(key) ?: error("Unknown substitution ${it.value}")
+    substitutions[key] ?: (Config.optional(key) ?: error("Unknown substitution ${it.value}"))
+      .apply { require(!contains(';')) { "Multiple statements not allowed in substitution $key" } }
   }
 }

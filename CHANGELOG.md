@@ -7,6 +7,7 @@
 * oauth: verify that returned id_token is not expired
 * oauth: use random state parameter for better security
 * jdbc: any() operator now quotes column names if necessary
+* jdbc: disallow multiple statements (;) in changeset file substitutions if coming from env vars
 
 # 1.8.1
 * server: map FileNotFoundException and NoSuchFileException to 404 status code by default
