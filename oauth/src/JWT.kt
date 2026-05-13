@@ -3,6 +3,8 @@ package klite.oauth
 import klite.Email
 import klite.base64UrlDecode
 import klite.json.*
+import klite.logger
+import klite.warn
 import java.time.Instant
 import java.util.*
 
@@ -22,6 +24,11 @@ class JWT(private val token: String) {
   override fun toString() = token
   override fun equals(other: Any?) = (other as? JWT)?.token == token
   override fun hashCode() = token.hashCode()
+
+  fun verify() {
+    payload.expiresAt?.let { require(it.isAfter(Instant.now())) { "Token expired" } }
+    logger().warn("JWT signature verification not implemented yet")
+  }
 
   data class Header(val fields: JsonNode): JsonNode by fields {
     val alg by fields

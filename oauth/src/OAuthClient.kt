@@ -39,7 +39,7 @@ abstract class OAuthClient(scope: String, authUrl: String, tokenUrl: String, pro
   suspend fun refresh(refreshToken: String) = fetchTokenResponse("refresh_token", refreshToken)
 
   protected open suspend fun fetchTokenResponse(grantType: String, code: String, redirectUrl: URI? = null): OAuthTokenResponse =
-    http.post(tokenUrl, urlEncodeParams(mapOf(
+    http.post<OAuthTokenResponse>(tokenUrl, urlEncodeParams(mapOf(
       "grant_type" to grantType,
       (if (grantType == "authorization_code") "code" else grantType) to code,
       "client_id" to clientId,
@@ -47,7 +47,7 @@ abstract class OAuthClient(scope: String, authUrl: String, tokenUrl: String, pro
       "redirect_uri" to redirectUrl?.toString()
     ))) {
       setHeader("Content-Type", MimeTypes.withCharset(MimeTypes.wwwForm))
-    }
+    }.also { it.idToken?.verify() }
 
   protected suspend fun fetchProfileResponse(token: OAuthTokenResponse): JsonNode = http.get(profileUrl) { authBearer(token.accessToken) }
 
