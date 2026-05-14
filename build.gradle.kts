@@ -30,8 +30,6 @@ subprojects {
     testImplementation(libs.mockk) {
       exclude("org.jetbrains.kotlin")
     }
-    testImplementation(libs.byte.buddy)
-    testImplementation(libs.byte.buddy.agent)
     testImplementation(libs.kotlinx.coroutines.test)
   }
 
