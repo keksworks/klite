@@ -73,7 +73,7 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
     }
     if (entity is UpdatableEntity) {
       useInsert = useInsert || entity.updatedAt == null
-      val now = nowSec()
+      val now = nowMs()
       if (!useInsert) {
         val numUpdated = db.update(table, entity.persister() + (updatedAtProp!! to now),
             where = listOf(idProp to entity.id, updatedAtProp!! to entity.updatedAt))
@@ -95,3 +95,4 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
 }
 
 fun nowSec(): Instant = Instant.ofEpochSecond(System.currentTimeMillis() / 1000)
+fun nowMs(): Instant = Instant.ofEpochMilli(System.currentTimeMillis())

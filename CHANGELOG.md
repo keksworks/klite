@@ -1,3 +1,6 @@
+# Unreleased
+* jdbc: set UpdatetableEntity.updatedAt to millisecond precision to avoid issues with rapid re-saving of entities
+
 # 1.8.2
 * JDK 17+ is now required
 * jdbc: support for null conversion of @JvmInline classes (e.g. TSID) when reading from DB
