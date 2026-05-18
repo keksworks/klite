@@ -3,8 +3,6 @@ package klite.json
 import klite.*
 import java.io.Writer
 import java.util.AbstractMap.SimpleImmutableEntry
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
@@ -28,8 +26,7 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
     }
   }
 
-  private val inlineClassesAsString = ConcurrentHashMap<KClass<*>, Boolean>()
-  private fun inlineAsString(o: Any): Boolean = inlineClassesAsString.getOrPut(o::class) {
+  private fun inlineAsString(o: Any): Boolean = opts.inlineClassesAsString.getOrPut(o::class) {
     val s = o.toString()
     o.unboxInline().toString() != s && !(s.startsWith(o::class.simpleName!!) && s.endsWith(')'))
   }

@@ -2,7 +2,9 @@ package klite.json
 
 import org.intellij.lang.annotations.Language
 import java.io.*
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.annotation.AnnotationTarget.PROPERTY
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
@@ -22,6 +24,8 @@ data class JsonMapper(
   fun render(o: Any?, out: Writer) = JsonRenderer(out, this).render(o)
   fun render(o: Any?, out: OutputStream) = OutputStreamWriter(out).let { try { render(o, it) } finally { it.flush() } }
   @Language("JSON") fun render(o: Any?): String = FastStringWriter().also { render(o, it) }.toString()
+
+  internal val inlineClassesAsString = ConcurrentHashMap<KClass<*>, Boolean>()
 }
 
 inline fun <reified T> JsonMapper.parse(json: Reader): T = parse(json, typeOf<T>())

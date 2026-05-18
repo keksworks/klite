@@ -1,5 +1,6 @@
 # Unreleased
 * jdbc: set UpdatetableEntity.updatedAt to millisecond precision to avoid issues with rapid re-saving of entities
+* json: move inlineClassesAsString to the JsonMapper level to avoid populating it for each rendering
 
 # 1.8.2
 * JDK 17+ is now required
