@@ -18,5 +18,9 @@ class KeyCipherTest {
     expect(keyCipher.decrypt(enc1)).toEqual("Hello")
     expect(keyCipher.decrypt(enc2)).toEqual("Hello")
     expect { keyCipher.decrypt("1" + enc2.substring(1)) }.toThrow<AEADBadTagException>()
+
+    // backwards-compatibility
+    expect(keyCipher.decrypt("Toy5Uw8i-HGTYN49WJtarw")).toEqual("Hello")
+    expect(keyCipher.decrypt("Toy5Uw8i+HGTYN49WJtarw==")).toEqual("Hello")
   }
 }
