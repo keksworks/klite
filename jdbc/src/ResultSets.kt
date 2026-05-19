@@ -12,6 +12,7 @@ import kotlin.reflect.typeOf
 @Suppress("UNCHECKED_CAST")
 fun <T> ResultSet.get(column: String, type: KType): T = JdbcConverter.from(when (type.classifier) {
   Int::class -> getIntOrNull(column)
+  Float::class -> getFloatOrNull(column)
   Decimal::class -> getDecimalOrNull(column)
   Instant::class -> getTimestamp(column)
   else -> getObjectUnwrapped(column)

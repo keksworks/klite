@@ -89,7 +89,7 @@ object JdbcConverter {
     }
   } else from(v, target.jvmErasure)
 
-  fun from(v: Any?, target: KClass<*>?): Any? = when(target) {
+  fun from(v: Any?, target: KClass<*>?): Any? = when (target) {
     Instant::class -> (v as? Timestamp)?.toInstant()
     kotlin.time.Instant::class -> (v as? Timestamp)?.let { kotlin.time.Instant.fromEpochMilliseconds(v.time) }
     Uuid::class -> (v as? UUID)?.toKotlinUuid()

@@ -13,6 +13,7 @@ object Metrics {
   }
 
   fun register(name: String, value: () -> Any?) {
+    // TODO: check if already exists, e.g. dbPool
     resolvers[name] = value
   }
 

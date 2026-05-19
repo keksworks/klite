@@ -1,5 +1,6 @@
 # Unreleased
 * jdbc: set UpdatetableEntity.updatedAt to millisecond precision to avoid issues with rapid re-saving of entities
+* jdbc: support Float fields coming from DB as Double values
 * json: change detection on how to render inline classes based on String constructor and cache the knowledge in JsonMapper instance for better performance
 * server: add backwards-compatibility to KeyCipher, so that CookieSessionStore can still decrypt old cookies encrypted with ECB mode, but new cookies will be encrypted with GCM mode for better security introduced in 1.8.2
 
