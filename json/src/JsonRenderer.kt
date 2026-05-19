@@ -27,8 +27,8 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
   }
 
   private fun inlineAsString(o: Any): Boolean = opts.inlineClassesAsString.getOrPut(o::class) {
-    val s = o.toString()
-    o.unboxInline().toString() != s && !(s.startsWith(o::class.simpleName!!) && s.endsWith(')'))
+    !o.toString().let { it.startsWith(o::class.simpleName!!) && it.endsWith(')') } &&
+      o::class.constructors.any { it.parameters.size == 1 && it.parameters.first().type.classifier == String::class }
   }
 
   private fun writeString(s: String) {

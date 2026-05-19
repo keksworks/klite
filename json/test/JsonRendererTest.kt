@@ -12,7 +12,7 @@ import java.util.*
 class JsonRendererTest {
   val mapper = JsonMapper()
   val uuid = UUID.fromString("b8ca58ec-ab15-11ed-93cc-8fdb43988a14")
-  val tsId = TSID<Any>("123456789")
+  val tsId = TSID<Any>("1234567ab")
   val numCode = NumCode<Any>(123456789)
 
   @Test fun literals() {
@@ -38,6 +38,11 @@ class JsonRendererTest {
     expect(mapper.render(date)).toEqual("\"2022-10-21\"")
   }
 
+  @Test fun inline() {
+    expect(mapper.render(InlineInt(123))).toEqual("123")
+    expect(mapper.render(InlineString("abc"))).toEqual("\"abc\"")
+  }
+
   @Test fun array() {
     expect(mapper.render(emptyList<Any>())).toEqual("[]")
     expect(mapper.render(listOf("a", 1, 3))).toEqual("[\"a\",1,3]")
@@ -60,12 +65,6 @@ class JsonRendererTest {
     expect(mapper.render(mapOf("x" to null, "y" to null, 1 to 2))).toEqual("""{"1":2}""")
     expect(mapper.copy(renderNulls = true).render(mapOf("x" to null))).toEqual("""{"x":null}""")
   }
-
-  @Test fun inline() {
-    expect(mapper.render(Inline(123))).toEqual("123")
-  }
-
-  @JvmInline value class Inline(val value: Int)
 
   @Test fun classes() {
     val o = Hello("", uuid, LocalDate.parse("2022-10-21"), Instant.parse("2022-10-21T10:55:00Z"), Nested(567.toBigDecimal()), listOf(Nested(), Nested()))
@@ -100,4 +99,7 @@ class JsonRendererTest {
     }
     override fun toString() = value.toString()
   }
+
+  @JvmInline value class InlineInt(val n: Int)
+  @JvmInline value class InlineString(val s: String)
 }
