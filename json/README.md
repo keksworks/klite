@@ -4,6 +4,10 @@ Klite lightweight json body parser/renderer without external dependencies.
 
 No magic type coercion by default (e.g. empty string into 0), but can be overridden.
 
+Useful default options for web development in JsonMapper:
+* `trimToNull = true` - trim string values and convert empty strings to nulls - reduces boilerplate of checking for blank values in routes and frontend code
+* `renderNulls = false` - don't render null values in json output to save bandwidth and make output more concise
+
 Supports Kotlin data and inline/value classes (unlike jackson), reuses type conversion from Klite's core [Converter](../core/src/Converter.kt).
 
 ```kotlin
