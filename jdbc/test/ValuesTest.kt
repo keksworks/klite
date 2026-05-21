@@ -22,7 +22,7 @@ class ValuesTest {
   @Test fun `create with some values provided`() {
     val rs = mockk<ResultSet>()
     expect(rs.create(SomeData::hello to "Hello", SomeData::world to 42, SomeData::nullable to null,
-      SomeData::list to listOf(9), SomeData::propName to "propName"))
+      SomeData::list to [9], SomeData::propName to "propName"))
       .toEqual(SomeData("Hello", 42, list = [9], propName = "propName"))
   }
 

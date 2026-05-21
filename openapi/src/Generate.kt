@@ -48,7 +48,7 @@ internal fun Router.generateOpenAPI() = mapOf(
 internal fun toTags(routes: List<Route>) = routes.asSequence()
   .map { it.handler }
   .filterIsInstance<FunHandler>()
-  .flatMap { it.instance::class.findAnnotations<Tag>().map { it.toNonEmptyValues() }.ifEmpty { listOf(mapOf("name" to it.instance::class.simpleName)) } }
+  .flatMap { it.instance::class.findAnnotations<Tag>().map { it.toNonEmptyValues() }.ifEmpty { [mapOf("name" to it.instance::class.simpleName)] } }
   .toSet()
 
 internal fun toOperation(route: Route): Pair<String, Any> {

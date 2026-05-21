@@ -19,7 +19,7 @@ data class ChangeSet(
 ): BaseEntity<String> {
   var rowsAffected = 0
   val statements: List<String> by lazy {
-    (if (separator != null) sql.split(separator) else listOf(sql.toString())).mapNotNull { it.trimToNull() }
+    (if (separator != null) sql.split(separator) else [sql.toString()]).mapNotNull { it.trimToNull() }
   }
   private fun calcChecksum() = statements.fold(0L) { r, s -> r * 89 + s.replace("\\s*\n\\s*".toRegex(), "\n").hashCode() }
 

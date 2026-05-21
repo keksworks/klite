@@ -1,5 +1,6 @@
 package klite.csv
 
+import ch.tutteli.atrium.api.fluent.en_GB.toContainExactly
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import org.junit.jupiter.api.Test
@@ -8,8 +9,8 @@ class CSVParserTest {
   val parser = CSVParser(separator = ";")
 
   @Test fun quotes() {
-    expect(parser.splitLine("""1;2;"hello; world";4""").toList()).toEqual(listOf("1", "2", "hello; world", "4"))
-    expect(parser.splitLine("\"\"\"Aare Mägi FLORES\"\"\";101;;R").toList()).toEqual(listOf("\"Aare Mägi FLORES\"", "101", "", "R"))
+    expect(parser.splitLine("""1;2;"hello; world";4""").toList()).toContainExactly("1", "2", "hello; world", "4")
+    expect(parser.splitLine("\"\"\"Aare Mägi FLORES\"\"\";101;;R").toList()).toContainExactly("\"Aare Mägi FLORES\"", "101", "", "R")
   }
 
   @Test fun parse() {
