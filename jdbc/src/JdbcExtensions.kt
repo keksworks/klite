@@ -28,8 +28,6 @@ typealias ValueMap = Map<out ColName, *>
 @Deprecated(replaceWith = ReplaceWith("ValueMap"), message = "Use ValueMap instead")
 typealias Values = ValueMap
 
-// TODO: return streaming sequences instead of in-memory Lists, be able to convert sequence to json
-
 fun <R, ID> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, id: ID, column: String = "id", @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): R =
   select(table, listOf(column to id), suffix, ArrayList(1), mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
 
