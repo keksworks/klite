@@ -52,6 +52,7 @@ subprojects {
     compilerOptions {
       jvmTarget.set(JvmTarget.JVM_17)
       freeCompilerArgs.addAll(
+        "-Xreturn-value-checker=full",
         "-Xcollection-literals",
         "-Xcontext-parameters",
         "-opt-in=kotlin.ExperimentalStdlibApi",

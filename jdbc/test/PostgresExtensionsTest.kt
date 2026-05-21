@@ -11,5 +11,8 @@ class PostgresExtensionsTest {
 
     expect(joinAliases("select * from table1\njoin table2\n   on x=y\nleft join\ntable3 t3 on t3.x = y inner join table4 as t4 using(id) where ..."))
       .toContainExactly("table2", "t3", "t4")
+
+    expect(joinAliases("select a, b from table1 t1 join table2 t2 using (field) where ... order by id"))
+      .toContainExactly("t2")
   }
 }

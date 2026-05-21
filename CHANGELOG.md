@@ -1,3 +1,6 @@
+# Unreleased
+* jdbc: add @IgnorableReturnValue for some functions to avoid warnings when -Xreturn-value-checker is enabled
+
 # 1.8.3
 * jdbc: set UpdatetableEntity.updatedAt to millisecond precision to avoid issues with rapid re-saving of entities
 * jdbc: support Float fields coming from DB as Double values

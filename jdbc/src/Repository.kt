@@ -65,6 +65,7 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
   open fun by(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): E? = list(*where, suffix = suffix).firstOrNull()
   open fun count(vararg where: PropValue<E, *>?): Long = db.count(selectFrom, where.filterNotNull())
 
+  @IgnorableReturnValue
   open fun save(entity: E): Int {
     var useInsert = false
     (entity as? NullableId<ID>)?.takeIf { it.id == null }?.let {

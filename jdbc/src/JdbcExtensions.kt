@@ -123,9 +123,11 @@ fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: In
   }
 
 // TODO: add insert with mapper that returns the generated keys
+@IgnorableReturnValue
 fun DataSource.insert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, suffix: String = "") =
   insertBatch(table, sequenceOf(values), suffix).first()
 
+@IgnorableReturnValue
 fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Sequence<ValueMap>, suffix: String = ""): IntArray {
   val keyValuesToSet = values.map { it.filter { it.value !is GeneratedKey<*> } }
   val valuesToSet = keyValuesToSet.map { setValues(it) }
@@ -137,12 +139,14 @@ fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, 
 }
 
 // TODO: take uniqueFields as a Set
+@IgnorableReturnValue
 fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): Int =
   upsertBatch(table, sequenceOf(values), uniqueFields, where, skipUpdateFields).first()
 
 // TODO: make it work per DataSource, use ConfigDataSource.isPostgres
 internal val isPostgres = Config.optional("DB_URL")?.startsWith("jdbc:postgres") == true
 
+@IgnorableReturnValue
 fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Sequence<ValueMap>, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): IntArray {
   val where = whereConvert(where.map { (k, v) -> "$table.${q(name(k))}" to v })
   val first = values.firstOrNull() ?: return intArrayOf()
@@ -167,15 +171,19 @@ internal fun insertExpr(@Language("SQL", prefix = selectFrom) table: String, val
 internal fun columnsExpr(values: ValueMap) = "(${values.keys.joinToString { q(name(it)) }})"
 internal fun valuesExpr(values: ValueMap) = "values (${values.values.joinToString { placeholder(it) }})"
 
+@IgnorableReturnValue
 inline fun DataSource.update(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, vararg where: ColValue?): Int =
   update(table, values, where.filterNotNull())
 
+@IgnorableReturnValue
 fun DataSource.update(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, where: Where): Int = whereConvert(where).let { where ->
   exec("update ${q(table)} set ${setExpr(values)}${whereExpr(where)}", setValues(values) + whereValues(where))
 }
 
+@IgnorableReturnValue
 inline fun DataSource.delete(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?): Int = delete(table, where.filterNotNull())
 
+@IgnorableReturnValue
 fun DataSource.delete(@Language("SQL", prefix = selectFrom) table: String, where: Where): Int = whereConvert(where).let { where ->
   exec("delete from ${q(table)}${whereExpr(where)}", whereValues(where))
 }

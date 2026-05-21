@@ -33,7 +33,7 @@ private val columnNameIndexMapField = runCatching {
  * making it possible to use getString("alias.id") to get other table's "id" column, etc.
  */
 internal fun ResultSet.populatePgColumnNameIndex(select: String) {
-// TODO: make it work with other DBs as well, by maybe wrapping a Connection/ResultSet and overriding getString and others?
+  // TODO: make it work with other DBs as well, by maybe wrapping a Connection/ResultSet and overriding getString and others?
   if (columnNameIndexMapField == null || !select.contains("join", ignoreCase = true)) return
   val rs = unwrapOrNull(columnNameIndexMapField.declaringClass as Class<ResultSet>) ?: return
   val md = metaData
