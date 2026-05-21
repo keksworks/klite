@@ -47,6 +47,6 @@ Use `@JsonProperty` with custom name if you want stripped `is` prefixes.
 Use [TSGenerator](src/TSGenerator.kt) to generate TypeScript types for data/enum classes in your project,
 so that you can write type-safe code in frontend.
 
-This is a pure Kotlin alternative to [jvm2dts](https://github.com/codeborne/jvm2dts), which takes Converter into account.
+This is a pure Kotlin alternative to [jvm2dts](https://github.com/keksworks/jvm2dts), which takes Converter into account.
 
 See [types.ts sample Gradle task](../sample/build.gradle.kts)
