@@ -22,7 +22,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     '"' -> opts.values.from(readString().let { if (opts.trimToNull) it.trimToNull() else it }, type).let { if (it is String) type.from(it) else it }
     '{' -> readObject(type)
     '[' -> readArray(type)
-    '-', '+', in '0'..'9' -> readNumber(c, type)
+    '-', in '0'..'9' -> readNumber(c, type)
     't', 'f' -> readLettersOrDigits(c).toBoolean()
     'n' -> readLettersOrDigits(c).let { if (it == "null") null else fail("Unexpected '$it'") }
     EOF -> fail("Unexpected EOF")
@@ -113,7 +113,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     append(include)
     while (true) {
       val c = read()
-      if (c == EOF || !(c.isLetterOrDigit() || c == '.')) { nextChar = c; break }
+      if (c == EOF || !(c.isLetterOrDigit() || c == '-' || c == '.')) { nextChar = c; break }
       else append(c)
     }
   }.toString()

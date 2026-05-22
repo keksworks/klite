@@ -22,8 +22,8 @@ class JsonParserTest {
   val mapper = JsonMapper()
 
   @Test fun parse() {
-    expect(mapper.parse<JsonNode>("""  {  "hello" : "world","blah": 123, "xxx": true, "zzz" : null, "nested":{"a":[],"c":{}}, "array": [+1,-2,3.14, 1e20]}""")).toEqual(
-      mapOf("hello" to "world", "blah" to 123, "xxx" to true, "zzz" to null, "nested" to mapOf("a" to emptyList<Any>(), "c" to emptyMap<String, Any>()), "array" to listOf(1, -2, 3.14, 1e20)))
+    expect(mapper.parse<JsonNode>("""  {  "hello" : "world","blah": 123, "xxx": true, "zzz" : null, "nested":{"a":[],"c":{}}, "array": [1,-2,3.14, 1e20, 1e-10]}""")).toEqual(
+      mapOf("hello" to "world", "blah" to 123, "xxx" to true, "zzz" to null, "nested" to mapOf("a" to emptyList<Any>(), "c" to emptyMap<String, Any>()), "array" to listOf(1, -2, 3.14, 1e20, 1e-10)))
   }
 
   @Test fun array() {
