@@ -109,17 +109,17 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     return char
   }
 
-  private fun readLettersOrDigits(include: Char? = null): String = StringBuilder().apply {
-    if (include != null) append(include)
+  private fun readLettersOrDigits(include: Char): String = StringBuilder().apply {
+    append(include)
     while (true) {
       val c = read()
-      if (c == EOF || !(c.isLetterOrDigit() || c == '.')) { if (include != null) { nextChar = c }; break }
+      if (c == EOF || !(c.isLetterOrDigit() || c == '.')) { nextChar = c; break }
       else append(c)
     }
   }.toString()
 
   private fun read(): Char = nextChar?.also { nextChar = null } ?: reader.read().toChar().also { incPos(it) }
-  private fun incPos(char: Char) = if (char == '\n') { line++; pos = 0 } else pos++
+  private fun incPos(char: Char) { if (char == '\n') { line++; pos = 0 } else pos++ }
   private fun fail(msg: String): Nothing = throw JsonParseException(msg, line, pos)
 
   private fun Char.expect(char: Char) {
