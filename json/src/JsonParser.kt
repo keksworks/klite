@@ -34,7 +34,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
       when (val c = read()) {
         '"' -> break
         '\\' -> append(readEscapedChar())
-        EOF -> fail("Unfinished string, EOF")
+        '\r', '\n', EOF -> fail("Unterminated string")
         else -> append(c)
       }
     }

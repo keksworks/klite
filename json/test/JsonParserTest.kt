@@ -44,7 +44,7 @@ class JsonParserTest {
   @Test fun `parse invalid`() {
     expect { mapper.parse<Any>("""z""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'z' at 1:1")
     expect { mapper.parse<Any>("""{"hello": x""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'x' at 1:11")
-    expect { mapper.parse<Any>("""{"hello": """") }.toThrow<JsonParseException>().messageToContain("Unfinished string, EOF at 1:12")
+    expect { mapper.parse<Any>("""{"hello": """") }.toThrow<JsonParseException>().messageToContain("Unterminated string at 1:12")
     expect { mapper.parse<Any>("""{"hello": 123""") }.toThrow<JsonParseException>().messageToContain("Expecting ',' but got EOF at 1:14")
     expect { mapper.parse<Any>("""nulls""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'nulls' at 1:6")
     expect { mapper.parse<Any>("""123.12.12""") }.toThrow<NumberFormatException>().messageToContain("multiple points")
@@ -69,7 +69,7 @@ class JsonParserTest {
         {"a":2},{"c":"aaa
         {"a":4}
       ]"""), mapper).readArray<JsonNode> {++n}
-    }.toThrow<JsonParseException>().messageToContain("Expecting ',' but got 'a' at 4:11")
+    }.toThrow<JsonParseException>().messageToContain("Unterminated string at 4:0")
     expect(n).toEqual(2)
   }
 
