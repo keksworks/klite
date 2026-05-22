@@ -14,6 +14,7 @@ import kotlin.reflect.jvm.javaField
 private const val EOF = '\uFFFF'
 
 class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
+  private var line: Int = 1
   private var pos: Int = 0
   private var nextChar: Char? = null
 
@@ -23,9 +24,9 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     '[' -> readArray(type)
     '-', '+', in '0'..'9' -> readNumber(c, type)
     't', 'f' -> readLettersOrDigits(c).toBoolean()
-    'n' -> readLettersOrDigits(c).let { if (it == "null") null else fail("Unexpected $it") }
+    'n' -> readLettersOrDigits(c).let { if (it == "null") null else fail("Unexpected '$it'") }
     EOF -> fail("Unexpected EOF")
-    else -> fail("Unexpected char: $c")
+    else -> fail("Unexpected '$c'")
   }, type)
 
   private fun readString(): String = StringBuilder().apply {
@@ -117,12 +118,12 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     }
   }.toString()
 
-  private fun read(): Char = nextChar?.also { nextChar = null } ?: reader.read().toChar().also { pos++ }
-
-  private fun fail(msg: String): Nothing = throw JsonParseException(msg, pos - 1)
+  private fun read(): Char = nextChar?.also { nextChar = null } ?: reader.read().toChar().also { incPos(it) }
+  private fun incPos(char: Char) = if (char == '\n') { line++; pos = 0 } else pos++
+  private fun fail(msg: String): Nothing = throw JsonParseException(msg, line, pos)
 
   private fun Char.expect(char: Char) {
-    if (this != char) fail("Expecting $char but got ${if (this == EOF) "EOF" else this}")
+    if (this != char) fail("Expecting '$char' but got ${if (this == EOF) "EOF" else "'$this'"}")
   }
 
   // TODO: puzzler: remove <Any>
@@ -130,7 +131,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
   private fun KType.takeIfSpecific() = takeIf { classifier != Any::class && classifier != Map::class }
 }
 
-class JsonParseException(msg: String, pos: Int): ParseException("$msg at index $pos", pos)
+class JsonParseException(msg: String, line: Int, pos: Int): ParseException("$msg at $line:$pos", line)
 
 private class KTypeWithKnownArguments(val type: KType, val typeParams: Map<String, KType?>): KType by type {
   override val arguments: List<KTypeProjection> = type.arguments.map { a ->

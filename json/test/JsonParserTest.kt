@@ -7,6 +7,7 @@ import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
 import klite.*
 import org.junit.jupiter.api.Test
+import java.io.StringReader
 import java.math.BigDecimal
 import java.math.BigDecimal.ONE
 import java.math.BigDecimal.ZERO
@@ -21,7 +22,7 @@ class JsonParserTest {
   val mapper = JsonMapper()
 
   @Test fun parse() {
-    expect(mapper.parse<JsonNode>("""  {  "hello" : "world", "blah": 123, "xxx": true, "zzz" : null, "nested":{"a":[],"c":{}}, "array": [+1,-2,3.14, 1e20]}""")).toEqual(
+    expect(mapper.parse<JsonNode>("""  {  "hello" : "world","blah": 123, "xxx": true, "zzz" : null, "nested":{"a":[],"c":{}}, "array": [+1,-2,3.14, 1e20]}""")).toEqual(
       mapOf("hello" to "world", "blah" to 123, "xxx" to true, "zzz" to null, "nested" to mapOf("a" to emptyList<Any>(), "c" to emptyMap<String, Any>()), "array" to listOf(1, -2, 3.14, 1e20)))
   }
 
@@ -41,12 +42,35 @@ class JsonParserTest {
   }
 
   @Test fun `parse invalid`() {
-    expect { mapper.parse<Any>("""z""") }.toThrow<JsonParseException>().messageToContain("Unexpected char: z at index 0")
-    expect { mapper.parse<Any>("""{"hello": x""") }.toThrow<JsonParseException>().messageToContain("Unexpected char: x at index 10")
-    expect { mapper.parse<Any>("""{"hello": """") }.toThrow<JsonParseException>().messageToContain("Unfinished string, EOF at index 11")
-    expect { mapper.parse<Any>("""{"hello": 123""") }.toThrow<JsonParseException>().messageToContain("Expecting , but got EOF at index 13")
-    expect { mapper.parse<Any>("""nulls""") }.toThrow<JsonParseException>().messageToContain("Unexpected nulls at index 5")
+    expect { mapper.parse<Any>("""z""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'z' at 1:1")
+    expect { mapper.parse<Any>("""{"hello": x""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'x' at 1:11")
+    expect { mapper.parse<Any>("""{"hello": """") }.toThrow<JsonParseException>().messageToContain("Unfinished string, EOF at 1:12")
+    expect { mapper.parse<Any>("""{"hello": 123""") }.toThrow<JsonParseException>().messageToContain("Expecting ',' but got EOF at 1:14")
+    expect { mapper.parse<Any>("""nulls""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'nulls' at 1:6")
     expect { mapper.parse<Any>("""123.12.12""") }.toThrow<NumberFormatException>().messageToContain("multiple points")
+    expect { mapper.parse<Any>("{\r\n\r\nx}") }.toThrow<JsonParseException>().messageToContain("Expecting '\"' but got 'x' at 3:1")
+  }
+
+  @Test fun `stream arrays`() {
+    var n = 0
+    JsonParser(StringReader("""[
+      {"a":1},{"a":2},{"a":3},{"a":4}
+    ]"""), mapper).readArray<JsonNode> {
+      expect(it.getInt("a")).toEqual(++n)
+    }
+    expect(n).toEqual(4)
+  }
+
+  @Test fun `stream array error`() {
+    var n = 0
+    expect {
+      JsonParser(StringReader("""[
+        {"a":1},
+        {"a":2},{"c":"aaa
+        {"a":4}
+      ]"""), mapper).readArray<JsonNode> {++n}
+    }.toThrow<JsonParseException>().messageToContain("Expecting ',' but got 'a' at 4:11")
+    expect(n).toEqual(2)
   }
 
   @Test fun `parse into class`() {
