@@ -140,16 +140,15 @@ fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, 
   }
 }
 
-// TODO: take uniqueFields as a Set
 @IgnorableReturnValue
-fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): Int =
+fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): Int =
   upsertBatch(table, listOf(values), uniqueFields, where, skipUpdateFields).first()
 
 // TODO: make it work per DataSource, use ConfigDataSource.isPostgres
 internal val isPostgres = Config.optional("DB_URL")?.startsWith("jdbc:postgres") == true
 
 @IgnorableReturnValue
-fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): IntArray {
+fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): IntArray {
   val where = whereConvert(where.map { (k, v) -> "$table.${q(name(k))}" to v })
   val first = values.firstOrNull() ?: return intArrayOf()
   val updateExpr = first.keys.map { name(it) }.filter { it !in skipUpdateFields }
@@ -157,10 +156,10 @@ fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, 
   val whereValues = whereValues(where)
   val valuesToSet = values.map { setValues(it) + whereValues }
   val expr = if (isPostgres)
-    insertExpr(table, first) + " on conflict ($uniqueFields) do update set ${updateExpr}${whereExpr(where)}"
+    insertExpr(table, first) + " on conflict (${uniqueFields.joinToString()}) do update set ${updateExpr}${whereExpr(where)}"
   else """
     merge into ${q(table)} using (${valuesExpr(first)}) as excluded ${columnsExpr(first)}
-      on ${uniqueFields.split(",").map { it.trim() }.joinToString(" and ") { "${q(table)}.$it = excluded.$it" }}
+      on ${uniqueFields.joinToString(" and ") { "${q(table)}.$it = excluded.$it" }}
       when matched${whereExpr(where).replace("where", "and")} then update set $updateExpr
       when not matched then insert ${columnsExpr(first)} values (${first.keys.joinToString { "excluded." + q(name(it)) }});
     """
