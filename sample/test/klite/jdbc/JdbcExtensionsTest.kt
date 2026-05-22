@@ -26,8 +26,8 @@ open class JdbcExtensionsTest: TempTableDBTest() {
     val id2 = randomUUID()
     db.insert(table, mapOf("id" to id2, "hello" to "Hello2"))
 
-    db.insertBatch(table, (3..10).asSequence().map { mapOf("id" to randomUUID(), "hello" to "Hello$it", "world" to it) })
-    db.insertBatch(table, emptySequence())
+    db.insertBatch(table, (3..10).map { mapOf("id" to randomUUID(), "hello" to "Hello$it", "world" to it) })
+    db.insertBatch(table, emptyList())
 
     expect(db.select(table, id) { getUuid() }).toEqual(id)
 
@@ -63,7 +63,7 @@ open class JdbcExtensionsTest: TempTableDBTest() {
 
   @Test fun `generatedKeys batch`() {
     val values = (1..2).map { mapOf("id" to randomUUID(), "hello" to "Hello", "gen" to GeneratedKey<Int>()) }
-    db.insertBatch(table, values.asSequence())
+    db.insertBatch(table, values)
     values.forEach {
       expect((it["gen"] as GeneratedKey<Int>).value).toBeGreaterThanOrEqualTo(1)
     }
@@ -79,7 +79,7 @@ open class JdbcExtensionsTest: TempTableDBTest() {
     val data = SomeData("World", 37)
     expect(db.upsert(table, data.toValues())).toEqual(1)
     expect(db.upsert(table, data.toValues())).toEqual(1)
-    expect(db.upsertBatch(table, sequenceOf(data.toValues(), data.toValues(), data.toValues())).toList()).toContainExactly(1, 1, 1)
+    expect(db.upsertBatch(table, [data.toValues(), data.toValues(), data.toValues()]).toList()).toContainExactly(1, 1, 1)
     expect(db.upsert(table, data.toValues(), where = listOf(SomeData::world neq 37))).toEqual(0)
 
     var loaded: SomeData = db.select(table, data.id) { create() }

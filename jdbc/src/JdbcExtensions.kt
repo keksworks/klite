@@ -75,11 +75,15 @@ internal inline fun <R> ResultSet.process(consumer: (R) -> Unit = {}, mapper: Ma
   while (next()) consumer(mapper())
 }
 
-fun DataSource.exec(@Language("SQL") expr: String, vararg values: Any?): Int = exec(expr, values.asSequence())
-fun DataSource.exec(@Language("SQL") expr: String, values: Sequence<Any?> = emptySequence(), keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): Int =
-  execBatch(expr, sequenceOf(values), keys, callback).first()
+@IgnorableReturnValue
+fun DataSource.exec(@Language("SQL") expr: String, vararg values: Any?): Int = exec(expr, values.asList())
 
-fun DataSource.execBatch(@Language("SQL") expr: String, values: Sequence<Sequence<Any?>>, keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): IntArray {
+@IgnorableReturnValue
+fun DataSource.exec(@Language("SQL") expr: String, values: Iterable<Any?> = emptyList(), keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): Int =
+  execBatch(expr, listOf(values), keys, callback).first()
+
+@IgnorableReturnValue
+fun DataSource.execBatch(@Language("SQL") expr: String, values: Iterable<Iterable<Any?>>, keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): IntArray {
   val i = values.iterator()
   if (!i.hasNext()) return intArrayOf()
   return withStatement(expr, keys) {
@@ -115,7 +119,7 @@ fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: In
   withCall("{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}") {
     var i = 1
     returnSqlType?.let { registerOutParameter(i++, it) }
-    setAll(parameters.asSequence(), i)
+    setAll(listOf(*parameters), i)
     execute()
     (returnSqlType?.let { getObject(1) } ?: Unit)
   }
@@ -123,10 +127,10 @@ fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: In
 // TODO: add insert with mapper that returns the generated keys
 @IgnorableReturnValue
 fun DataSource.insert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, suffix: String = "") =
-  insertBatch(table, sequenceOf(values), suffix).first()
+  insertBatch(table, listOf(values), suffix).first()
 
 @IgnorableReturnValue
-fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Sequence<ValueMap>, suffix: String = ""): IntArray {
+fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, suffix: String = ""): IntArray {
   val keyValuesToSet = values.map { it.filter { it.value !is GeneratedKey<*> } }
   val valuesToSet = keyValuesToSet.map { setValues(it) }
   val first = keyValuesToSet.firstOrNull() ?: return intArrayOf()
@@ -139,16 +143,16 @@ fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, 
 // TODO: take uniqueFields as a Set
 @IgnorableReturnValue
 fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): Int =
-  upsertBatch(table, sequenceOf(values), uniqueFields, where, skipUpdateFields).first()
+  upsertBatch(table, listOf(values), uniqueFields, where, skipUpdateFields).first()
 
 // TODO: make it work per DataSource, use ConfigDataSource.isPostgres
 internal val isPostgres = Config.optional("DB_URL")?.startsWith("jdbc:postgres") == true
 
 @IgnorableReturnValue
-fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Sequence<ValueMap>, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): IntArray {
+fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, uniqueFields: String = "id", where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): IntArray {
   val where = whereConvert(where.map { (k, v) -> "$table.${q(name(k))}" to v })
   val first = values.firstOrNull() ?: return intArrayOf()
-  val updateExpr = first.keys.asSequence().map { name(it) }.filter { it !in skipUpdateFields }
+  val updateExpr = first.keys.map { name(it) }.filter { it !in skipUpdateFields }
                    .joinToString { k -> q(k).let { "$it=excluded.$it" } }
   val whereValues = whereValues(where)
   val valuesToSet = values.map { setValues(it) + whereValues }
@@ -223,9 +227,9 @@ internal fun placeholder(v: Any?) = when {
   else -> "?"
 }
 
-internal fun setValues(values: ValueMap) = values.values.asSequence().flatMap { it.toIterable() }
-internal fun whereValues(where: Where) = where.asSequence().map { it.second }.flatValues()
-internal fun Sequence<Any?>.flatValues() = filterNotNull().flatMap { it.toIterable() }
+internal fun setValues(values: ValueMap) = values.values.flatValues()
+internal fun whereValues(where: Where) = where.mapNotNull { it.second }.flatValues()
+internal fun Iterable<Any?>.flatValues() = flatMap { it.toIterable() }
 private fun Any?.toIterable(): Iterable<Any?> = if (isEmptyCollection(this)) emptyList() else if (this is SqlExpr) values else listOf(this)
 
 operator fun PreparedStatement.set(i: Int, value: Any?) {
@@ -233,7 +237,7 @@ operator fun PreparedStatement.set(i: Int, value: Any?) {
   else setObject(i, JdbcConverter.to(value, connection))
 }
 
-fun PreparedStatement.setAll(values: Sequence<Any?>, startIndex: Int = 1) {
+fun PreparedStatement.setAll(values: Iterable<Any?>, startIndex: Int = 1) {
   var i = startIndex
   values.forEach { v -> this[i++] = v }
 }

@@ -79,12 +79,13 @@ class NotIn(values: Iterable<*>): In(values) {
   override fun expr(key: String) = super.expr(key).replace(" in ", " not in ")
 }
 
-private fun seqExpr(where: Sequence<Pair<ColName, Any?>?>, separator: String): SqlExpr = where.filterNotNull().map { (k, v) -> k to whereValueConvert(v) }.let {
-  SqlExpr("(" + it.asIterable().join(separator) + ")", it.map { it.second }.flatValues().toList())
+private fun seqExpr(where: Array<out Pair<ColName, Any?>?>, separator: String): SqlExpr {
+  val converted = where.filterNotNull().map { (k, v) -> k to whereValueConvert(v) }
+  return SqlExpr("(" + converted.join(separator) + ")", converted.map { it.second }.flatValues())
 }
 
-fun orExpr(vararg where: Pair<ColName, Any?>?) = seqExpr(where.asSequence(), " or ")
-fun andExpr(vararg where: Pair<ColName, Any?>?) = seqExpr(where.asSequence(), " and ")
+fun orExpr(vararg where: Pair<ColName, Any?>?) = seqExpr(where, " or ")
+fun andExpr(vararg where: Pair<ColName, Any?>?) = seqExpr(where, " and ")
 
 fun <K: ColName> or(vararg where: Pair<K, Any?>?) = where[0]!!.first to orExpr(*where)
 fun <K: ColName> and(vararg where: Pair<K, Any?>?) = where[0]!!.first to andExpr(*where)
