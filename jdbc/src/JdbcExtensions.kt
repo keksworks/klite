@@ -140,6 +140,10 @@ fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, 
   }
 }
 
+@Deprecated("Specify uniqueFields as a Set", replaceWith = ReplaceWith("upsert(table, values, setOf(uniqueFields), where, skipUpdateFields)"))
+inline fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: String, where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): Int =
+  upsert(table, values, uniqueFields.split(',').mapTo(mutableSetOf()) { it.trim() }, where, skipUpdateFields)
+
 @IgnorableReturnValue
 fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): Int =
   upsertBatch(table, listOf(values), uniqueFields, where, skipUpdateFields).first()

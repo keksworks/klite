@@ -2,8 +2,8 @@
 * json: report line numbers in JsonParseException for better debugging of json parsing errors
 * json: make parser stricter according to the spec: disallow newlines inside of strings and unary plus
 * jdbc: add @IgnorableReturnValue for some functions to avoid warnings when -Xreturn-value-checker is enabled
+* jdbc: db.upsert() now takes uniqueFields as a Set instead of comma-separated string
 * jdbc: batch functions now take Iterable instead of Sequence because sequence is less efficient in practice (backwards-incompatible change, easy to fix)
-* jdbc: db.upsert() now takes uniqueFields as a Set instead of comma-separated string (backwards-incompatible change, easy to fix)
 
 # 1.8.3
 * jdbc: set UpdatetableEntity.updatedAt to millisecond precision to avoid issues with rapid re-saving of entities
