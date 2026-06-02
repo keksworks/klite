@@ -5,6 +5,7 @@ import ch.tutteli.atrium.api.verbs.expect
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import klite.jdbc.PooledDataSource.PooledConnection
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -21,13 +22,15 @@ class PooledDataSourceTest {
 
   @Test fun unwrap() {
     expect(pool.unwrap<DataSource>()).toBeTheInstance(db)
+    expect(pool.unwrap<PooledDataSource>()).toBeTheInstance(pool)
   }
 
   @Test fun `retrieved connections are checked`() {
     val pooled = pool.connection
-    expect(pooled).toBeAnInstanceOf<PooledDataSource.PooledConnection>()
+    expect(pooled).toBeAnInstanceOf<PooledConnection>()
     val conn = pooled.unwrap<Connection>()
     expect(conn).notToEqual(pooled)
+    expect(pooled.unwrap<PooledConnection>()).toBeTheInstance(pooled)
     verify {
       conn.setNetworkTimeout(null, pool.queryTimeout.inWholeMilliseconds.toInt())
       conn.applicationName = Thread.currentThread().name

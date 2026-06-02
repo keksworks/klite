@@ -4,6 +4,7 @@
 * jdbc: add @IgnorableReturnValue for some functions to avoid warnings when -Xreturn-value-checker is enabled
 * jdbc: db.upsert() now takes uniqueFields as a Set instead of comma-separated string
 * jdbc: batch functions now take Iterable instead of Sequence because sequence is less efficient in practice (backwards-incompatible change, easy to fix)
+* jdbc: fixed connections held by PostgresNotifier not being reported by the leak detector
 
 # 1.8.3
 * jdbc: set UpdatetableEntity.updatedAt to millisecond precision to avoid issues with rapid re-saving of entities
