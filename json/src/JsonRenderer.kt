@@ -33,18 +33,18 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
 
   private fun writeString(s: String) {
     write('\"')
-    s.forEach { when(it) {
+    for (i in s.indices) when (val c = s[i]) {
       '\n' -> write("\\n"); '\r' -> write("\\r"); '\t' -> write("\\t"); '"' -> write("\\\""); '\\' -> write("\\\\")
-      in '\u0000'..'\u001F' -> { write("\\u"); write(it.code.toString(16).padStart(4, '0')) }
-      else -> write(it)
-    } }
+      in '\u0000'..'\u001F' -> { write("\\u"); write(c.code.toString(16).padStart(4, '0')) }
+      else -> write(c)
+    }
     write('\"')
   }
 
   private fun writeArray(i: Iterator<*>) {
     write('[')
     if (i.hasNext()) writeValue(i.next())
-    i.forEachRemaining { write(','); writeValue(it) }
+    i.forEach { write(','); writeValue(it) }
     write(']')
   }
 
@@ -52,7 +52,7 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
     val i = (if (opts.renderNulls) entries else entries.filter { it.value != null }).iterator()
     write('{')
     if (i.hasNext()) writeEntry(i.next())
-    i.forEachRemaining { write(','); writeEntry(it) }
+    i.forEach { write(','); writeEntry(it) }
     write('}')
   }
 
