@@ -14,15 +14,16 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Deprecated("Experimental", level = DeprecationLevel.WARNING)
-abstract class PostgresListener(db: DataSource, vararg channels: String): AutoCloseable {
+abstract class PostgresListener(protected val db: DataSource, vararg channels: String): AutoCloseable {
+  protected val channels = channels.toList().takeIf { it.isNotEmpty() } ?: listOf(javaClass.simpleName)
   protected val listener = thread(name = javaClass.simpleName, isDaemon = true) {
-    db.consumeNotifications(channels.toList().takeIf { it.isNotEmpty() } ?: listOf(javaClass.simpleName)) {
-      onNotification(it.name, it.parameter)
+    db.consumeNotifications(this.channels) {
+      listen(it.name, it.parameter)
     }
   }
 
-  protected abstract fun onNotification(channel: String, param: String)
-
+  protected fun notify(channel: String = channels.first(), param: String) = db.notify(channel, param)
+  protected abstract fun listen(channel: String, param: String)
   override fun close() = listener.interrupt()
 }
 
