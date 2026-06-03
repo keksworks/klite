@@ -1,8 +1,8 @@
 package klite.jdbc
 
-import klite.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
+import klite.info
+import klite.logger
+import klite.warn
 import org.postgresql.PGConnection
 import org.postgresql.PGNotification
 import java.sql.Connection
@@ -14,23 +14,16 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Deprecated("Experimental", level = DeprecationLevel.WARNING)
-class PostgresNotifier<K: Any>(vararg channels: K): Extension {
-  private val channels = channels.associate { it.toString() to Channel<String>(UNLIMITED) }
-  private lateinit var db: DataSource
-
-  fun send(channel: K, payload: String = "") = db.notify(channel.toString(), payload)
-  suspend fun receive(channel: K) = channels[channel.toString()]!!.receive()
-
-  override fun install(server: Server) = server.run {
-    db = require<DataSource>()
-    val listener = thread(name = this::class.simpleName, isDaemon = true) {
-      db.consumeNotifications(channels.keys) {
-        channels[it.name]?.trySend(it.parameter)
-      }
+abstract class PostgresListener(db: DataSource, vararg channels: String): AutoCloseable {
+  protected val listener = thread(name = javaClass.simpleName, isDaemon = true) {
+    db.consumeNotifications(channels.toList().takeIf { it.isNotEmpty() } ?: listOf(javaClass.simpleName)) {
+      onNotification(it.name, it.parameter)
     }
-    register(this)
-    server.onStop { listener.interrupt() }
   }
+
+  protected abstract fun onNotification(channel: String, param: String)
+
+  override fun close() = listener.interrupt()
 }
 
 /** Send Postgres notification to the specified channel. Delivered after commit */
@@ -40,10 +33,10 @@ fun DataSource.notify(channel: String, payload: String = "") = withStatement("se
   executeQuery().run { next() }
 }
 
-/** Dedicate a separate thread to listen to Postgres notifications and send them to the corresponding channels. */
+/** Dedicate a separate thread to listen to Postgres notifications */
 fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, connLifetime: Duration = 20.minutes, consumer: (notification: PGNotification) -> Unit) {
   val thread = Thread.currentThread()
-  val log = logger<PostgresNotifier<*>>()
+  val log = logger<PostgresListener>()
   val db = unwrapOrNull<DataSource>() ?: this
   while (!thread.isInterrupted) {
     db.connection.use { conn ->
