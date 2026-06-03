@@ -1,7 +1,6 @@
 package klite.jdbc
 
 import klite.*
-import klite.jdbc.PooledDataSource.PooledConnection
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import org.postgresql.PGConnection
@@ -44,15 +43,15 @@ fun DataSource.notify(channel: String, payload: String = "") = withStatement("se
 fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, timesPerConnection: Int = 100, consumer: (notification: PGNotification) -> Unit) {
   val thread = Thread.currentThread()
   val log = logger<PostgresNotifier<*>>()
+  val db = unwrapOrNull<DataSource>() ?: this
   while (!thread.isInterrupted) {
-    withConnection {
+    db.connection.use { conn ->
       try {
-        listen(channels)
+        conn.listen(channels)
         log.info("Listening to Postgres notifications on channels: $channels using $this")
-        (this as? PooledConnection)?.longUsed = true
         var times = 0
         while (!thread.isInterrupted && times++ < timesPerConnection) {
-          pgNotifications(timeout).forEach { consumer(it) }
+          conn.pgNotifications(timeout).forEach { consumer(it) }
         }
       } catch (ex: SQLException) {
         log.warn("$channels listener interrupted due to: ${ex.message} using $this. Retrying...")
