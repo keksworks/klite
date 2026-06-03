@@ -1,7 +1,10 @@
 package klite.json
 
 import org.intellij.lang.annotations.Language
-import java.io.*
+import java.io.InputStream
+import java.io.OutputStream
+import java.io.Reader
+import java.io.Writer
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
@@ -22,7 +25,7 @@ data class JsonMapper(
   fun <T> parse(json: InputStream, type: KType?): T = parse(json.reader(), type) as T
 
   fun render(o: Any?, out: Writer) = JsonRenderer(out, this).render(o)
-  fun render(o: Any?, out: OutputStream) = OutputStreamWriter(out).let { try { render(o, it) } finally { it.flush() } }
+  fun render(o: Any?, out: OutputStream) = FastOutputStreamWriter(out).let { try { render(o, it) } finally { it.flush() } }
   @Language("JSON") fun render(o: Any?): String = FastStringWriter().also { render(o, it) }.toString()
 
   internal val inlineClassesAsString = ConcurrentHashMap<KClass<*>, Boolean>()
@@ -50,4 +53,13 @@ class FastStringWriter: Writer() {
   override fun write(c: Int) { buf.append(c.toChar()) }
   override fun write(s: String) { buf.append(s) }
   override fun write(cbuf: CharArray, off: Int, len: Int) { buf.append(cbuf, off, len) }
+}
+
+class FastOutputStreamWriter(private val out: OutputStream): Writer() {
+  override fun flush() = out.flush()
+  override fun close() = out.close()
+
+  override fun write(c: Int) = if (c < 0x80) out.write(c) else write(c.toChar().toString())
+  override fun write(s: String) = out.write(s.encodeToByteArray())
+  override fun write(cbuf: CharArray, off: Int, len: Int) = write(String(cbuf, off, len))
 }
