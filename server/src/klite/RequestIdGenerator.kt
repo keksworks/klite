@@ -2,9 +2,10 @@ package klite
 
 import java.util.concurrent.atomic.AtomicLong
 
-open class RequestIdGenerator {
-  val prefix = (0xFFFF * Math.random()).toInt().toString(16)
-  private val counter = AtomicLong()
+open class RequestIdGenerator(
+  val prefix: String = (0xFFFF * Math.random()).toInt().toString(16)
+) {
+  protected val counter = AtomicLong()
   init {
     Metrics.register("instanceId") { prefix }
     Metrics.register("requestsTotal") { counter.get() }

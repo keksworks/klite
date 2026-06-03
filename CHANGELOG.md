@@ -1,4 +1,5 @@
 # Unreleased
+* server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id heeaders, like FLY_ALLOC_ID
 * json: report line numbers in JsonParseException for better debugging of json parsing errors
 * json: make parser stricter according to the spec: disallow newlines inside of strings and unary plus
 * jdbc: add @IgnorableReturnValue for some functions to avoid warnings when -Xreturn-value-checker is enabled
