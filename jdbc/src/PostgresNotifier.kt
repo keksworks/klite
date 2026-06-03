@@ -10,6 +10,7 @@ import java.sql.SQLException
 import javax.sql.DataSource
 import kotlin.concurrent.thread
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Deprecated("Experimental", level = DeprecationLevel.WARNING)
@@ -40,7 +41,7 @@ fun DataSource.notify(channel: String, payload: String = "") = withStatement("se
 }
 
 /** Dedicate a separate thread to listen to Postgres notifications and send them to the corresponding channels. */
-fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, timesPerConnection: Int = 100, consumer: (notification: PGNotification) -> Unit) {
+fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, connLifetime: Duration = 20.minutes, consumer: (notification: PGNotification) -> Unit) {
   val thread = Thread.currentThread()
   val log = logger<PostgresNotifier<*>>()
   val db = unwrapOrNull<DataSource>() ?: this
@@ -49,8 +50,8 @@ fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duratio
       try {
         conn.listen(channels)
         log.info("Listening to Postgres notifications on channels: $channels using $this")
-        var times = 0
-        while (!thread.isInterrupted && times++ < timesPerConnection) {
+        var times = (connLifetime / timeout).toInt()
+        while (!thread.isInterrupted && --times >= 0) {
           conn.pgNotifications(timeout).forEach { consumer(it) }
         }
       } catch (ex: SQLException) {
