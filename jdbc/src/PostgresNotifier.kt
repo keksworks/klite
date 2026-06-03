@@ -43,7 +43,7 @@ fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duratio
     db.connection.use { conn ->
       try {
         conn.listen(channels)
-        log.info("Listening to Postgres notifications on channels: $channels using $conn")
+        log.info("Listening to Postgres notifications $channels using $conn")
         var times = (connLifetime / timeout).toInt()
         while (!thread.isInterrupted && --times >= 0) {
           conn.pgNotifications(timeout).forEach { consumer(it) }
