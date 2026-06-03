@@ -1,6 +1,7 @@
 package klite
 
 import klite.RequestMethod.GET
+import java.io.File
 import java.io.OutputStream
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -37,8 +38,10 @@ fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotation
 
   Runtime.getRuntime().let {
     val mb = 1024f * 1024f
+    val linuxSelfStatus = File("/proc/self/status").takeIf { it.canRead() }
     Metrics.register("heapMb") {
-      mapOf("used" to (it.totalMemory() - it.freeMemory()) / mb, "size" to it.totalMemory() / mb, "max" to it.maxMemory() / mb)
+      val rss = linuxSelfStatus?.readLines()?.firstOrNull { it.startsWith("VmRSS") }?.substringAfter(":")?.substringBefore("kB")?.trim()?.toFloatOrNull()?.div(1024f)
+      mapOf("used" to (it.totalMemory() - it.freeMemory()) / mb, "size" to it.totalMemory() / mb, "max" to it.maxMemory() / mb, "rss" to rss)
     }
   }
 
