@@ -22,8 +22,8 @@ abstract class PostgresListener(protected val db: DataSource, vararg channels: S
     }
   }
 
-  protected fun notify(channel: String = channels.first(), param: String) = db.notify(channel, param)
-  protected abstract fun listen(channel: String, param: String)
+  protected fun notify(channel: String = channels.first(), payload: String) = db.notify(channel, payload)
+  protected abstract fun listen(channel: String, payload: String)
   override fun close() = listener.interrupt()
 }
 
