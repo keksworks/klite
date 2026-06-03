@@ -21,8 +21,9 @@ class PooledDataSourceTest {
   val pool = PooledDataSource(db, maxSize = 3, timeout = 100.milliseconds)
 
   @Test fun unwrap() {
+    expect(pool.isWrapperFor<DataSource>()).toEqual(true)
     expect(pool.unwrap<DataSource>()).toBeTheInstance(db)
-    expect(pool.unwrap<PooledDataSource>()).toBeTheInstance(pool)
+    expect(pool.unwrapOrNull<Connection>()).toEqual(null)
   }
 
   @Test fun `retrieved connections are checked`() {
@@ -30,7 +31,6 @@ class PooledDataSourceTest {
     expect(pooled).toBeAnInstanceOf<PooledConnection>()
     val conn = pooled.unwrap<Connection>()
     expect(conn).notToEqual(pooled)
-    expect(pooled.unwrap<PooledConnection>()).toBeTheInstance(pooled)
     verify {
       conn.setNetworkTimeout(null, pool.queryTimeout.inWholeMilliseconds.toInt())
       conn.applicationName = Thread.currentThread().name

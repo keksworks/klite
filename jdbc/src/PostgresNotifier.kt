@@ -41,22 +41,23 @@ fun DataSource.notify(channel: String, payload: String = "") = withStatement("se
 }
 
 /** Dedicate a separate thread to listen to Postgres notifications and send them to the corresponding channels. */
-fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, consumer: (notification: PGNotification) -> Unit) {
+fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duration = 10.seconds, timesPerConnection: Int = 100, consumer: (notification: PGNotification) -> Unit) {
   val thread = Thread.currentThread()
   val log = logger<PostgresNotifier<*>>()
   while (!thread.isInterrupted) {
-    try {
-      withConnection {
+    withConnection {
+      try {
         listen(channels)
-        log.info("Listening to Postgres notifications on channels: $channels")
-        unwrapOrNull<PooledConnection>()?.longUsed = true
-        while (!thread.isInterrupted) {
+        log.info("Listening to Postgres notifications on channels: $channels using $this")
+        (this as? PooledConnection)?.longUsed = true
+        var times = 0
+        while (!thread.isInterrupted && times++ < timesPerConnection) {
           pgNotifications(timeout).forEach { consumer(it) }
         }
+      } catch (ex: SQLException) {
+        log.warn("$channels listener interrupted due to: ${ex.message} using $this. Retrying...")
+        Thread.sleep(100)
       }
-    } catch (ex: SQLException) {
-      log.warn("Notification listener interrupted due to: ${ex.message}. Retrying...")
-      Thread.sleep(100)
     }
   }
 }
