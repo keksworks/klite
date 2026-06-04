@@ -5,6 +5,7 @@ import ch.tutteli.atrium.api.verbs.expect
 import klite.Converter
 import klite.TSID
 import org.junit.jupiter.api.Test
+import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.time.LocalDate
 import java.util.*
@@ -91,6 +92,12 @@ class JsonRendererTest {
       }
     })
     expect(mapper.render(mapOf("date" to LocalDate.of(2022, 10, 21), "custom" to Nested()))).toEqual("""{"date":2022,"custom":123}""")
+  }
+
+  @Test fun `fast writer`() {
+    val out = ByteArrayOutputStream()
+    mapper.render(mapOf("x" to "ascii", "y" to "☕", "z" to "🎁"), out)
+    expect(out.toByteArray().decodeToString()).toEqual("""{"x":"ascii","y":"☕","z":"🎁"}""")
   }
 
   @JvmInline value class NumCode<T: Any>(val value: Long) {

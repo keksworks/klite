@@ -56,10 +56,21 @@ class FastStringWriter: Writer() {
 }
 
 class FastOutputStreamWriter(private val out: OutputStream): Writer() {
-  override fun flush() = out.flush()
-  override fun close() = out.close()
+  private var highSurrogate = '\u0000'
 
-  override fun write(c: Int) = if (c < 0x80) out.write(c) else write(c.toChar().toString())
+  override fun write(c: Int) {
+    val ch = c.toChar()
+    when {
+      c < 0x80 -> out.write(c)
+      ch.isHighSurrogate() -> highSurrogate = ch
+      ch.isLowSurrogate() -> write(charArrayOf(highSurrogate, ch))
+      else -> write(ch.toString())
+    }
+  }
+
   override fun write(s: String) = out.write(s.encodeToByteArray())
   override fun write(cbuf: CharArray, off: Int, len: Int) = write(String(cbuf, off, len))
+
+  override fun flush() = out.flush()
+  override fun close() = out.close()
 }
