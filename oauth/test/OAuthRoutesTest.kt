@@ -34,12 +34,14 @@ class OAuthRoutesTest {
 
   @Test fun `accept user`() {
     every { userProvder.provide(any(), any(), any()) } returns user
+    every { userProvder.initSession(any(), any()) } answers { callOriginal() }
     every { exchange.session["oauth_123"] } returns "/path"
 
     expect { runBlocking { routes.accept("code", "123", exchange) } }.toThrow<RedirectException>()
 
     verify {
       userProvder.provide(user.copy(locale = Locale.ENGLISH), token, exchange)
+      userProvder.initSession(user, exchange)
       exchange.session["userId"] = "uid"
       exchange.redirect(URI("/path"))
     }

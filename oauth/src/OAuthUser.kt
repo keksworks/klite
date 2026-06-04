@@ -12,4 +12,6 @@ interface OAuthUser {
 
 interface OAuthUserProvider {
   fun provide(profile: UserProfile, tokenResponse: OAuthTokenResponse, exchange: HttpExchange): OAuthUser
+
+  fun initSession(user: OAuthUser, exchange: HttpExchange) = exchange.initSession(user)
 }
