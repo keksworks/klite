@@ -39,14 +39,15 @@ fun RouterConfig.basicAuth(users: Map<String, Password>, realm: String = "Auth")
 }
 
 fun RouterConfig.useHashCodeAsETag() = decorator { e, handler ->
-  e.handler()?.also { e.checkETagHashCode(it) } // TODO: add content-type to eTag check, in case same route is rendered using different ones
+  e.handler()?.also { e.checkETagHashCode(it) }
 }
 
 fun HttpExchange.checkETagHashCode(o: Any) {
-  if (eTagHashCode(o) == header("If-None-Match")) throw NotModifiedException()
+  if (eTagHashCode(o, responseType) == header("If-None-Match")) throw NotModifiedException()
 }
 
-fun HttpExchange.eTagHashCode(o: Any) = "W/\"${o.hashCode().toUInt().toString(36)}\"".also { header("ETag", it) }
+fun HttpExchange.eTagHashCode(o: Any, contentType: String? = null) =
+  "W/\"${(o.hashCode() xor contentType.hashCode()).toUInt().toString(36)}\"".also { header("ETag", it) }
 
 fun HttpExchange.checkLastModified(at: Instant) {
   if (lastModified(at) == header("If-Modified-Since")) throw NotModifiedException()

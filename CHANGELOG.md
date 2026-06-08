@@ -1,6 +1,7 @@
 # Unreleased
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID
 * server: metrics() now exposes RSS memory usage of the whole JVM process on Linux
+* server: useHashCodeAsETag() now takes produces different ETags for different requested Content-Type, even if the content is the same
 * json: report line numbers in JsonParseException for better debugging of json parsing errors
 * json: make parser stricter according to the spec: disallow newlines inside of strings and unary plus
 * json: increase JsonRenderer performance by ~10%

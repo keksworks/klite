@@ -93,7 +93,7 @@ open class HttpExchange(
   val requestStream: InputStream get() = if (method.hasBody) original.requestBody else error("$method should not have body")
 
   var responseType: String?
-    get() = responseHeaders["Content-type"]?.firstOrNull()
+    get() = responseHeaders["Content-type"]?.firstOrNull() ?: findRenderer(true).contentType.also { responseType = it }
     internal set(value) { value?.let { header("Content-type", MimeTypes.withCharset(it)) } }
 
   fun fileName(fileName: String, attachment: Boolean = true) {
