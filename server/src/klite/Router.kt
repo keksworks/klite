@@ -26,8 +26,9 @@ abstract class RouterConfig(
   fun after(after: After) = decorator(after.toDecorator())
   inline fun <reified T: After> after() = after(require<T>())
 
-  // add both Extension and Runnable overloads when this is resolved: https://youtrack.jetbrains.com/issue/KT-56930
+  // TODO: add both Extension and Runnable overloads when this is resolved: https://youtrack.jetbrains.com/issue/KT-56930
   inline fun <reified E: Any> use() = require<E>().also { use(it) }
+
   fun use(extension: Any) = extension.also {
     register(it)
     var used = false

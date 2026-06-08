@@ -39,7 +39,7 @@ fun RouterConfig.basicAuth(users: Map<String, Password>, realm: String = "Auth")
 }
 
 fun RouterConfig.useHashCodeAsETag() = decorator { e, handler ->
-  e.handler()?.also { e.checkETagHashCode(it) }
+  e.handler()?.also { e.checkETagHashCode(it) } // TODO: add content-type to eTag check, in case same route is rendered using different ones
 }
 
 fun HttpExchange.checkETagHashCode(o: Any) {

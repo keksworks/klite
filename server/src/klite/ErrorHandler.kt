@@ -75,6 +75,7 @@ open class ErrorHandler {
   }
 }
 
+// TODO: change to conform to RFC 7807
 data class ErrorResponse(val statusCode: StatusCode, val message: String?) {
   val reason: String = statusCode.reason ?: ""
   override fun toString() = "${statusCode.value} $reason\n${message ?: ""}"
