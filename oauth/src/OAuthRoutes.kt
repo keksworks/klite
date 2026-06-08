@@ -41,7 +41,7 @@ open class OAuthRoutes(private val userProvider: OAuthUserProvider, registry: Re
     if (profile.locale == null) profile = profile.copy(locale = Locale.forLanguageTag(e.lang))
 
     val user = userProvider.provide(profile, token, e)
-    e.initSession(user)
+    userProvider.initSession(user, e)
     e.redirect(originalUrl)
   }
 }

@@ -9,7 +9,7 @@ dependencyResolutionManagement {
       library("kotlinx-coroutines", "org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8").versionRef(coroutines)
       library("kotlinx-coroutines-test", "org.jetbrains.kotlinx", "kotlinx-coroutines-test").versionRef(coroutines)
       library("kotlinx-serialization-json", "org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
-      library("kotlinx-datetime", "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+      library("kotlinx-datetime", "org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
 
       val junit5 = version("junit", "6.0.3")
       library("junit", "org.junit.jupiter", "junit-jupiter").versionRef(junit5)
@@ -17,7 +17,7 @@ dependencyResolutionManagement {
       library("junit-engine", "org.junit.jupiter", "junit-jupiter-engine").versionRef(junit5)
       library("junit-launcher", "org.junit.platform", "junit-platform-launcher").versionRef(junit5)
       library("atrium", "ch.tutteli.atrium:atrium-fluent:1.3.0-alpha-2")
-      library("mockk", "io.mockk:mockk:1.14.9")
+      library("mockk", "io.mockk:mockk:1.14.11")
 
       val slf4j = version("slf4j", "2.0.17")
       library("slf4j-api", "org.slf4j", "slf4j-api").versionRef(slf4j)
