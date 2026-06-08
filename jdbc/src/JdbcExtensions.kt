@@ -1,4 +1,5 @@
 @file:Suppress("NAME_SHADOWING", "NOTHING_TO_INLINE")
+@file:MustUseReturnValues
 package klite.jdbc
 
 import klite.Config

@@ -41,6 +41,7 @@ abstract class CrudRepository<E: Entity>(db: DataSource, table: String): BaseCru
 }
 
 /** Extend to get basic CRUD operations, override functions to customize queries and mapping */
+@MustUseReturnValues
 abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: String): BaseRepository(db, table) {
   @Suppress("UNCHECKED_CAST")
   protected open val entityClass = this::class.supertypes.first().arguments.first().type!!.classifier as KClass<E>

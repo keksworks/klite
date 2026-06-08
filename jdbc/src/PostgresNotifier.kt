@@ -28,7 +28,6 @@ abstract class PostgresListener(protected val db: DataSource, vararg channels: S
 }
 
 /** Send Postgres notification to the specified channel. Delivered after commit */
-@IgnorableReturnValue
 fun DataSource.notify(channel: String, payload: String = "") = withStatement("select pg_notify(?, ?)") {
   setAll(listOf(channel, payload))
   executeQuery().run { next() }
