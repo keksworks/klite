@@ -7,11 +7,9 @@ import io.mockk.every
 import io.mockk.mockk
 import klite.RequestMethod.GET
 import klite.StatusCode.Companion.Forbidden
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.IOException
 
-@Disabled // TODO: https://github.com/mockk/mockk/issues/249
 class RequestLogFormatterTest {
   val exchange = mockk<HttpExchange> {
     every { remoteAddress } returns "127.0.0.1"
