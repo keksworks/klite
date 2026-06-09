@@ -5,6 +5,7 @@
 * json: report line numbers in JsonParseException for better debugging of json parsing errors
 * json: make parser stricter according to the spec: disallow newlines inside of strings and unary plus
 * json: increase JsonRenderer performance by ~10%
+* oauth: OAuthUserProvider.initSession() can now be overridden to set additional session attributes
 * jdbc: add @IgnorableReturnValue for some functions to avoid warnings when -Xreturn-value-checker is enabled
 * jdbc: db.upsert() now takes uniqueFields as a Set instead of comma-separated string
 * jdbc: use a dedicated connection in consumeNotifications() with a connLifetime parameter to avoid environment-specific timeouts
