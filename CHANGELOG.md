@@ -1,4 +1,4 @@
-# Unreleased
+# 1.9.0
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID
 * server: metrics() now exposes RSS memory usage of the whole JVM process on Linux
 * server: useHashCodeAsETag() now takes produces different ETags for different requested Content-Type, even if the content is the same
@@ -7,8 +7,8 @@
 * json: increase JsonRenderer performance by ~10%
 * jdbc: add @IgnorableReturnValue for some functions to avoid warnings when -Xreturn-value-checker is enabled
 * jdbc: db.upsert() now takes uniqueFields as a Set instead of comma-separated string
-* jdbc: batch functions now take Iterable instead of Sequence because sequence is less efficient in practice (backwards-incompatible change, easy to fix)
 * jdbc: use a dedicated connection in consumeNotifications() with a connLifetime parameter to avoid environment-specific timeouts
+* jdbc: batch functions now take Iterable instead of Sequence because sequence is less efficient in practice (backwards-incompatible change, easy to fix)
 
 # 1.8.3
 * jdbc: set UpdatetableEntity.updatedAt to millisecond precision to avoid issues with rapid re-saving of entities
