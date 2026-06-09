@@ -142,7 +142,7 @@ Register the `DBModule` and `DBMigrator` in your server configuration:
 
 ```kotlin
 Server().apply {
-  if (Config.isDev) startDevDB()
+  if (Config.isDev) DockerCompose.startDB()
   use<DBModule>()
   use<DBMigrator>()
   // ...

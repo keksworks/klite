@@ -15,7 +15,7 @@ Your Liquibase scripts can actually create this user with only *insert/update/se
 
 ```kotlin
   // start dev db, for developer convenience
-  if (Config.isDev) startDevDB()
+  if (Config.isDev) DockerCompose.startDB()
   // migrate with the default all-rights user
   use(LiquibaseModule())
   // use app user for the application DataSource and connection pool

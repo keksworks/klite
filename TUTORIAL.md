@@ -229,7 +229,7 @@ In real applications, you would use a database to store your data.
 
 Let's spin-up a Postgres database using Docker.
 
-Create the following `docker-compose.yml` file:
+Create the following `compose.yml` file:
 
 ```yml
 service:
@@ -252,7 +252,7 @@ Now we can auto-start the DB and connect to it in our Launcher:
 
 ```kotlin
 Server().apply {
-  if (Config.isDev) startDevDB()
+  if (Config.isDev) DockerCompose.startDB()
   use<DBModule>()
   ...
 }
