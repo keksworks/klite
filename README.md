@@ -84,7 +84,8 @@ These integrate with external libraries. All of this functionality is available 
 
 The main server module is only ~1000 lines of code.
 
-Klite powers a number of known production apps.
+Klite powers dozens of known production apps.
+
 Publicly announced at [KKON 2022](https://rheinwerk-kkon.de/programm/keks-klite/), see [the slides](https://docs.google.com/presentation/d/1m5UORE88nVRdZXyDEoj74c0alk1Ff_tX8mfB8oLMbk0).
 
 ## Performance

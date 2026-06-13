@@ -3,17 +3,19 @@ package klite.oauth
 import klite.Email
 import klite.base64UrlDecode
 import klite.json.*
-import klite.logger
-import klite.warn
 import java.time.Instant
 import java.util.*
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 class JWT(private val token: String) {
   companion object {
     private val jsonMapper = JsonMapper()
+    private val hsAlgorithms = mapOf("HS256" to "HmacSHA256", "HS384" to "HmacSHA384", "HS512" to "HmacSHA512")
   }
 
-  private val parts = token.split(".").map { it.base64UrlDecode() }
+  private val rawParts = token.split(".")
+  private val parts = rawParts.map { it.base64UrlDecode() }
   val headerJson get() = parts[0].decodeToString()
   val payloadJson get() = parts[1].decodeToString()
   val signature get() = parts[2]
@@ -25,10 +27,21 @@ class JWT(private val token: String) {
   override fun equals(other: Any?) = (other as? JWT)?.token == token
   override fun hashCode() = token.hashCode()
 
-  fun verify() {
+  private fun checkExpiry() {
     payload.expiresAt?.let { require(it.isAfter(Instant.now())) { "Token expired" } }
-    logger().warn("JWT signature verification not implemented yet")
   }
+
+  fun verify(secret: String) {
+    checkExpiry()
+    val jcaAlg = hsAlgorithms[header.alg] ?: throw UnsupportedOperationException("Unsupported algorithm: ${header.alg}, expected one of ${hsAlgorithms.keys}")
+    val mac = Mac.getInstance(jcaAlg)
+    mac.init(SecretKeySpec(secret.toByteArray(), jcaAlg))
+    val expected = mac.doFinal("${rawParts[0]}.${rawParts[1]}".toByteArray())
+    require(expected.contentEquals(signature)) { "Invalid JWT signature" }
+  }
+
+  /** Checks only expiry without signature verification, e.g. for tokens verified by external provider */
+  fun verify() = checkExpiry()
 
   data class Header(val fields: JsonNode): JsonNode by fields {
     val alg by fields

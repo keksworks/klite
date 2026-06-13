@@ -1,3 +1,6 @@
+# Unreleased
+* oauth: implement JWT HMAC signature verification
+
 # 1.9.0
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID
 * server: metrics() now exposes RSS memory usage of the whole JVM process on Linux
