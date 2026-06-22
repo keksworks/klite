@@ -6,6 +6,7 @@ import klite.json.*
 import klite.oauth.JWT.Companion.jsonMapper
 import java.math.BigInteger
 import java.security.KeyFactory
+import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Signature
 import java.security.spec.RSAPublicKeySpec
@@ -58,6 +59,15 @@ data class JWT(val headerPart: String, val payloadPart: String, val signaturePar
 
   /** Checks only expiry without signature verification, e.g. for tokens verified by external provider */
   fun verify() = checkExpiry()
+
+  fun sign(privateKey: PrivateKey): JWT {
+    require(signaturePart == null) { "Already signed" }
+    val sig = Signature.getInstance(pkiAlgorithms[header.alg]).apply {
+      initSign(privateKey)
+      update(signedPart.toByteArray())
+    }
+    return copy(signaturePart = sig.sign().base64UrlEncode())
+  }
 
   data class Header(val fields: JsonNode): JsonNode by fields {
     val alg: String by fields

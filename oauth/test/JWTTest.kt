@@ -2,13 +2,11 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import klite.Converter
 import klite.base64UrlDecode
-import klite.base64UrlEncode
 import klite.oauth.JWT
+import klite.oauth.JWT.Header
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.Signature
 import java.time.Instant
 
 class JWTTest {
@@ -39,26 +37,16 @@ class JWTTest {
 
   @Test fun `verify with RSA public key`() {
     val kp = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-    val jwt = JWT(JWT.Header(mapOf("alg" to "RS256", "typ" to "JWT")), jwt.payload)
-    val signature = rsaSign(kp, jwt.signedPart)
-    val rsaToken = "${jwt.signedPart}.$signature"
-    JWT(rsaToken).verify(kp.public)
+    val jwt = JWT(Header(mapOf("alg" to "RS256", "typ" to "JWT")), jwt.payload)
+    val signed = jwt.sign(kp.private)
+    signed.verify(kp.public)
   }
 
   @Test fun `verify with wrong RSA public key`() {
     val kp1 = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
     val kp2 = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-    val jwt = JWT(JWT.Header(mapOf("alg" to "RS256", "typ" to "JWT")), jwt.payload)
-    val signature = rsaSign(kp1, jwt.signedPart)
-    val rsaToken = "${jwt.signedPart}.$signature"
-    assertThrows<IllegalArgumentException> { JWT(rsaToken).verify(kp2.public) }
-  }
-
-  private fun rsaSign(kp: KeyPair, signingInput: String): String {
-    val sig = Signature.getInstance("SHA256withRSA").apply {
-      initSign(kp.private)
-      update(signingInput.toByteArray())
-    }
-    return sig.sign().base64UrlEncode()
+    val jwt = JWT(Header(mapOf("alg" to "RS256", "typ" to "JWT")), jwt.payload)
+    val signed = jwt.sign(kp1.private)
+    assertThrows<IllegalArgumentException> { signed.verify(kp2.public) }
   }
 }
