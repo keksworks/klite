@@ -1,11 +1,9 @@
 package klite.jdbc
 
-import klite.AbsentValue
-import klite.PropValue
-import klite.create
-import klite.publicProperties
+import klite.*
 import java.sql.ResultSet
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 
 inline fun <reified T: Any> ResultSet.create(vararg provided: PropValue<T, *>) = create(T::class, *provided)
@@ -23,4 +21,8 @@ fun <T: Any> ResultSet.create(type: KClass<T>, vararg provided: PropValue<T, *>,
     else if (it.isOptional) getOptional<T>(column, it.type).getOrDefault(AbsentValue)
     else get(column, it.type)
   }
+}
+
+fun <E: Any> E.toDBValues(): Map<KProperty1<E, *>, Any?> = toValues().mapValues { (k, v) ->
+  if (k.findAnnotation<JsonColumn>() != null) jsonb(v) else v
 }

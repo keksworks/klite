@@ -2,14 +2,12 @@ package klite.jdbc
 
 import klite.PropValue
 import klite.publicProperties
-import klite.toValues
 import org.intellij.lang.annotations.Language
 import java.sql.ResultSet
 import java.time.Instant
 import java.util.*
 import javax.sql.DataSource
 import kotlin.reflect.KClass
-import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.primaryConstructor
 
 interface BaseEntity<ID> {
@@ -56,9 +54,7 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
   /** Override to customize how entity properties are being converted to table columns during queries */
   protected open fun ResultSet.mapper(): E = create(entityClass)
   /** Override to customize how table columns are being converted to entity properties during inserts/updates */
-  protected open fun E.persister(): Map<out ColName, Any?> = toValues().map { (k, v) ->
-    k to if (k.findAnnotation<JsonColumn>() != null) jsonb(v) else v
-  }.toMap()
+  protected open fun E.persister(): Map<out ColName, Any?> = toDBValues()
 
   open fun get(id: ID, forUpdate: Boolean = false): E = db.select(selectFrom, id, "$table." + idProp.colName,
     if (forUpdate) (if (isPostgres) "for no key update" else "for update") else "") { mapper() }
