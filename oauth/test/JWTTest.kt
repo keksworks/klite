@@ -14,9 +14,9 @@ import java.time.Instant
 class JWTTest {
   // signed with secret "your-256-bit-secret" at jwt.io
   val token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+  val jwt = JWT(token)
 
   @Test fun parse() {
-    val jwt = JWT(token)
     expect(jwt.header.alg).toEqual("HS256")
     expect(jwt.header.typ).toEqual("JWT")
     expect(jwt.payload.subject).toEqual("1234567890")
@@ -26,7 +26,7 @@ class JWTTest {
   }
 
   @Test fun `verify with valid secret`() {
-    JWT(token).verify("your-256-bit-secret")
+    jwt.verify("your-256-bit-secret")
   }
 
   @Test fun `verify with wrong secret`() {
@@ -39,9 +39,7 @@ class JWTTest {
 
   @Test fun `verify with RSA public key`() {
     val kp = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-    val header = """{"alg":"RS256","typ":"JWT"}"""
-    val payload = """{"sub":"1234567890","name":"John Doe","iat":1516239022}"""
-    val jwt = JWT(header.base64UrlEncode(), payload.base64UrlEncode())
+    val jwt = JWT(JWT.Header(mapOf("alg" to "RS256", "typ" to "JWT")), jwt.payload)
     val signature = rsaSign(kp, jwt.signedPart)
     val rsaToken = "${jwt.signedPart}.$signature"
     JWT(rsaToken).verify(kp.public)
@@ -50,9 +48,7 @@ class JWTTest {
   @Test fun `verify with wrong RSA public key`() {
     val kp1 = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
     val kp2 = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-    val header = """{"alg":"RS256","typ":"JWT"}"""
-    val payload = """{"sub":"1234567890","name":"John Doe","iat":1516239022}"""
-    val jwt = JWT(header.base64UrlEncode(), payload.base64UrlEncode())
+    val jwt = JWT(JWT.Header(mapOf("alg" to "RS256", "typ" to "JWT")), jwt.payload)
     val signature = rsaSign(kp1, jwt.signedPart)
     val rsaToken = "${jwt.signedPart}.$signature"
     assertThrows<IllegalArgumentException> { JWT(rsaToken).verify(kp2.public) }

@@ -1,10 +1,9 @@
 package klite.oauth
 
-import klite.Converter
-import klite.Email
+import klite.*
 import klite.SnakeCase
-import klite.base64UrlDecode
 import klite.json.*
+import klite.oauth.JWT.Companion.jsonMapper
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.PublicKey
@@ -84,6 +83,9 @@ fun JWT(token: String): JWT {
   val parts = token.split(".")
   return JWT(parts[0], parts[1], parts[2])
 }
+
+fun JWT(header: JWT.Header, payload: JWT.Payload) =
+  JWT(jsonMapper.render(header.fields).base64UrlEncode(), jsonMapper.render(payload.claims).base64UrlEncode())
 
 data class JwksKeysResponse(val keys: List<JwkKey>)
 
