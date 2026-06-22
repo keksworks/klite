@@ -2,9 +2,12 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import klite.Converter
 import klite.base64UrlDecode
+import klite.base64UrlEncode
 import klite.oauth.JWT
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.security.KeyPairGenerator
+import java.security.Signature
 import java.time.Instant
 
 class JWTTest {
@@ -32,4 +35,35 @@ class JWTTest {
   @Test fun converter() {
     expect(Converter.from<JWT>(token)).toEqual(JWT(token))
   }
+
+  @Test fun `verify with RSA public key`() {
+    val kp = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
+    val header = """{"alg":"RS256","typ":"JWT"}"""
+    val payload = """{"sub":"1234567890","name":"John Doe","iat":1516239022}"""
+    val signingInput = "${header.toByteArray().base64UrlEncode()}.${payload.toByteArray().base64UrlEncode()}"
+    val sig = rsa().apply {
+      initSign(kp.private)
+      update(signingInput.toByteArray())
+    }
+    val signature = sig.sign().base64UrlEncode()
+    val rsaToken = "$signingInput.$signature"
+    JWT(rsaToken).verify(kp.public)
+  }
+
+  @Test fun `verify with wrong RSA public key`() {
+    val kp1 = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
+    val kp2 = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
+    val header = """{"alg":"RS256","typ":"JWT"}"""
+    val payload = """{"sub":"1234567890","name":"John Doe","iat":1516239022}"""
+    val signingInput = "${header.toByteArray().base64UrlEncode()}.${payload.toByteArray().base64UrlEncode()}"
+    val sig = rsa().apply {
+      initSign(kp1.private)
+      update(signingInput.toByteArray())
+    }
+    val signature = sig.sign().base64UrlEncode()
+    val rsaToken = "$signingInput.$signature"
+    assertThrows<IllegalArgumentException> { JWT(rsaToken).verify(kp2.public) }
+  }
+
+  private fun rsa() = Signature.getInstance("SHA256withRSA")
 }
