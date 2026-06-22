@@ -29,8 +29,6 @@ val isNull = SqlOp("is null")
 val notNull = SqlOp("is not null")
 val emptyArray = SqlComputed("'{}'")
 
-fun jsonb(value: String?) = SqlComputed("?::jsonb", value)
-
 infix fun String.eq(value: Any) = this to value
 infix fun String.neq(value: Any) = this to SqlOp("!=", value)
 infix fun String.distinct(value: Any?) = this to SqlOp("is distinct from", value)

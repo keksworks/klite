@@ -1,5 +1,6 @@
 # Unreleased
 * i18n: Lang.jsonMapper is no longer public to avoid mistakes of using it for other purposes. Create your own JsonMapper if you need it
+* jdbc: optional dependency to json module added and functions jsonb() and getJson() are now provided
 * oauth: implement JWT HMAC signature verification
 
 # 1.9.0
