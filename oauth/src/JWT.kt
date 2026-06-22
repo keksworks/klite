@@ -19,6 +19,7 @@ data class JWT(val headerPart: String, val payloadPart: String, val signaturePar
   companion object {
     internal val jsonMapper = JsonMapper(keys = SnakeCase)
     private val hsAlgorithms = mapOf("HS256" to "HmacSHA256", "HS384" to "HmacSHA384", "HS512" to "HmacSHA512")
+    private val pkiAlgorithms = mapOf("RS256" to "SHA256withRSA", "RS384" to "SHA384withRSA", "RS512" to "SHA512withRSA")
     init { Converter.use { JWT(it) } }
   }
 
@@ -38,7 +39,7 @@ data class JWT(val headerPart: String, val payloadPart: String, val signaturePar
 
   fun verify(secret: String) {
     checkExpiry()
-    val jcaAlg = hsAlgorithms[header.alg] ?: throw UnsupportedOperationException("Unsupported algorithm: ${header.alg}, expected one of ${hsAlgorithms.keys}")
+    val jcaAlg = hsAlgorithms[header.alg] ?: throw UnsupportedOperationException("Unsupported algorithm: ${header.alg}, expected ${hsAlgorithms.keys}")
     val mac = Mac.getInstance(jcaAlg)
     mac.init(SecretKeySpec(secret.toByteArray(), jcaAlg))
     val expected = mac.doFinal(signedPart.toByteArray())
@@ -50,13 +51,7 @@ data class JWT(val headerPart: String, val payloadPart: String, val signaturePar
   // TODO: check performance and maybe cache successful/unsuccessful verifications
   fun verify(publicKey: PublicKey) {
     checkExpiry()
-    val jcaAlg = when (header.alg) {
-      "RS256" -> "SHA256withRSA"
-      "RS384" -> "SHA384withRSA"
-      "RS512" -> "SHA512withRSA"
-      else -> throw UnsupportedOperationException("Unsupported algorithm: ${header.alg}, expected RS256/RS384/RS512")
-    }
-    val sig = Signature.getInstance(jcaAlg)
+    val sig = Signature.getInstance(pkiAlgorithms[header.alg] ?: throw UnsupportedOperationException("Unsupported algorithm: ${header.alg}, expected ${pkiAlgorithms.keys}"))
     sig.initVerify(publicKey)
     sig.update(signedPart.toByteArray())
     require(sig.verify(signature)) { "Invalid JWT signature" }
