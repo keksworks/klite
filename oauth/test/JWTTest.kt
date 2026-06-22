@@ -41,9 +41,9 @@ class JWTTest {
     val kp = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
     val header = """{"alg":"RS256","typ":"JWT"}"""
     val payload = """{"sub":"1234567890","name":"John Doe","iat":1516239022}"""
-    val signingInput = "${header.toByteArray().base64UrlEncode()}.${payload.toByteArray().base64UrlEncode()}"
-    val signature = rsaSign(kp, signingInput)
-    val rsaToken = "$signingInput.$signature"
+    val jwt = JWT(header.base64UrlEncode(), payload.base64UrlEncode())
+    val signature = rsaSign(kp, jwt.signedPart)
+    val rsaToken = "${jwt.signedPart}.$signature"
     JWT(rsaToken).verify(kp.public)
   }
 
@@ -52,9 +52,9 @@ class JWTTest {
     val kp2 = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
     val header = """{"alg":"RS256","typ":"JWT"}"""
     val payload = """{"sub":"1234567890","name":"John Doe","iat":1516239022}"""
-    val signingInput = "${header.toByteArray().base64UrlEncode()}.${payload.toByteArray().base64UrlEncode()}"
-    val signature = rsaSign(kp1, signingInput)
-    val rsaToken = "$signingInput.$signature"
+    val jwt = JWT(header.base64UrlEncode(), payload.base64UrlEncode())
+    val signature = rsaSign(kp1, jwt.signedPart)
+    val rsaToken = "${jwt.signedPart}.$signature"
     assertThrows<IllegalArgumentException> { JWT(rsaToken).verify(kp2.public) }
   }
 

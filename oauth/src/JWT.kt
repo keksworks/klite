@@ -1,5 +1,6 @@
 package klite.oauth
 
+import klite.Converter
 import klite.Email
 import klite.SnakeCase
 import klite.base64UrlDecode
@@ -14,24 +15,22 @@ import java.util.*
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-class JWT(private val token: String) {
+data class JWT(val headerPart: String, val payloadPart: String, val signaturePart: String? = null) {
   companion object {
     internal val jsonMapper = JsonMapper(keys = SnakeCase)
     private val hsAlgorithms = mapOf("HS256" to "HmacSHA256", "HS384" to "HmacSHA384", "HS512" to "HmacSHA512")
+    init { Converter.use { JWT(it) } }
   }
 
-  private val rawParts = token.split(".")
-  private val parts = rawParts.map { it.base64UrlDecode() }
-  val headerJson get() = parts[0].decodeToString()
-  val payloadJson get() = parts[1].decodeToString()
-  val signature get() = parts[2]
+  val headerJson get() = headerPart.base64UrlDecode().decodeToString()
+  val payloadJson get() = payloadPart.base64UrlDecode().decodeToString()
 
   val header by lazy { Header(jsonMapper.parse<JsonNode>(headerJson)) }
   val payload by lazy { Payload(jsonMapper.parse<JsonNode>(payloadJson)) }
+  val signature by lazy { signaturePart?.base64UrlDecode() ?: error("JTW signature part missing") }
 
-  override fun toString() = token
-  override fun equals(other: Any?) = (other as? JWT)?.token == token
-  override fun hashCode() = token.hashCode()
+  val signedPart get() = "$headerPart.$payloadPart"
+  override fun toString() = "$signedPart.$signaturePart"
 
   private fun checkExpiry() {
     payload.expiresAt?.let { require(it.isAfter(Instant.now())) { "Token expired" } }
@@ -42,7 +41,7 @@ class JWT(private val token: String) {
     val jcaAlg = hsAlgorithms[header.alg] ?: throw UnsupportedOperationException("Unsupported algorithm: ${header.alg}, expected one of ${hsAlgorithms.keys}")
     val mac = Mac.getInstance(jcaAlg)
     mac.init(SecretKeySpec(secret.toByteArray(), jcaAlg))
-    val expected = mac.doFinal("${rawParts[0]}.${rawParts[1]}".toByteArray())
+    val expected = mac.doFinal(signedPart.toByteArray())
     require(expected.contentEquals(signature)) { "Invalid JWT signature" }
   }
 
@@ -59,7 +58,7 @@ class JWT(private val token: String) {
     }
     val sig = Signature.getInstance(jcaAlg)
     sig.initVerify(publicKey)
-    sig.update("${rawParts[0]}.${rawParts[1]}".toByteArray())
+    sig.update(signedPart.toByteArray())
     require(sig.verify(signature)) { "Invalid JWT signature" }
   }
 
@@ -84,6 +83,11 @@ class JWT(private val token: String) {
     val emailVerified get() = getOrNull<Boolean>("email_verified")
     val locale get() = getOrNull<String>("locale")?.let { Locale.forLanguageTag(it) }
   }
+}
+
+fun JWT(token: String): JWT {
+  val parts = token.split(".")
+  return JWT(parts[0], parts[1], parts[2])
 }
 
 data class JwksKeysResponse(val keys: List<JwkKey>)
