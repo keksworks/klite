@@ -2,7 +2,12 @@
 * i18n: Lang.jsonMapper is no longer public to avoid mistakes of using it for other purposes. Create your own JsonMapper if you need it
 * jdbc: optional dependency to json module added and functions jsonb() and getJson() are now provided
 * jdbc: introduce @JsonColumn annotation for entity properties to avoid redefining of mappers/persisters just for that
-* oauth: implement JWT HMAC signature verification
+* oauth: implement JWT HMAC/RSA signature verification
+* oauth: support for fetching of OpenID configuration/keys
+
+# TODO
+* Error response bodies RFC 7807 (https://datatracker.ietf.org/doc/html/rfc7807)
+* Full json logger compatible with Elastic/Google/Grafana etc
 
 # 1.9.0
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID

@@ -4,6 +4,10 @@ import klite.Email
 import klite.SnakeCase
 import klite.base64UrlDecode
 import klite.json.*
+import java.security.KeyFactory
+import java.security.PublicKey
+import java.security.Signature
+import java.security.spec.RSAPublicKeySpec
 import java.time.Instant
 import java.util.*
 import javax.crypto.Mac
@@ -41,6 +45,20 @@ class JWT(private val token: String) {
     require(expected.contentEquals(signature)) { "Invalid JWT signature" }
   }
 
+  fun verify(publicKey: PublicKey) {
+    checkExpiry()
+    val jcaAlg = when (header.alg) {
+      "RS256" -> "SHA256withRSA"
+      "RS384" -> "SHA384withRSA"
+      "RS512" -> "SHA512withRSA"
+      else -> throw UnsupportedOperationException("Unsupported algorithm: ${header.alg}, expected RS256/RS384/RS512")
+    }
+    val sig = Signature.getInstance(jcaAlg)
+    sig.initVerify(publicKey)
+    sig.update("${rawParts[0]}.${rawParts[1]}".toByteArray())
+    require(sig.verify(signature)) { "Invalid JWT signature" }
+  }
+
   /** Checks only expiry without signature verification, e.g. for tokens verified by external provider */
   fun verify() = checkExpiry()
 
@@ -60,5 +78,16 @@ class JWT(private val token: String) {
     val email get() = getOrNull<String>("email")?.let { Email(it) }
     val emailVerified get() = getOrNull<Boolean>("email_verified")
     val locale get() = getOrNull<String>("locale")?.let { Locale.forLanguageTag(it) }
+  }
+}
+
+data class JwksKeysResponse(val keys: List<JwkKey>)
+
+data class JwkKey(val kty: String, val use: String?, val kid: String, val n: String, val e: String) {
+  fun toPublicKey(): PublicKey {
+    if (kty != "RSA") throw UnsupportedOperationException("Unsupported key type: $kty")
+    val modulus = java.math.BigInteger(1, n.base64UrlDecode())
+    val exponent = java.math.BigInteger(1, e.base64UrlDecode())
+    return KeyFactory.getInstance("RSA").generatePublic(RSAPublicKeySpec(modulus, exponent))
   }
 }

@@ -1,6 +1,7 @@
 package klite.oauth
 
 import klite.json.parse
+import klite.oauth.JWT.Companion.jsonMapper
 import java.net.URI
 
 class OpenIDConfig(
@@ -22,8 +23,15 @@ class OpenIDConfig(
 
 class OpenID(private val configUrl: URI) {
   val config: OpenIDConfig = readConfig()
+  val keys: List<JwkKey> = readKeys()
+
+  fun key(kid: String) = keys.find { it.kid == kid }
 
   private fun readConfig() = configUrl.toURL().openStream().use { stream ->
-    JWT.jsonMapper.parse<OpenIDConfig>(stream)
+    jsonMapper.parse<OpenIDConfig>(stream)
+  }
+
+  private fun readKeys() = config.jwksUri.toURL().openStream().use { stream ->
+    jsonMapper.parse<JwksKeysResponse>(stream).keys
   }
 }
