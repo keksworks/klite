@@ -16,7 +16,7 @@ COPY public /app/public
 # Run under non-privileged user with minimal write permissions
 USER user
 
-ENV JAVA_TOOL_OPTIONS="-Xss256K -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
+ENV JAVA_TOOL_OPTIONS="-Xss256K -XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError"
 CMD jre/bin/java -jar *.jar
 
 # Heroku redefines exposed port
