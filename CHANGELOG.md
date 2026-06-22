@@ -1,4 +1,5 @@
 # Unreleased
+* i18n: Lang.jsonMapper is no longer public to avoid mistakes of using it for other purposes. Create your own JsonMapper if you need it
 * oauth: implement JWT HMAC signature verification
 
 # 1.9.0

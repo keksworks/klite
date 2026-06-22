@@ -9,7 +9,7 @@ private typealias MutableTranslations = MutableMap<String, Any>
 
 object Lang {
   const val COOKIE = "LANG"
-  var jsonMapper = JsonMapper(trimToNull = false)
+  private val jsonMapper = JsonMapper(trimToNull = false)
   var jsonFiles: (lang: String) -> List<String> = { lang -> ["$lang.json"] }
 
   val available: List<String> = load("langs.json")
