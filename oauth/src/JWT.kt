@@ -4,6 +4,7 @@ import klite.Email
 import klite.SnakeCase
 import klite.base64UrlDecode
 import klite.json.*
+import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.PublicKey
 import java.security.Signature
@@ -84,10 +85,10 @@ class JWT(private val token: String) {
 data class JwksKeysResponse(val keys: List<JwkKey>)
 
 data class JwkKey(val kty: String, val use: String?, val kid: String, val n: String, val e: String) {
-  fun toPublicKey(): PublicKey {
+  val publicKey: PublicKey by lazy {
     if (kty != "RSA") throw UnsupportedOperationException("Unsupported key type: $kty")
-    val modulus = java.math.BigInteger(1, n.base64UrlDecode())
-    val exponent = java.math.BigInteger(1, e.base64UrlDecode())
-    return KeyFactory.getInstance("RSA").generatePublic(RSAPublicKeySpec(modulus, exponent))
+    val modulus = BigInteger(1, n.base64UrlDecode())
+    val exponent = BigInteger(1, e.base64UrlDecode())
+    KeyFactory.getInstance("RSA").generatePublic(RSAPublicKeySpec(modulus, exponent))
   }
 }
