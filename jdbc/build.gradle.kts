@@ -3,6 +3,7 @@ dependencies {
   compileOnly(project(":server"))
   testImplementation(project(":server"))
   compileOnly(project(":json"))
+  testImplementation(project(":json"))
   compileOnly(libs.postgresql)
   testImplementation(libs.postgresql)
   compileOnly(libs.hikari) {

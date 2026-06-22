@@ -26,11 +26,24 @@ class ValuesTest {
       .toEqual(SomeData("Hello", 42, list = [9], propName = "propName"))
   }
 
+  @Test fun `create with JsonColumn`() {
+    val rs = mockk<ResultSet> {
+      every { getString("tags") } returns """["a","b"]"""
+      every { getString("meta") } returns """{"key":"value"}"""
+    }
+    expect(rs.create<JsonData>()).toEqual(JsonData(listOf("a", "b"), mapOf("key" to "value")))
+  }
+
   data class SomeData(
     val hello: String,
     val world: Int,
     val nullable: String? = null,
     val list: List<Int> = [1, 2],
     @Column("colName") val propName: String
+  )
+
+  data class JsonData(
+    @JsonColumn val tags: List<String>,
+    @JsonColumn val meta: Map<String, String>
   )
 }

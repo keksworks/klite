@@ -6,6 +6,7 @@ import klite.create
 import klite.publicProperties
 import java.sql.ResultSet
 import kotlin.reflect.KClass
+import kotlin.reflect.full.findAnnotation
 
 inline fun <reified T: Any> ResultSet.create(vararg provided: PropValue<T, *>) = create(T::class, *provided)
 
@@ -15,8 +16,10 @@ inline fun <reified T: Any> ResultSet.create(columnPrefix: String, vararg provid
 fun <T: Any> ResultSet.create(type: KClass<T>, vararg provided: PropValue<T, *>, columnPrefix: String = ""): T {
   val extraArgs = provided.associate { it.first.name to it.second }
   return type.create {
-    val column = columnPrefix + (type.publicProperties[it.name]?.colName ?: it.name)
+    val prop = type.publicProperties[it.name]
+    val column = columnPrefix + (prop?.colName ?: it.name)
     if (extraArgs.containsKey(it.name)) extraArgs[it.name!!]
+    else if (prop?.findAnnotation<JsonColumn>() != null) getJsonOrNull(column, it.type)
     else if (it.isOptional) getOptional<T>(column, it.type).getOrDefault(AbsentValue)
     else get(column, it.type)
   }
