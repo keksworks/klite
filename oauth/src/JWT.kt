@@ -1,6 +1,7 @@
 package klite.oauth
 
 import klite.Email
+import klite.SnakeCase
 import klite.base64UrlDecode
 import klite.json.*
 import java.time.Instant
@@ -10,7 +11,7 @@ import javax.crypto.spec.SecretKeySpec
 
 class JWT(private val token: String) {
   companion object {
-    private val jsonMapper = JsonMapper()
+    internal val jsonMapper = JsonMapper(keys = SnakeCase)
     private val hsAlgorithms = mapOf("HS256" to "HmacSHA256", "HS384" to "HmacSHA384", "HS512" to "HmacSHA512")
   }
 
