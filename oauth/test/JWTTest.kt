@@ -6,6 +6,7 @@ import klite.base64UrlEncode
 import klite.oauth.JWT
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.time.Instant
@@ -41,11 +42,7 @@ class JWTTest {
     val header = """{"alg":"RS256","typ":"JWT"}"""
     val payload = """{"sub":"1234567890","name":"John Doe","iat":1516239022}"""
     val signingInput = "${header.toByteArray().base64UrlEncode()}.${payload.toByteArray().base64UrlEncode()}"
-    val sig = rsa().apply {
-      initSign(kp.private)
-      update(signingInput.toByteArray())
-    }
-    val signature = sig.sign().base64UrlEncode()
+    val signature = rsaSign(kp, signingInput)
     val rsaToken = "$signingInput.$signature"
     JWT(rsaToken).verify(kp.public)
   }
@@ -56,14 +53,16 @@ class JWTTest {
     val header = """{"alg":"RS256","typ":"JWT"}"""
     val payload = """{"sub":"1234567890","name":"John Doe","iat":1516239022}"""
     val signingInput = "${header.toByteArray().base64UrlEncode()}.${payload.toByteArray().base64UrlEncode()}"
-    val sig = rsa().apply {
-      initSign(kp1.private)
-      update(signingInput.toByteArray())
-    }
-    val signature = sig.sign().base64UrlEncode()
+    val signature = rsaSign(kp1, signingInput)
     val rsaToken = "$signingInput.$signature"
     assertThrows<IllegalArgumentException> { JWT(rsaToken).verify(kp2.public) }
   }
 
-  private fun rsa() = Signature.getInstance("SHA256withRSA")
+  private fun rsaSign(kp: KeyPair, signingInput: String): String {
+    val sig = Signature.getInstance("SHA256withRSA").apply {
+      initSign(kp.private)
+      update(signingInput.toByteArray())
+    }
+    return sig.sign().base64UrlEncode()
+  }
 }
