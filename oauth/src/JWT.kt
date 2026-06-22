@@ -46,6 +46,9 @@ class JWT(private val token: String) {
     require(expected.contentEquals(signature)) { "Invalid JWT signature" }
   }
 
+  fun verify(openID: OpenID) = verify(openID.key(header.kid ?: error("Missing kid in JWT header"))?.publicKey ?: error("No key found for kid ${header.kid}"))
+
+  // TODO: check performance and maybe cache successful/unsuccessful verifications
   fun verify(publicKey: PublicKey) {
     checkExpiry()
     val jcaAlg = when (header.alg) {
@@ -64,8 +67,9 @@ class JWT(private val token: String) {
   fun verify() = checkExpiry()
 
   data class Header(val fields: JsonNode): JsonNode by fields {
-    val alg by fields
-    val typ by fields
+    val alg: String by fields
+    val typ: String by fields
+    val kid: String? by fields
   }
 
   /** https://www.iana.org/assignments/jwt/jwt.xhtml#claims */
