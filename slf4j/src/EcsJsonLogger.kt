@@ -10,10 +10,12 @@ import java.time.Instant
  * `Config["LOGGER_CLASS"] = EcsJsonLogger::class.qualifiedName!!`
  */
 open class EcsJsonLogger(name: String): StackTraceOptimizingJsonLogger(name) {
-  private val levels = Level.entries.associateWith { it.name.lowercase() }
-  private val serviceName = Config.optional("LOGGER_SERVICE_NAME")
-  private val serviceVersion = Config.optional("LOGGER_SERVICE_VERSION")
-  private val hostname = InetAddress.getLocalHost().hostName
+  companion object {
+    private val levels = Level.entries.associateWith { it.name.lowercase() }
+    private val serviceName = Config.optional("LOGGER_SERVICE_NAME")
+    private val serviceVersion = Config.optional("LOGGER_SERVICE_VERSION")
+    private val hostname = InetAddress.getLocalHost().hostName
+  }
 
   override fun formatMessage(level: Level, msg: String?): String {
     val sb = StringBuilder(123)
