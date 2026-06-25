@@ -10,12 +10,13 @@ import java.net.URI
 import java.net.http.HttpClient
 
 class OIDCConfig(
-  val issuer: URI,
+  val issuer: String,
   val authorizationEndpoint: URI,
   val deviceAuthorizationEndpoint: URI? = null,
   val tokenEndpoint: URI,
   val tokenEndpointAuthMethodsSupported: Set<String> = emptySet(),
   val userinfoEndpoint: URI? = null,
+  val revocationEndpoint: URI? = null,
   val jwksUri: URI,
   val idTokenSigningAlgValuesSupported: Set<String> = emptySet(),
   val subjectTypesSupported: Set<String> = emptySet(),
