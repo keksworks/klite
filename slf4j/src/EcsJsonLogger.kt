@@ -1,6 +1,7 @@
 package klite.slf4j
 
 import klite.Config
+import org.slf4j.MDC
 import org.slf4j.event.Level
 import java.net.InetAddress
 import java.time.Instant
@@ -28,6 +29,7 @@ open class EcsJsonLogger(name: String): StackTraceOptimizingJsonLogger(name) {
     sb.put("service.name", serviceName)
     sb.put("service.version", serviceVersion)
     sb.put("host.hostname", hostname, isLast = true)
+    MDC.getCopyOfContextMap()?.forEach { (key, value) -> sb.put(key, value) }
 //    appendJson(sb, t)
     sb.append('}')
     return sb.toString()
