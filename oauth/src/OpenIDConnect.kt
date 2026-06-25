@@ -37,7 +37,10 @@ class OIDCConfig(
     httpClient
   ) {
     override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
-      TODO("Not yet implemented")
+      val jwt = token.idToken ?: error("id_token is required for OpenID Connect")
+      jwt.verify(key(jwt.header.kid!!).publicKey)
+      val names = jwt.payload.name?.split(" ") ?: emptyList()
+      return UserProfile(provider, jwt.payload.subject, jwt.payload.email!!, names.first(), names.drop(1).joinToString(" "), locale = jwt.payload.locale)
     }
   }
 }
@@ -46,17 +49,9 @@ class OpenIDConnect(val issuerUrl: URI) {
   private val log = logger()
   private val discoveryUrl = issuerUrl + "/.well-known/openid-configuration"
   val config: OIDCConfig = readConfig()
-  val keys: List<JwkKey> = readKeys()
-
-  fun key(kid: String) = keys.find { it.kid == kid }
 
   private fun readConfig() = discoveryUrl.toURL().openStream().use { stream ->
     log.info("Fetching config from $discoveryUrl")
     jsonMapper.parse<OIDCConfig>(stream)
-  }
-
-  private fun readKeys() = config.jwksUri.toURL().openStream().use { stream ->
-    log.info("Fetching keys ${config.jwksUri}")
-    jsonMapper.parse<JwksKeysResponse>(stream).keys
   }
 }

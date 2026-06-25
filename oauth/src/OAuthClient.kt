@@ -20,8 +20,8 @@ abstract class OAuthClient(provider: String? = null, scope: String, authUrl: Str
   val profileUrl = config("PROFILE_URL") ?: profileUrl
   val jwkKeysUrl = config("KEYS_URL") ?: jwkKeysUrl
 
-  protected fun configRequired(name: String) = Config.required(provider + "_OAUTH_" + name)
-  protected fun config(name: String) = Config.optional(provider + "_OAUTH_" + name)
+  protected fun configRequired(suffix: String) = Config.required(provider + "_OAUTH_" + suffix)
+  protected fun config(suffix: String) = Config.optional(provider + "_OAUTH_" + suffix)
 
   open fun startAuthUrl(state: String?, redirectUrl: URI, lang: String) = URI(authUrl) + mapOfNotNull(
     "response_type" to "code",
