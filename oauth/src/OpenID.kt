@@ -1,18 +1,22 @@
 package klite.oauth
 
+import klite.HttpExchange
 import klite.info
 import klite.json.parse
 import klite.logger
 import klite.oauth.JWT.Companion.jsonMapper
 import klite.plus
 import java.net.URI
+import java.net.http.HttpClient
 
+/** OIDC support */
 class OpenIDConfig(
   val issuer: URI,
   val authorizationEndpoint: URI,
+  val deviceAuthorizationEndpoint: URI? = null,
   val tokenEndpoint: URI,
   val tokenEndpointAuthMethodsSupported: Set<String> = emptySet(),
-  val userinfoEndpoint: URI,
+  val userinfoEndpoint: URI? = null,
   val jwksUri: URI,
   val idTokenSigningAlgValuesSupported: Set<String> = emptySet(),
   val subjectTypesSupported: Set<String> = emptySet(),
@@ -22,7 +26,21 @@ class OpenIDConfig(
   val grantTypesSupported: Set<String> = emptySet(),
   val uiLocalesSupported: List<String> = emptyList(),
   val scopesSupported: List<String> = emptyList(),
-)
+) {
+  fun toClient(provider: String, httpClient: HttpClient) = object: OAuthClient(
+    provider,
+    scopesSupported.joinToString(" "),
+    authorizationEndpoint.toString(),
+    tokenEndpoint.toString(),
+    userinfoEndpoint.toString(),
+    jwksUri.toString(),
+    httpClient
+  ) {
+    override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
+      TODO("Not yet implemented")
+    }
+  }
+}
 
 class OpenID(val issuerUrl: URI) {
   private val log = logger()

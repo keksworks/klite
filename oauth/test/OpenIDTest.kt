@@ -15,6 +15,30 @@ class OpenIDTest {
     expect(openId.keys.map { it.publicKey }).toHaveSize(4)
   }
 
+  @Test fun `read Microsoft config`() {
+    val openId = OpenID(URI("https://login.microsoftonline.com/common/v2.0"))
+    expect(openId.config.authorizationEndpoint).toEqual(URI("https://login.microsoftonline.com/common/oauth2/v2.0/authorize"))
+    expect(openId.config.tokenEndpoint).toEqual(URI("https://login.microsoftonline.com/common/oauth2/v2.0/token"))
+    expect(openId.config.jwksUri).toEqual(URI("https://login.microsoftonline.com/common/discovery/v2.0/keys"))
+    expect(openId.keys.map { it.publicKey }).toHaveSize(4)
+  }
+
+  @Test fun `read Facebook config`() {
+    val openId = OpenID(URI("https://www.facebook.com"))
+    expect(openId.config.authorizationEndpoint).toEqual(URI("https://login.microsoftonline.com/common/oauth2/v2.0/authorize"))
+    expect(openId.config.tokenEndpoint).toEqual(URI("https://login.microsoftonline.com/common/oauth2/v2.0/token"))
+    expect(openId.config.jwksUri).toEqual(URI("https://login.microsoftonline.com/common/discovery/v2.0/keys"))
+    expect(openId.keys.map { it.publicKey }).toHaveSize(4)
+  }
+
+  @Test fun `read Apple config`() {
+    val openId = OpenID(URI("https://appleid.apple.com"))
+    expect(openId.config.authorizationEndpoint).toEqual(URI("https://appleid.apple.com/auth/authorize"))
+    expect(openId.config.tokenEndpoint).toEqual(URI("https://appleid.apple.com/auth/token"))
+    expect(openId.config.jwksUri).toEqual(URI("https://appleid.apple.com/auth/keys"))
+    expect(openId.keys.map { it.publicKey }).toHaveSize(3)
+  }
+
   @Test fun `read TARA config`() {
     val openId = OpenID(URI("https://tara.ria.ee/oidc"))
     expect(openId.config.issuer).toEqual(URI("https://tara.ria.ee"))
