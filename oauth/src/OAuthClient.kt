@@ -7,7 +7,7 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.util.*
 
-abstract class OAuthClient(provider: String? = null, scope: String, authUrl: String, tokenUrl: String, profileUrl: String? = null, jwkKeysUrl: String? = null, httpClient: HttpClient) {
+abstract class OAuthClient(provider: String? = null, scope: String? = null, authUrl: String, tokenUrl: String, profileUrl: String? = null, jwkKeysUrl: String? = null, httpClient: HttpClient) {
   protected open val http = JsonHttpClient(json = JWT.jsonMapper, http = httpClient)
   val provider = provider ?: this::class.simpleName!!.substringBefore(OAuthClient::class.simpleName!!).uppercase()
 
