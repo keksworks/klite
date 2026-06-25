@@ -17,7 +17,7 @@ import javax.crypto.spec.SecretKeySpec
 
 data class JWT(val headerPart: String, val payloadPart: String, val signaturePart: String? = null) {
   companion object {
-    internal val jsonMapper = JsonMapper(keys = SnakeCase)
+    internal val jsonMapper = JsonMapper(keys = SnakeCase, trimToNull = false)
     private val hsAlgorithms = mapOf("HS256" to "HmacSHA256", "HS384" to "HmacSHA384", "HS512" to "HmacSHA512")
     private val pkiAlgorithms = mapOf("RS256" to "SHA256withRSA", "RS384" to "SHA384withRSA", "RS512" to "SHA512withRSA")
     init { Converter.use { JWT(it) } }

@@ -1,7 +1,6 @@
 package klite.oauth
 
 import klite.*
-import klite.SnakeCase
 import klite.http.authBearer
 import klite.json.*
 import java.net.URI
@@ -9,7 +8,7 @@ import java.net.http.HttpClient
 import java.util.*
 
 abstract class OAuthClient(scope: String, authUrl: String, tokenUrl: String, profileUrl: String, httpClient: HttpClient) {
-  protected open val http = JsonHttpClient(json = JsonMapper(keys = SnakeCase, trimToNull = false), http = httpClient)
+  protected open val http = JsonHttpClient(json = JWT.jsonMapper, http = httpClient)
   val provider = this::class.simpleName!!.substringBefore(OAuthClient::class.simpleName!!).uppercase()
 
   val clientId = config("CLIENT_ID")
