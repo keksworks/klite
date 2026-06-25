@@ -37,3 +37,10 @@ class MyUserProvider(private val userRepository: UserRepository): OAuthUserProvi
   }
 }
 ```
+
+## OIDC (OpenID Connect) support
+
+```kotlin
+val oidc = OpenIdConnect(URI("https://issuer.com"))
+val oauthClient = oidc.config.toClient("ISSUER")
+```
