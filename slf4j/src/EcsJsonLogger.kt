@@ -20,12 +20,14 @@ open class EcsJsonLogger(name: String): StackTraceOptimizingJsonLogger(name) {
   override fun formatMessage(level: Level, msg: String?): String {
     val sb = StringBuilder(123)
     sb.append('{')
-    sb.put("@timestamp", Instant.now())
+    sb.put("@timestamp", Instant.ofEpochMilli(System.currentTimeMillis()).toString())
     sb.put("log.level", levels[level])
+    sb.put("log.logger", name)
     sb.put("message", msg)
     sb.put("service.name", serviceName)
     sb.put("service.version", serviceVersion)
     sb.put("host.hostname", hostname, isLast = true)
+//    appendJson(sb, t)
     sb.append('}')
     return sb.toString()
   }
