@@ -45,10 +45,22 @@ object ErrorResponseSerializer: KSerializer<ErrorResponse> {
   private val serializer = SerializableErrorResponse.serializer()
   override val descriptor = SerialDescriptor("ErrorResponse", serializer.descriptor)
   override fun serialize(encoder: Encoder, value: ErrorResponse) =
-    encoder.encodeSerializableValue(serializer, SerializableErrorResponse(value.statusCode.value, value.reason, value.message))
+    encoder.encodeSerializableValue(serializer, SerializableErrorResponse(
+      type = value.type?.toString(),
+      title = value.title,
+      status = value.status.value,
+      detail = value.detail,
+      instance = value.instance?.toString(),
+    ))
   override fun deserialize(decoder: Decoder): ErrorResponse = error("No need")
 
-  @Serializable class SerializableErrorResponse(val statusCode: Int, val reason: String, val message: String?)
+  @Serializable class SerializableErrorResponse(
+    val type: String?,
+    val title: String?,
+    val status: Int,
+    val detail: String?,
+    val instance: String? = null
+  )
 }
 
 class UUIDSerializer: ConverterSerializer<UUID>(UUID::class)

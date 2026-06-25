@@ -4,9 +4,9 @@
 * jdbc: introduce @JsonColumn annotation for entity properties to avoid redefining of mappers/persisters just for that
 * oauth: implement JWT HMAC/RSA signature verification
 * oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
+* server: ErrorResponse is now RFC 7807 compatible (some fields renamed)
 
 # TODO
-* Error response bodies RFC 7807 (https://datatracker.ietf.org/doc/html/rfc7807)
 * Full json logger compatible with Elastic/Google/Grafana etc
 
 # 1.9.0

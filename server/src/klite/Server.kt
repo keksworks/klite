@@ -116,7 +116,7 @@ class Server(
   private fun HttpExchange.handle(result: Any?) = when (result) {
     Unit -> send(NoContent)
     is StatusCode -> send(result)
-    is ErrorResponse -> render(result.statusCode, result)
+    is ErrorResponse -> render(result.status, result)
     else -> render(OK, result)
   }
 

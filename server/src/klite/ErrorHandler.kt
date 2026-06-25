@@ -5,6 +5,7 @@ import klite.StatusCode.Companion.InternalServerError
 import klite.StatusCode.Companion.NotFound
 import klite.StatusCode.Companion.UnprocessableEntity
 import java.io.FileNotFoundException
+import java.net.URI
 import java.nio.file.NoSuchFileException
 import kotlin.reflect.KClass
 import kotlin.reflect.full.superclasses
@@ -45,7 +46,7 @@ open class ErrorHandler {
   fun handle(exchange: HttpExchange, e: Throwable) {
     exchange.failure = e
     if (!exchange.isResponseStarted) toResponse(exchange, e).let {
-      if (it.statusCode.bodyAllowed) exchange.render(it.statusCode, it) else exchange.send(it.statusCode)
+      if (it.status.bodyAllowed) exchange.render(it.status, it) else exchange.send(it.status)
     } else if (e.message == null || e.message !in ioErrorsToSkip)
       log.error("Error after headers sent", e)
   }
@@ -75,8 +76,13 @@ open class ErrorHandler {
   }
 }
 
-// TODO: change to conform to RFC 7807
-data class ErrorResponse(val statusCode: StatusCode, val message: String?) {
-  val reason: String = statusCode.reason ?: ""
-  override fun toString() = "${statusCode.value} $reason\n${message ?: ""}"
+/** RFC 7807 compatible error response */
+data class ErrorResponse(
+  val status: StatusCode,
+  val detail: String? = null,
+  val title: String? = status.reason,
+  val type: URI? = null,
+  val instance: URI? = null
+) {
+  override fun toString() = "$status $title\n${detail ?: ""}"
 }

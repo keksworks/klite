@@ -27,7 +27,7 @@ class JsonBodyTest {
   @Test fun `can serialize ErrorResponse`() {
     val out = ByteArrayOutputStream()
     jsonBody.render(out, ErrorResponse(StatusCode.NotFound, "/"))
-    expect(out.toByteArray().decodeToString()).toEqual("""{"statusCode":404,"reason":"Not Found","message":"/"}""")
+    expect(out.toByteArray().decodeToString()).toEqual("""{"type":null,"title":"Not Found","status":404,"detail":"/"}""")
   }
 
   @Test fun `use ConverterSerializer`() {
