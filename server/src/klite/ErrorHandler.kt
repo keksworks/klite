@@ -53,7 +53,7 @@ open class ErrorHandler {
 
   open fun toResponse(exchange: HttpExchange, e: Throwable): ErrorResponse {
     if (e is RedirectException) exchange.header("Location", e.location)
-    if (e is StatusCodeException) return ErrorResponse(e.statusCode, e.message)
+    if (e is StatusCodeException) return ErrorResponse(e.statusCode, e.message, instance = exchange.path)
 
     // TODO: look for subclasses
     handlers.find(e::class)?.let { handler ->
@@ -61,7 +61,7 @@ open class ErrorHandler {
     }
     statusCodes.find(e::class)?.let {
       log.error(e)
-      return ErrorResponse(it, e.message)
+      return ErrorResponse(it, e.message, instance = exchange.path)
     }
     return unhandled(e)
   }
@@ -82,7 +82,7 @@ data class ErrorResponse(
   val detail: String? = null,
   val title: String? = status.reason,
   val type: URI? = null,
-  val instance: URI? = null
+  val instance: String? = null
 ) {
   override fun toString() = "$status $title\n${detail ?: ""}"
 }
