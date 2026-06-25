@@ -55,12 +55,10 @@ abstract class OAuthClient(provider: String? = null, scope: String, authUrl: Str
 
   protected fun JsonNode.getLocale(key: String = "locale") = getOrNull<String>(key)?.let { Locale.forLanguageTag(it) }
 
-  protected suspend fun readKeys() = http.get<JwksKeysResponse>(jwkKeysUrl!!).keys.associateBy { it.kid }
-
-  private lateinit var keys: Map<String, JwkKey>
-  suspend fun key(kid: String): JwkKey {
-    if (!this::keys.isInitialized) keys = readKeys()
-     return keys[kid] ?: error("Key with kid=$kid not found")
+  protected var keys: Map<String, JwkKey>? = null
+  suspend fun fetchKeys(): Map<String, JwkKey> {
+    keys = http.get<JwksKeysResponse>(jwkKeysUrl!!).keys.associateBy { it.kid }
+    return keys!!
   }
 }
 

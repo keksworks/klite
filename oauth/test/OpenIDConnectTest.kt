@@ -1,5 +1,5 @@
-import ch.tutteli.atrium.api.fluent.en_GB.toBeAnInstanceOf
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
+import ch.tutteli.atrium.api.fluent.en_GB.toHaveSize
 import ch.tutteli.atrium.api.verbs.expect
 import klite.Config
 import klite.http.httpClient
@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 import java.net.URI
-import java.security.interfaces.RSAPublicKey
 
 @Execution(ExecutionMode.CONCURRENT)
 class OpenIDConnectTest {
@@ -54,6 +53,6 @@ class OpenIDConnectTest {
     Config["TARA_OAUTH_CLIENT_SECRET"] = "secret"
     val oauthClient = openId.config.toClient("TARA", httpClient())
     expect(oauthClient.authUrl).toEqual("https://tara.ria.ee/oidc/authorize")
-    expect(runBlocking { oauthClient.key("fcd76c92-bc34-4e9f-b874-4c816c34639d").publicKey }).toBeAnInstanceOf<RSAPublicKey>()
+    expect(runBlocking { oauthClient.fetchKeys().values.map { it.publicKey } }).toHaveSize(2)
   }
 }
