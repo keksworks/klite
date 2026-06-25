@@ -24,6 +24,7 @@ open class EcsJsonLogger(name: String): StackTraceOptimizingJsonLogger(name) {
     sb.put("log.level", levels[level])
     sb.put("log.logger", name)
     sb.put("message", msg)
+    sb.put("trace.id", Thread.currentThread().name) // TODO: split into http.request.id/etc?
     sb.put("service.name", serviceName)
     sb.put("service.version", serviceVersion)
     sb.put("host.hostname", hostname, isLast = true)
