@@ -19,6 +19,7 @@ typealias Params = Map<String, String?>
 val URI.queryParams: Params get() = urlDecodeParams(rawQuery)
 
 fun urlEncodeParams(params: Map<String, Any?>) = params.mapNotNull { e -> e.value?.let { e.key + "=" + it.toString().urlEncode() } }.joinToString("&")
+fun urlEncodeParams(vararg params: Pair<String, Any?>) = urlEncodeParams(mapOf(*params))
 
 @Suppress("UNCHECKED_CAST")
 fun urlDecodeParams(params: String?): Params = params?.split('&')?.fold(mutableMapOf<String, Any?>()) { m, p ->

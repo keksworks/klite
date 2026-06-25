@@ -7,21 +7,21 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.util.*
 
-abstract class OAuthClient(provider: String? = null, scope: String, authUrl: String, tokenUrl: String, profileUrl: String, jwkKeysUrl: String = "", httpClient: HttpClient) {
+abstract class OAuthClient(provider: String? = null, scope: String, authUrl: String, tokenUrl: String, profileUrl: String? = null, jwkKeysUrl: String? = null, httpClient: HttpClient) {
   protected open val http = JsonHttpClient(json = JWT.jsonMapper, http = httpClient)
   val provider = provider ?: this::class.simpleName!!.substringBefore(OAuthClient::class.simpleName!!).uppercase()
 
-  val clientId = config("CLIENT_ID")
-  private val clientSecret = config("CLIENT_SECRET")
+  val clientId = configRequired("CLIENT_ID")
+  private val clientSecret = configRequired("CLIENT_SECRET")
 
-  val scope = config("SCOPE", scope)
-  val authUrl = config("AUTH_URL", authUrl)
-  val tokenUrl = config("TOKEN_URL", tokenUrl)
-  val profileUrl = config("PROFILE_URL", profileUrl)
-  val jwkKeysUrl = config("KEYS_URL", jwkKeysUrl)
+  val scope = config("SCOPE") ?: scope
+  val authUrl = config("AUTH_URL") ?: authUrl
+  val tokenUrl = config("TOKEN_URL") ?: tokenUrl
+  val profileUrl = config("PROFILE_URL") ?: profileUrl
+  val jwkKeysUrl = config("KEYS_URL") ?: jwkKeysUrl
 
-  protected fun config(name: String) = Config.required(provider + "_OAUTH_" + name)
-  protected fun config(name: String, default: String) = Config.optional(provider + "_OAUTH_" + name, default)
+  protected fun configRequired(name: String) = Config.required(provider + "_OAUTH_" + name)
+  protected fun config(name: String) = Config.optional(provider + "_OAUTH_" + name)
 
   open fun startAuthUrl(state: String?, redirectUrl: URI, lang: String) = URI(authUrl) + mapOfNotNull(
     "response_type" to "code",
@@ -39,23 +39,23 @@ abstract class OAuthClient(provider: String? = null, scope: String, authUrl: Str
   suspend fun refresh(refreshToken: String) = fetchTokenResponse("refresh_token", refreshToken)
 
   protected open suspend fun fetchTokenResponse(grantType: String, code: String, redirectUrl: URI? = null): OAuthTokenResponse =
-    http.post<OAuthTokenResponse>(tokenUrl, urlEncodeParams(mapOf(
+    http.post<OAuthTokenResponse>(tokenUrl, urlEncodeParams(
       "grant_type" to grantType,
       (if (grantType == "authorization_code") "code" else grantType) to code,
       "client_id" to clientId,
       "client_secret" to clientSecret,
       "redirect_uri" to redirectUrl?.toString()
-    ))) {
+    )) {
       setHeader("Content-Type", MimeTypes.withCharset(MimeTypes.wwwForm))
     }.also { it.idToken?.verify() }
 
-  protected suspend fun fetchProfileResponse(token: OAuthTokenResponse): JsonNode = http.get(profileUrl) { authBearer(token.accessToken) }
+  protected suspend fun fetchProfileResponse(token: OAuthTokenResponse): JsonNode = http.get(profileUrl!!) { authBearer(token.accessToken) }
 
   abstract suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile
 
   protected fun JsonNode.getLocale(key: String = "locale") = getOrNull<String>(key)?.let { Locale.forLanguageTag(it) }
 
-  private suspend fun readKeys() = http.get<JwksKeysResponse>(jwkKeysUrl).keys.associateBy { it.kid }
+  protected suspend fun readKeys() = http.get<JwksKeysResponse>(jwkKeysUrl!!).keys.associateBy { it.kid }
 
   private lateinit var keys: Map<String, JwkKey>
   suspend fun key(kid: String): JwkKey {
@@ -125,7 +125,6 @@ class AppleOAuthClient(httpClient: HttpClient): OAuthClient(
   scope = "email name",
   authUrl = "https://appleid.apple.com/auth/authorize",
   tokenUrl = "https://appleid.apple.com/auth/token",
-  profileUrl = "",
   jwkKeysUrl = "https://appleid.apple.com/auth/keys",
   httpClient = httpClient
 ) {

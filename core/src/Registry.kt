@@ -50,7 +50,7 @@ open class SimpleRegistry: MutableRegistry {
 /**
  * Implements simple constructor injection that can easily replace your more complex dependency injection framework.
  * You may extend this class to override how exactly constructor parameters are created.
- * 
+ *
  * Parameters with default values are populated from the registry falling back to the default value if not found.
  * Parameters without default values are required to be present in the registry.
  */

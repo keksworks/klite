@@ -32,7 +32,7 @@ class OIDCConfig(
     scopesSupported.joinToString(" "),
     authorizationEndpoint.toString(),
     tokenEndpoint?.toString() ?: "",
-    userinfoEndpoint.toString(),
+    userinfoEndpoint?.toString(),
     jwksUri.toString(),
     httpClient
   ) {
