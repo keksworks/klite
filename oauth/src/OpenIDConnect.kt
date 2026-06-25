@@ -13,7 +13,7 @@ class OIDCConfig(
   val issuer: String,
   val authorizationEndpoint: URI,
   val deviceAuthorizationEndpoint: URI? = null,
-  val tokenEndpoint: URI,
+  val tokenEndpoint: URI? = null,
   val tokenEndpointAuthMethodsSupported: Set<String> = emptySet(),
   val userinfoEndpoint: URI? = null,
   val revocationEndpoint: URI? = null,
@@ -31,7 +31,7 @@ class OIDCConfig(
     provider,
     scopesSupported.joinToString(" "),
     authorizationEndpoint.toString(),
-    tokenEndpoint.toString(),
+    tokenEndpoint?.toString() ?: "",
     userinfoEndpoint.toString(),
     jwksUri.toString(),
     httpClient

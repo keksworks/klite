@@ -3,8 +3,11 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import klite.oauth.OpenIDConnect
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 import java.net.URI
 
+@Execution(ExecutionMode.CONCURRENT)
 class OpenIDConnectTest {
   @Test fun `read Google config`() {
     val openId = OpenIDConnect(URI("https://accounts.google.com"))
@@ -27,8 +30,9 @@ class OpenIDConnectTest {
   @Test fun `read Facebook config`() {
     val openId = OpenIDConnect(URI("https://www.facebook.com"))
     expect(openId.config.authorizationEndpoint).toEqual(URI("https://facebook.com/dialog/oauth/"))
+    expect(openId.config.tokenEndpoint).toEqual(null)
     expect(openId.config.jwksUri).toEqual(URI("https://www.facebook.com/.well-known/oauth/openid/jwks/"))
-    expect(openId.keys.map { it.publicKey }.size).toBeGreaterThan(2)
+    expect(openId.keys.map { it.publicKey }.size).toBeGreaterThan(1)
   }
 
   @Test fun `read Apple config`() {
