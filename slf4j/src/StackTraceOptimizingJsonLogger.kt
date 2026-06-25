@@ -12,11 +12,10 @@ open class StackTraceOptimizingJsonLogger(name: String): StackTraceOptimizingLog
       sb.append(" ")
     }
     if (t != null) appendJson(sb, t)
-    val message = sb.toString()
-    out.println(message)
+    out.println(sb)
   }
 
-  private fun appendJson(sb: StringBuilder, t: Throwable) {
+  protected fun appendJson(sb: StringBuilder, t: Throwable) {
     sb.append("""{"error":"""")
     sb.append(t.toString().replace("\"", "\\\"").replace("\n", "\\n"))
     sb.append("""","stack":[""")
