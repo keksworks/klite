@@ -9,8 +9,7 @@ import klite.plus
 import java.net.URI
 import java.net.http.HttpClient
 
-/** OIDC support */
-class OpenIDConfig(
+class OIDCConfig(
   val issuer: URI,
   val authorizationEndpoint: URI,
   val deviceAuthorizationEndpoint: URI? = null,
@@ -42,17 +41,17 @@ class OpenIDConfig(
   }
 }
 
-class OpenID(val issuerUrl: URI) {
+class OpenIDConnect(val issuerUrl: URI) {
   private val log = logger()
   private val discoveryUrl = issuerUrl + "/.well-known/openid-configuration"
-  val config: OpenIDConfig = readConfig()
+  val config: OIDCConfig = readConfig()
   val keys: List<JwkKey> = readKeys()
 
   fun key(kid: String) = keys.find { it.kid == kid }
 
   private fun readConfig() = discoveryUrl.toURL().openStream().use { stream ->
     log.info("Fetching config from $discoveryUrl")
-    jsonMapper.parse<OpenIDConfig>(stream)
+    jsonMapper.parse<OIDCConfig>(stream)
   }
 
   private fun readKeys() = config.jwksUri.toURL().openStream().use { stream ->

@@ -1,13 +1,13 @@
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toHaveSize
 import ch.tutteli.atrium.api.verbs.expect
-import klite.oauth.OpenID
+import klite.oauth.OpenIDConnect
 import org.junit.jupiter.api.Test
 import java.net.URI
 
-class OpenIDTest {
+class OpenIDConnectTest {
   @Test fun `read Google config`() {
-    val openId = OpenID(URI("https://accounts.google.com"))
+    val openId = OpenIDConnect(URI("https://accounts.google.com"))
     expect(openId.config.issuer).toEqual(URI("https://accounts.google.com"))
     expect(openId.config.authorizationEndpoint).toEqual(URI("https://accounts.google.com/o/oauth2/v2/auth"))
     expect(openId.config.tokenEndpoint).toEqual(URI("https://oauth2.googleapis.com/token"))
@@ -16,7 +16,7 @@ class OpenIDTest {
   }
 
   @Test fun `read Microsoft config`() {
-    val openId = OpenID(URI("https://login.microsoftonline.com/common/v2.0"))
+    val openId = OpenIDConnect(URI("https://login.microsoftonline.com/common/v2.0"))
     expect(openId.config.authorizationEndpoint).toEqual(URI("https://login.microsoftonline.com/common/oauth2/v2.0/authorize"))
     expect(openId.config.tokenEndpoint).toEqual(URI("https://login.microsoftonline.com/common/oauth2/v2.0/token"))
     expect(openId.config.jwksUri).toEqual(URI("https://login.microsoftonline.com/common/discovery/v2.0/keys"))
@@ -24,7 +24,7 @@ class OpenIDTest {
   }
 
   @Test fun `read Facebook config`() {
-    val openId = OpenID(URI("https://www.facebook.com"))
+    val openId = OpenIDConnect(URI("https://www.facebook.com"))
     expect(openId.config.authorizationEndpoint).toEqual(URI("https://login.microsoftonline.com/common/oauth2/v2.0/authorize"))
     expect(openId.config.tokenEndpoint).toEqual(URI("https://login.microsoftonline.com/common/oauth2/v2.0/token"))
     expect(openId.config.jwksUri).toEqual(URI("https://login.microsoftonline.com/common/discovery/v2.0/keys"))
@@ -32,7 +32,7 @@ class OpenIDTest {
   }
 
   @Test fun `read Apple config`() {
-    val openId = OpenID(URI("https://appleid.apple.com"))
+    val openId = OpenIDConnect(URI("https://appleid.apple.com"))
     expect(openId.config.authorizationEndpoint).toEqual(URI("https://appleid.apple.com/auth/authorize"))
     expect(openId.config.tokenEndpoint).toEqual(URI("https://appleid.apple.com/auth/token"))
     expect(openId.config.jwksUri).toEqual(URI("https://appleid.apple.com/auth/keys"))
@@ -40,7 +40,7 @@ class OpenIDTest {
   }
 
   @Test fun `read TARA config`() {
-    val openId = OpenID(URI("https://tara.ria.ee/oidc"))
+    val openId = OpenIDConnect(URI("https://tara.ria.ee/oidc"))
     expect(openId.config.issuer).toEqual(URI("https://tara.ria.ee"))
     expect(openId.config.authorizationEndpoint).toEqual(URI("https://tara.ria.ee/oidc/authorize"))
     expect(openId.config.tokenEndpoint).toEqual(URI("https://tara.ria.ee/oidc/token"))
