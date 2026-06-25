@@ -46,7 +46,8 @@ data class JWT(val headerPart: String, val payloadPart: String, val signaturePar
     require(expected.contentEquals(signature)) { "Invalid JWT signature" }
   }
 
-  fun verify(keys: OpenIDConnect) = verify(keys.key(header.kid ?: error("Missing kid in JWT header"))?.publicKey ?: error("No key found for kid ${header.kid}"))
+  fun verify(keys: Map<String, JwkKey>) =
+    verify(keys[header.kid ?: error("Missing kid in JWT header")]?.publicKey ?: error("No key found for kid ${header.kid}"))
 
   // TODO: check performance and maybe cache successful/unsuccessful verifications
   fun verify(publicKey: PublicKey) {
