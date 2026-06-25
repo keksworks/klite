@@ -3,7 +3,7 @@
 * jdbc: optional dependency to json module added and functions jsonb() and getJson() are now provided
 * jdbc: introduce @JsonColumn annotation for entity properties to avoid redefining of mappers/persisters just for that
 * oauth: implement JWT HMAC/RSA signature verification
-* oauth: support for fetching of OpenID configuration/keys
+* oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
 
 # TODO
 * Error response bodies RFC 7807 (https://datatracker.ietf.org/doc/html/rfc7807)
