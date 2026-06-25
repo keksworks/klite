@@ -35,12 +35,11 @@ class ServerIntegrationTest {
     }
 
     expect { runBlocking { http.get<String>("/api/hello/params") } }.toThrow<IOException>()
-      .messageToContain("""{"message":"required is required","reason":"Bad Request","statusCode":400}""")
+      .messageToContain("""{"detail":"required is required","status":400,"title":"Bad Request"}""")
 
     expect { runBlocking { http.get<String>("/api/notfound") } }.toThrow<IOException>()
-      .messageToContain("""{"message":"/api/notfound","reason":"Not Found","statusCode":404}""")
+      .messageToContain("""{"detail":"/api/notfound","status":404,"title":"Not Found"}""")
 
     server.stop()
   }
 }
-
