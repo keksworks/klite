@@ -1,11 +1,16 @@
+import ch.tutteli.atrium.api.fluent.en_GB.toBeAnInstanceOf
 import ch.tutteli.atrium.api.fluent.en_GB.toBeGreaterThan
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
+import klite.Config
+import klite.http.httpClient
 import klite.oauth.OpenIDConnect
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 import java.net.URI
+import java.security.interfaces.RSAPublicKey
 
 @Execution(ExecutionMode.CONCURRENT)
 class OpenIDConnectTest {
@@ -50,5 +55,11 @@ class OpenIDConnectTest {
     expect(openId.config.tokenEndpoint).toEqual(URI("https://tara.ria.ee/oidc/token"))
     expect(openId.config.jwksUri).toEqual(URI("https://tara.ria.ee/oidc/jwks"))
     expect(openId.keys.map { it.publicKey }.size).toBeGreaterThan(1)
+
+    Config["TARA_OAUTH_CLIENT_ID"] = "c-id"
+    Config["TARA_OAUTH_CLIENT_SECRET"] = "secret"
+    val oauthClient = openId.config.toClient("TARA", httpClient())
+    expect(oauthClient.authUrl).toEqual("https://tara.ria.ee/oidc/authorize")
+    expect(runBlocking { oauthClient.key("fcd76c92-bc34-4e9f-b874-4c816c34639d").publicKey }).toBeAnInstanceOf<RSAPublicKey>()
   }
 }
