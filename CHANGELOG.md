@@ -5,9 +5,7 @@
 * oauth: implement JWT HMAC/RSA signature verification
 * oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
 * server: ErrorResponse is now RFC 7807 compatible (some fields renamed)
-
-# TODO
-* Full json logger compatible with Elastic/Google/Grafana etc
+* slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging, with support for MDC and structured logging
 
 # 1.9.0
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID
