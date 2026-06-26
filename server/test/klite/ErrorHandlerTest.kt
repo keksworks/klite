@@ -13,12 +13,14 @@ import org.junit.jupiter.api.Test
 import java.io.IOException
 
 class ErrorHandlerTest {
-  val exchange = mockk<HttpExchange>(relaxUnitFun = true)
+  val exchange = mockk<HttpExchange>(relaxUnitFun = true) {
+    every { path } returns "/path"
+  }
   val errorHandler = ErrorHandler()
 
   @Test fun `status code exception`() {
     expect(errorHandler.toResponse(exchange, ForbiddenException("Some message")))
-      .toEqual(ErrorResponse(Forbidden, "Some message"))
+      .toEqual(ErrorResponse(Forbidden, "Some message", instance = "/path"))
   }
 
   @Test fun `required parameter exception`() {
@@ -28,7 +30,7 @@ class ErrorHandlerTest {
 
   @Test fun `subclassed exception`() {
     expect(errorHandler.toResponse(exchange, SubIllegalArgumentException("Something happened")))
-      .toEqual(ErrorResponse(BadRequest, "Something happened"))
+      .toEqual(ErrorResponse(BadRequest, "Something happened", instance = "/path"))
   }
 
   @Test fun `no such element`() {
