@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 
 class StackTraceOptimizingJsonLoggerTest {
   val out = ByteArrayOutputStream().also { KliteLogger.out = PrintStream(it) }
-
   @AfterEach fun restore() { KliteLogger.out = System.out }
 
   @Test fun `puts stack trace into json in prod for PaperTrail or LogTail`() {

@@ -6,7 +6,6 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import klite.Config
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.slf4j.Logger
 import org.slf4j.event.Level.*
@@ -16,15 +15,8 @@ import java.lang.Thread.currentThread
 
 class KliteLoggerTest {
   val logger: Logger = KliteLogger("mega.cool.MyLogger")
-  val out = ByteArrayOutputStream()
-
-  @BeforeEach fun setUp() {
-    KliteLogger.out = PrintStream(out)
-  }
-
-  @AfterEach fun tearDown() {
-    KliteLogger.out = System.out
-  }
+  val out = ByteArrayOutputStream().also { KliteLogger.out = PrintStream(it) }
+  @AfterEach fun restore() { KliteLogger.out = System.out }
 
   @Test fun findInheritedLevel() {
     expect(KliteLogger("mega.cool.MyLogger").level).toEqual(INFO)

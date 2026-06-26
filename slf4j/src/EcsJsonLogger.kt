@@ -10,7 +10,7 @@ import java.time.Instant
  * Use this logger if you want all logs to be json lines with ECS spec compatibility:
  * `Config["LOGGER_CLASS"] = EcsJsonLogger::class.qualifiedName!!`
  */
-open class EcsJsonLogger(name: String): StackTraceOptimizingJsonLogger(name) {
+open class EcsJsonLogger(name: String): StackTraceOptimizingLogger(name) {
   companion object {
     private val levels = Level.entries.associateWith { it.name.lowercase() }
     private val serviceName = Config.optional("LOGGER_SERVICE_NAME")
@@ -28,9 +28,18 @@ open class EcsJsonLogger(name: String): StackTraceOptimizingJsonLogger(name) {
     sb.put("message", msg)
     sb.put("service.name", serviceName)
     sb.put("service.version", serviceVersion)
-    sb.put("host.hostname", hostname, isLast = true)
     MDC.getCopyOfContextMap()?.forEach { (key, value) -> sb.put(key, value) }
-//    appendJson(sb, t)
+    if (t != null) {
+      sb.put("error.type", t.javaClass.name)
+      sb.put("error.message", t.message)
+      sb.append("\"error.stack_trace\":\"")
+      val stackTrace = t.stackTrace
+      for (i in 0..findUsefulStackTraceEnd(stackTrace)) {
+        sb.append(stackTrace[i]).append("\\n")
+      }
+      sb.append("\",")
+    }
+    sb.put("host.hostname", hostname, isLast = true)
     sb.append('}')
     out.println(sb)
   }

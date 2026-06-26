@@ -9,15 +9,17 @@ import klite.Decorator
 import klite.Handler
 import klite.wrap
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.slf4j.event.Level.INFO
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 
 class StackTraceOptimizingLoggerTest {
+  val out = ByteArrayOutputStream().also { KliteLogger.out = PrintStream(it) }
+  @AfterEach fun restore() { KliteLogger.out = System.out }
+
   @Test fun `cuts stack trace until klite`() {
-    val out = ByteArrayOutputStream()
-    KliteLogger.out = PrintStream(out)
     val decorator: Decorator = { e, h -> h(e) }
     val handler: Handler = {
       val logger = StackTraceOptimizingLogger("MyLogger")
@@ -31,6 +33,5 @@ class StackTraceOptimizingLoggerTest {
         .toEndWith("\n")
     }
     runBlocking { decorator.wrap(handler).invoke(mockk()) }
-    KliteLogger.out = System.out
   }
 }
