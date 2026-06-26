@@ -8,6 +8,7 @@ import klite.json.JsonMapper
 import klite.json.parse
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.slf4j.MDC
 import org.slf4j.event.Level.ERROR
 import org.slf4j.event.Level.WARN
 import java.io.ByteArrayOutputStream
@@ -34,5 +35,15 @@ class EcsJsonLoggerTest {
     val json = out.toString()
     expect(json).toContain(""""message":"Failed something","error.type":"java.io.IOException","error.message":"Kaboom","error.stack_trace":"klite.slf4j.EcsJsonLoggerTest.exception(""")
     JsonMapper().parse<Any>(json)
+  }
+
+  @Test fun mdc() {
+    MDC.put("mdc.1", "value")
+    MDC.put("mdc.2", "Hello\nWorld")
+    logger.print(ERROR, null, null)
+    val json = out.toString()
+    expect(json).toContain(""""mdc.1":"value","mdc.2":"Hello\nWorld",""")
+    JsonMapper().parse<Any>(json)
+    MDC.clear()
   }
 }
