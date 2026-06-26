@@ -6,6 +6,7 @@ import ch.tutteli.atrium.api.fluent.en_GB.toStartWith
 import ch.tutteli.atrium.api.verbs.expect
 import klite.json.JsonMapper
 import klite.json.parse
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.slf4j.MDC
@@ -38,12 +39,13 @@ class EcsJsonLoggerTest {
   }
 
   @Test fun mdc() {
-    MDC.put("mdc.1", "value")
-    MDC.put("mdc.2", "Hello\nWorld")
-    logger.print(ERROR, null, null)
-    val json = out.toString()
-    expect(json).toContain(""""mdc.1":"value","mdc.2":"Hello\nWorld",""")
-    JsonMapper().parse<Any>(json)
-    MDC.clear()
+    runBlocking(MDCContext()) {
+      MDC.put("mdc.1", "value")
+      MDC.put("mdc.2", "Hello\nWorld")
+      logger.print(ERROR, null, null)
+      val json = out.toString()
+      expect(json).toContain(""""mdc.1":"value","mdc.2":"Hello\nWorld",""")
+      JsonMapper().parse<Any>(json)
+    }
   }
 }
