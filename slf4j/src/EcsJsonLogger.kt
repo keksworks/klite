@@ -18,21 +18,21 @@ open class EcsJsonLogger(name: String): StackTraceOptimizingJsonLogger(name) {
     private val hostname = InetAddress.getLocalHost().hostName
   }
 
-  override fun formatMessage(level: Level, msg: String?): String {
+  override fun print(level: Level, msg: String?, t: Throwable?) {
     val sb = StringBuilder(123)
     sb.append('{')
     sb.put("@timestamp", Instant.ofEpochMilli(System.currentTimeMillis()).toString())
+    sb.put("trace.id", Thread.currentThread().name) // TODO: split into http.request.id/etc?
     sb.put("log.level", levels[level])
     sb.put("log.logger", name)
     sb.put("message", msg)
-    sb.put("trace.id", Thread.currentThread().name) // TODO: split into http.request.id/etc?
     sb.put("service.name", serviceName)
     sb.put("service.version", serviceVersion)
     sb.put("host.hostname", hostname, isLast = true)
     MDC.getCopyOfContextMap()?.forEach { (key, value) -> sb.put(key, value) }
 //    appendJson(sb, t)
     sb.append('}')
-    return sb.toString()
+    out.println(sb)
   }
 
   private fun StringBuilder.put(key: String, value: Any?, isLast: Boolean = false) {
@@ -43,9 +43,5 @@ open class EcsJsonLogger(name: String): StackTraceOptimizingJsonLogger(name) {
     append(value.toString().replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\""))
     append('"')
     if (!isLast) append(',')
-  }
-
-  override fun print(formatted: String, t: Throwable?) {
-    out.println(formatted)
   }
 }

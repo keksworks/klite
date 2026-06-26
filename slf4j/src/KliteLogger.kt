@@ -60,12 +60,8 @@ open class KliteLogger(name: String): MarkerIgnoringBase() {
   open fun formatMessage(level: Level, msg: String?) =
     "${currentTimeMillis() - start} [${currentThread().name}] $level $shortName - ${msg ?: ""}"
 
-  private fun log(level: Level, msg: String?, t: Throwable? = null) {
-    if (isEnabled(level)) print(formatMessage(level, msg), t)
-  }
-
-  protected open fun print(formatted: String, t: Throwable?): Unit = synchronized(out) {
-    out.println(formatted)
+  protected open fun print(level: Level, msg: String?, t: Throwable?): Unit = synchronized(out) {
+    out.println(formatMessage(level, msg))
     t?.printStackTrace(out)
   }
 
@@ -77,5 +73,9 @@ open class KliteLogger(name: String): MarkerIgnoringBase() {
   private fun log(level: Level, format: String, arg: Any?) {
     if (!isEnabled(level)) return
     format(format, arg).apply { log(level, msg = message, throwable) }
+  }
+
+  private fun log(level: Level, msg: String?, t: Throwable? = null) {
+    if (isEnabled(level)) print(level, msg, t)
   }
 }

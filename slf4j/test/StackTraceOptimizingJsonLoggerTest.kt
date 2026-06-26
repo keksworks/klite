@@ -11,6 +11,7 @@ import klite.slf4j.KliteLogger
 import klite.slf4j.StackTraceOptimizingJsonLogger
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.slf4j.event.Level.INFO
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.charset.StandardCharsets.UTF_8
@@ -21,8 +22,9 @@ class StackTraceOptimizingJsonLoggerTest {
   @AfterEach fun restore() { KliteLogger.out = System.out }
 
   @Test fun `puts stack trace into json in prod for PaperTrail or LogTail`() {
-    StackTraceOptimizingJsonLogger("MyLogger").print("", failHere())
-    val json = out.toString(UTF_8)
+    StackTraceOptimizingJsonLogger("MyLogger").print(INFO, "", failHere())
+    var json = out.toString(UTF_8)
+    json = json.substring(json.indexOf("{"))
     expect(json).toStartWith("""{"error":"java.lang.Exception: Hello\n\"World\"","stack":[".failHere(""")
       .toContain(javaClass.name)
       .toContain(""","cause":{"error":"java.lang.IllegalStateException: cause","stack":["""")
@@ -34,8 +36,9 @@ class StackTraceOptimizingJsonLoggerTest {
     val noStackException = object: Exception() {
       override fun fillInStackTrace(): Throwable = this
     }
-    StackTraceOptimizingJsonLogger("MyLogger").print("", noStackException)
-    val json = out.toString(UTF_8)
+    StackTraceOptimizingJsonLogger("MyLogger").print(INFO, "", noStackException)
+    var json = out.toString(UTF_8)
+    json = json.substring(json.indexOf("{"))
     expect(json).toEqual("""{"error":"${noStackException::class.java.name}","stack":[]}""" + "\n")
     JsonMapper().parse<Any>(json)
   }
