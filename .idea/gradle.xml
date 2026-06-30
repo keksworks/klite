@@ -20,12 +20,12 @@
             <option value="$PROJECT_DIR$/liquibase" />
             <option value="$PROJECT_DIR$/oauth" />
             <option value="$PROJECT_DIR$/openapi" />
+            <option value="$PROJECT_DIR$/push" />
             <option value="$PROJECT_DIR$/sample" />
             <option value="$PROJECT_DIR$/serialization" />
             <option value="$PROJECT_DIR$/server" />
             <option value="$PROJECT_DIR$/slf4j" />
             <option value="$PROJECT_DIR$/smtp" />
-            <option value="$PROJECT_DIR$/webpush" />
             <option value="$PROJECT_DIR$/xml" />
           </set>
         </option>

@@ -1,4 +1,4 @@
-package klite.webpush
+package klite.push
 
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
@@ -25,14 +25,16 @@ class WebPushClientTest {
   }
 
   @Test fun `creates valid VAPID JWT`() {
-    val jwt = client.createVapidJwt(URI.create("https://example.com/push"))
-    val parts = jwt.split(".")
-    expect(parts.size).toEqual(3)
+    val jwt = client.createVapidJwt(URI.create("https://example.com/push")).toString()
+    val dot1 = jwt.indexOf('.')
+    val dot2 = jwt.indexOf('.', dot1 + 1)
+    val headerB64 = jwt.substring(0, dot1)
+    val payloadB64 = jwt.substring(dot1 + 1, dot2)
 
-    val header = String(Base64.getUrlDecoder().decode(parts[0]))
+    val header = String(Base64.getUrlDecoder().decode(headerB64))
     expect(header).toEqual("""{"alg":"ES256","typ":"JWT"}""")
 
-    val payload = String(Base64.getUrlDecoder().decode(parts[1]))
+    val payload = String(Base64.getUrlDecoder().decode(payloadB64))
     expect(payload.contains("\"aud\":\"https://example.com\"")).toEqual(true)
     expect(payload.contains("\"sub\":\"mailto:push@klite.dev\"")).toEqual(true)
     expect(payload.contains("\"exp\":")).toEqual(true)

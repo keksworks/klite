@@ -47,7 +47,7 @@ include(
   "jobs",
   "jdbc-test",
   "oauth",
-  "webpush",
+  "push",
   "smtp",
   "liquibase",
   "slf4j",

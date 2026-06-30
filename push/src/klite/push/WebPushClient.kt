@@ -1,4 +1,4 @@
-package klite.webpush
+package klite.push
 
 import klite.Config
 import klite.base64UrlDecode
