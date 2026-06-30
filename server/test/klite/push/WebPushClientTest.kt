@@ -2,6 +2,7 @@ package klite.push
 
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
+import klite.push.WebPushClient.Companion.RS_BYTES
 import org.junit.jupiter.api.Test
 import java.net.URI
 import java.security.KeyPairGenerator
@@ -45,7 +46,7 @@ class WebPushClientTest {
     val y = subPub.w.affineY.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
     val p256dh = Base64.getUrlEncoder().withoutPadding().encodeToString(byteArrayOf(0x04) + x + y)
     val auth = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(16) { it.toByte() })
-    val sub = PushSubscription("https://example.com/push", SubscriptionKeys(p256dh, auth))
+    val sub = PushSubscription(URI("https://example.com/push"), SubscriptionKeys(p256dh, auth))
     val plaintext = "Hello, World!".toByteArray()
     val encrypted = client.encrypt(plaintext, sub.keys)
     // salt(16) + rs(4) + delimiter(1) + pubKey(65) + ciphertext(plaintext.size) + tag(16)
@@ -55,14 +56,7 @@ class WebPushClientTest {
 
   @Test fun `nonce is salt xor record size in 12-byte big-endian`() {
     val salt = ByteArray(16) { it.toByte() }
-    val rs = 4096
-    // rs as 12-byte big-endian: [0,0,0,0,0,0,0,0, 0,0,16,0]
-    val rsBytes = ByteArray(12)
-    rsBytes[8] = ((rs shr 24) and 0xff).toByte()
-    rsBytes[9] = ((rs shr 16) and 0xff).toByte()
-    rsBytes[10] = ((rs shr 8) and 0xff).toByte()
-    rsBytes[11] = (rs and 0xff).toByte()
-    val nonce = ByteArray(12) { i -> (salt[i].toInt() xor rsBytes[i].toInt()).toByte() }
+    val nonce = ByteArray(12) { i -> (salt[i].toInt() xor RS_BYTES[i].toInt()).toByte() }
     expect(nonce.size).toEqual(12)
     expect(nonce[10].toInt()).toEqual(0x10 xor 10)
     expect(nonce[11].toInt()).toEqual(0x00 xor 11)

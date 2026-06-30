@@ -68,6 +68,9 @@ class WebPushClient(
       dummyKpg.initialize(ECGenParameterSpec("secp256r1"))
       (dummyKpg.generateKeyPair().public as ECPublicKey).params
     }
+
+    /** 4096 as 12-byte big-endian */
+    internal val RS_BYTES = ByteArray(12).also { it[10] = 16 }
   }
 
   suspend fun send(subscription: PushSubscription, payload: ByteArray?, ttl: Int = this.ttl): HttpResponse<String> {
@@ -108,22 +111,12 @@ class WebPushClient(
     var key = hkdfExpand(prk, "Content-Encoding: auth\u0000".toByteArray(), 32)
     key = hkdfExtract(salt, key)
     key = hkdfExpand(key, "Content-Encoding: aes128gcm\u0000".toByteArray(), 16)
-    val rs = 4096
-    val rsBytes = ByteArray(12)
-    rsBytes[8] = ((rs shr 24) and 0xff).toByte()
-    rsBytes[9] = ((rs shr 16) and 0xff).toByte()
-    rsBytes[10] = ((rs shr 8) and 0xff).toByte()
-    rsBytes[11] = (rs and 0xff).toByte()
-    val nonce = ByteArray(12) { i -> (salt[i].toInt() xor rsBytes[i].toInt()).toByte() }
+    val nonce = ByteArray(12) { i -> (salt[i].toInt() xor RS_BYTES[i].toInt()).toByte() }
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
     cipher.updateAAD(byteArrayOf(0x02))
     val encrypted = cipher.doFinal(plaintext)
-    val keyId = salt + byteArrayOf(
-      ((rs shr 24) and 0xff).toByte(), ((rs shr 16) and 0xff).toByte(),
-      ((rs shr 8) and 0xff).toByte(), (rs and 0xff).toByte(), 0x02
-    ) + browserPubRaw
-    return keyId + encrypted
+    return salt + RS_BYTES.copyOfRange(8, 12) + 0x02.toByte() + browserPubRaw + encrypted
   }
 
   private fun decodeEcPublicKey(encoded: ByteArray): ECPublicKey {
@@ -180,20 +173,18 @@ class WebPushClient(
     var idx = 0
     idx++ // SEQUENCE tag
     idx++ // length byte
-    if (der[idx - 1].toInt().and(0x80) != 0) {
-      val lenBytes = der[idx - 1].toInt().and(0x7f)
-      idx += lenBytes
-    }
-    idx++ // INTEGER tag for r
+    if (der[idx - 1].toInt().and(0x80) != 0) idx += der[idx - 1].toInt().and(0x7f)
+    val (r, afterR) = readDerInteger(der, idx)
+    val (s, _) = readDerInteger(der, afterR)
+    return r.paddedTo(32) + s.paddedTo(32)
+  }
+
+  private fun readDerInteger(der: ByteArray, start: Int): Pair<ByteArray, Int> {
+    var idx = start + 1 // skip INTEGER tag
     var len = der[idx].toInt().and(0xff); idx++
     if (len == 0) { len = der[idx].toInt().and(0xff) or (der[idx + 1].toInt().and(0xff) shl 8); idx += 2 }
-    var r = der.copyOfRange(idx, idx + len); idx += len
-    if (r[0].toInt() == 0) r = r.copyOfRange(1, r.size)
-    idx++ // INTEGER tag for s
-    len = der[idx].toInt().and(0xff); idx++
-    if (len == 0) { len = der[idx].toInt().and(0xff) or (der[idx + 1].toInt().and(0xff) shl 8); idx += 2 }
-    var s = der.copyOfRange(idx, idx + len)
-    if (s[0].toInt() == 0) s = s.copyOfRange(1, s.size)
-    return r.paddedTo(32) + s.paddedTo(32)
+    var value = der.copyOfRange(idx, idx + len)
+    if (value[0].toInt() == 0) value = value.copyOfRange(1, value.size)
+    return value to idx + len
   }
 }
