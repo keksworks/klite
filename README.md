@@ -70,6 +70,7 @@ fun main() {
 * [oauth](oauth) - implements OAuth 2.0 login with several providers
 * [smtp](smtp) - for sending email over SMTP
 * [openapi](openapi) - generates OpenAPI 3.0 spec for all routes in a context, viewable with [Swagger UI](https://swagger.io/tools/swagger-ui/)
+* [webpush](webpush) - implements Web Push notifications (VAPID) for sending push notifications to browsers
 
 ### Integrations
 

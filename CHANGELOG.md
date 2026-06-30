@@ -2,12 +2,12 @@
 * i18n: Lang.jsonMapper is no longer public to avoid mistakes of using it for other purposes. Create your own JsonMapper if you need it
 * jdbc: optional dependency to json module added and functions jsonb() and getJson() are now provided
 * jdbc: introduce @JsonColumn annotation for entity properties to avoid redefining of mappers/persisters just for that
-* oauth: implement JWT HMAC/RSA signature verification
+* oauth: implement JWT HMAC/RSA/ES signature verification
 * oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
 * server: ErrorResponse is now RFC 7807 compatible (some fields renamed)
 * slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging
 * slf4j: MDC is now supported with `use<RequestMDCContext>()`
-* server: WebPushClient introduced for sending push notifications to browsers
+* webpush: a new module with WebPushClient introduced for sending push notifications to browsers
 
 # 1.9.0
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID

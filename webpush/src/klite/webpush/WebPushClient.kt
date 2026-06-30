@@ -1,10 +1,11 @@
-package klite.push
+package klite.webpush
 
 import klite.Config
 import klite.base64UrlDecode
 import klite.base64UrlEncode
-import klite.html.escapeJs
 import klite.http.httpClient
+import klite.oauth.JWT
+import klite.oauth.JWT.Header
 import kotlinx.coroutines.future.await
 import java.math.BigInteger
 import java.net.URI
@@ -14,7 +15,6 @@ import java.net.http.HttpRequest.BodyPublishers
 import java.net.http.HttpResponse
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
-import java.security.Signature
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
@@ -33,16 +33,10 @@ data class PushSubscription(val endpoint: URI, val keys: SubscriptionKeys)
 data class SubscriptionKeys(val p256dh: String, val auth: String)
 data class VapidKeyPair(val publicKey: String, val privateKey: ECPrivateKey)
 
-private fun ByteArray.paddedTo(targetLen: Int): ByteArray {
-  return when {
-    size == targetLen -> this
-    size > targetLen -> copyOfRange(size - targetLen, size)
-    else -> {
-      val result = ByteArray(targetLen)
-      System.arraycopy(this, 0, result, targetLen - size, size)
-      result
-    }
-  }
+private fun ByteArray.padTo(n: Int) = when {
+  size == n -> this
+  size > n -> copyOfRange(size - n, size)
+  else -> ByteArray(n - size) + this
 }
 
 class WebPushClient(
@@ -57,8 +51,8 @@ class WebPushClient(
       kpg.initialize(ECGenParameterSpec("secp256r1"))
       val kp = kpg.generateKeyPair()
       val pub = kp.public as ECPublicKey
-      val x = pub.w.affineX.toByteArray().paddedTo(32)
-      val y = pub.w.affineY.toByteArray().paddedTo(32)
+      val x = pub.w.affineX.toByteArray().padTo(32)
+      val y = pub.w.affineY.toByteArray().padTo(32)
       val uncompressed = byteArrayOf(0x04) + x + y
       return VapidKeyPair(uncompressed.base64UrlEncode(), kp.private as ECPrivateKey)
     }
@@ -89,15 +83,16 @@ class WebPushClient(
     return http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).await()
   }
 
-  internal fun createVapidJwt(endpoint: URI): String {
-    val header = """{"alg":"ES256","typ":"JWT"}"""
+  internal fun createVapidJwt(endpoint: URI): JWT {
     val now = Instant.now().epochSecond
-    val claims = """{"aud":"${endpoint.scheme}://${endpoint.host}","exp":${now + 43200},"sub":"${jwtSub.escapeJs()}"}"""
-    val headerB64 = header.toByteArray().base64UrlEncode()
-    val claimsB64 = claims.toByteArray().base64UrlEncode()
-    val signedPart = "$headerB64.$claimsB64"
-    val sigBytes = es256Sign(signedPart.toByteArray(), vapidKeyPair.privateKey)
-    return "$signedPart.${sigBytes.base64UrlEncode()}"
+    val header = Header(mapOf("alg" to "ES256", "typ" to "JWT"))
+    val claims: Map<String, Any?> = mapOf(
+      "aud" to "${endpoint.scheme}://${endpoint.host}",
+      "exp" to now + 43200,
+      "sub" to jwtSub
+    )
+    val jwt = JWT(header, JWT.Payload(claims))
+    return jwt.sign(vapidKeyPair.privateKey)
   }
 
   internal fun encrypt(plaintext: ByteArray, keys: SubscriptionKeys): ByteArray {
@@ -159,32 +154,5 @@ class WebPushClient(
       counter++
     }
     return result
-  }
-
-  private fun es256Sign(data: ByteArray, priv: ECPrivateKey): ByteArray {
-    val sig = Signature.getInstance("SHA256withECDSA")
-    sig.initSign(priv)
-    sig.update(data)
-    val der = sig.sign()
-    return derToP1363(der)
-  }
-
-  private fun derToP1363(der: ByteArray): ByteArray {
-    var idx = 0
-    idx++ // SEQUENCE tag
-    idx++ // length byte
-    if (der[idx - 1].toInt().and(0x80) != 0) idx += der[idx - 1].toInt().and(0x7f)
-    val (r, afterR) = readDerInteger(der, idx)
-    val (s, _) = readDerInteger(der, afterR)
-    return r.paddedTo(32) + s.paddedTo(32)
-  }
-
-  private fun readDerInteger(der: ByteArray, start: Int): Pair<ByteArray, Int> {
-    var idx = start + 1 // skip INTEGER tag
-    var len = der[idx].toInt().and(0xff); idx++
-    if (len == 0) { len = der[idx].toInt().and(0xff) or (der[idx + 1].toInt().and(0xff) shl 8); idx += 2 }
-    var value = der.copyOfRange(idx, idx + len)
-    if (value[0].toInt() == 0) value = value.copyOfRange(1, value.size)
-    return value to idx + len
   }
 }

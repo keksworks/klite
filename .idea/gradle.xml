@@ -25,6 +25,7 @@
             <option value="$PROJECT_DIR$/server" />
             <option value="$PROJECT_DIR$/slf4j" />
             <option value="$PROJECT_DIR$/smtp" />
+            <option value="$PROJECT_DIR$/webpush" />
             <option value="$PROJECT_DIR$/xml" />
           </set>
         </option>

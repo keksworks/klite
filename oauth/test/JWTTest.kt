@@ -49,4 +49,19 @@ class JWTTest {
     val signed = jwt.sign(kp1.private)
     assertThrows<IllegalArgumentException> { signed.verify(kp2.public) }
   }
+
+  @Test fun `sign and verify with ES256`() {
+    val kp = KeyPairGenerator.getInstance("EC").apply { initialize(java.security.spec.ECGenParameterSpec("secp256r1")) }.generateKeyPair()
+    val jwt = JWT(Header(mapOf("alg" to "ES256", "typ" to "JWT")), jwt.payload)
+    val signed = jwt.sign(kp.private)
+    signed.verify(kp.public)
+  }
+
+  @Test fun `verify with wrong EC public key`() {
+    val kp1 = KeyPairGenerator.getInstance("EC").apply { initialize(java.security.spec.ECGenParameterSpec("secp256r1")) }.generateKeyPair()
+    val kp2 = KeyPairGenerator.getInstance("EC").apply { initialize(java.security.spec.ECGenParameterSpec("secp256r1")) }.generateKeyPair()
+    val jwt = JWT(Header(mapOf("alg" to "ES256", "typ" to "JWT")), jwt.payload)
+    val signed = jwt.sign(kp1.private)
+    assertThrows<IllegalArgumentException> { signed.verify(kp2.public) }
+  }
 }
