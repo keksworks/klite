@@ -1,7 +1,9 @@
 package klite.push
 
+import klite.Config
 import klite.base64UrlDecode
 import klite.base64UrlEncode
+import klite.html.escapeJs
 import klite.http.httpClient
 import kotlinx.coroutines.future.await
 import java.math.BigInteger
@@ -27,7 +29,7 @@ import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-data class PushSubscription(val endpoint: String, val keys: SubscriptionKeys)
+data class PushSubscription(val endpoint: URI, val keys: SubscriptionKeys)
 data class SubscriptionKeys(val p256dh: String, val auth: String)
 data class VapidKeyPair(val publicKey: String, val privateKey: ECPrivateKey)
 
@@ -47,6 +49,7 @@ class WebPushClient(
   private val vapidKeyPair: VapidKeyPair,
   private val http: HttpClient = httpClient(),
   private val ttl: Int = 86400,
+  private val jwtSub: String = Config.optional("WEB_PUSH_SUB", "mailto:push@klite.dev"),
 ) {
   companion object {
     fun generateKeyPair(): VapidKeyPair {
@@ -69,11 +72,10 @@ class WebPushClient(
 
   suspend fun send(subscription: PushSubscription, payload: ByteArray?, ttl: Int = this.ttl): HttpResponse<String> {
     val encrypted = if (payload != null) encrypt(payload, subscription.keys) else null
-    val jwt = createVapidJwt(URI.create(subscription.endpoint))
+    val jwt = createVapidJwt(subscription.endpoint)
     val key = vapidKeyPair.publicKey
     val req = HttpRequest.newBuilder()
-      .uri(URI(subscription.endpoint))
-      .timeout(java.time.Duration.ofSeconds(10))
+      .uri(subscription.endpoint)
       .header("Content-Type", "webpush; enc=aes128gcm")
       .header("Content-Encoding", "aes128gcm")
       .header("TTL", ttl.toString())
@@ -87,7 +89,7 @@ class WebPushClient(
   internal fun createVapidJwt(endpoint: URI): String {
     val header = """{"alg":"ES256","typ":"JWT"}"""
     val now = Instant.now().epochSecond
-    val claims = """{"aud":"${endpoint.scheme}://${endpoint.host}","exp":${now + 43200},"sub":"mailto:push@klite.dev"}"""
+    val claims = """{"aud":"${endpoint.scheme}://${endpoint.host}","exp":${now + 43200},"sub":"${jwtSub.escapeJs()}"}"""
     val headerB64 = header.toByteArray().base64UrlEncode()
     val claimsB64 = claims.toByteArray().base64UrlEncode()
     val signedPart = "$headerB64.$claimsB64"
