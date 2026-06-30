@@ -13,6 +13,8 @@ class ForbiddenException(content: String? = null, cause: Throwable? = null): Sta
 class UnauthorizedException(content: String? = null, cause: Throwable? = null): StatusCodeException(StatusCode.Unauthorized, content, cause)
 class UnsupportedMediaTypeException(contentType: String?): StatusCodeException(StatusCode.UnsupportedMediaType, "Unsupported Content-Type: $contentType")
 class NotAcceptableException(contentType: String?): StatusCodeException(StatusCode.NotAcceptable, "Unsupported Accept: $contentType")
-class RedirectException(val location: String, statusCode: StatusCode = StatusCode.Found): StatusCodeException(statusCode)
+class RedirectException(location: String, statusCode: StatusCode = StatusCode.Found): StatusCodeException(statusCode, location) {
+  val location get() = message!!
+}
 
 class BodyNotAllowedException: NoStackTraceException()

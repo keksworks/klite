@@ -44,5 +44,6 @@ package klite
 
   val reason get() = reasons[this]
   val bodyAllowed get() = this != NoContent && this != NotModified
+  val isError get() = value >= BadRequest.value
   override fun toString() = value.toString()
 }

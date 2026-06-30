@@ -5,6 +5,7 @@
 * oauth: implement JWT HMAC/RSA/ES signature verification
 * oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
 * server: ErrorResponse is now RFC 7807 compatible (some fields renamed)
+* server: RequestLogger uses ERROR level for failed requests for easier alert triggering
 * slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging
 * slf4j: MDC is now supported with `use<RequestMDCContext>()`
 * webpush: a new module with WebPushClient introduced for sending push notifications to browsers
