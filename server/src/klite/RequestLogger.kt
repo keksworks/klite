@@ -6,7 +6,7 @@ import java.lang.System.Logger.Level.INFO
 typealias RequestLogFormatter = HttpExchange.(ms: Long) -> String?
 val defaultRequestLogFormatter: RequestLogFormatter = { ms ->
   "$remoteAddress $method $path$query: $statusCode in $ms ms - $browser" +
-    (if (failure.isError) " - $failure" else "")
+    (if (failure.isError) " - $failure" else if (failure is RedirectException) " - ${failure?.message}" else "")
 }
 
 private val Throwable?.isError get() =
