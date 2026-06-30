@@ -6,11 +6,8 @@ import java.lang.System.Logger.Level.INFO
 typealias RequestLogFormatter = HttpExchange.(ms: Long) -> String?
 val defaultRequestLogFormatter: RequestLogFormatter = { ms ->
   "$remoteAddress $method $path$query: $statusCode in $ms ms - $browser" +
-    (if (failure.isError) " - $failure" else if (failure is RedirectException) " - ${failure?.message}" else "")
+    (failure?.let { if (it is StatusCodeException && it.message != null) " - ${it.message}" else "- $it" } ?: "")
 }
-
-private val Throwable?.isError get() =
-  this != null && (this !is StatusCodeException || this.statusCode.isError && this !is NotFoundException)
 
 open class RequestLogger(
   val formatter: RequestLogFormatter = defaultRequestLogFormatter
@@ -21,8 +18,10 @@ open class RequestLogger(
     val start = System.nanoTime()
     exchange.onComplete {
       val ms = (System.nanoTime() - start) / 1000_000
-      formatter(exchange, ms)?.let { log.log(if (exchange.failure.isError) ERROR else INFO, it) }
+      formatter(exchange, ms)?.let { log.log(logLevel(exchange.failure), it) }
     }
     return handler(exchange)
   }
+
+  open fun logLevel(e: Throwable?) = if (e != null && (e !is StatusCodeException || e.statusCode.isError)) ERROR else INFO
 }
