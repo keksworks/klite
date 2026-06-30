@@ -4,11 +4,11 @@
 * jdbc: introduce @JsonColumn annotation for entity properties to avoid redefining of mappers/persisters just for that
 * oauth: implement JWT HMAC/RSA/ES signature verification
 * oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
+* push: a new module with WebPushClient introduced for sending push notifications to browsers
 * server: ErrorResponse is now RFC 7807 compatible (some fields renamed)
 * server: RequestLogger uses ERROR level for failed requests for easier alert triggering
 * slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging
 * slf4j: MDC is now supported with `use<RequestMDCContext>()`
-* webpush: a new module with WebPushClient introduced for sending push notifications to browsers
 
 # 1.9.0
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID
