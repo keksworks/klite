@@ -10,6 +10,10 @@
 * slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging
 * slf4j: MDC is now supported with `use<RequestMDCContext>()`
 
+# TODO
+* remove KeyCipher compatibility with ECB mode
+* introduce openai api module with OpenAIClient for calling OpenAI-compatible API
+
 # 1.9.0
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID
 * server: metrics() now exposes RSS memory usage of the whole JVM process on Linux

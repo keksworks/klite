@@ -1,12 +1,12 @@
 package klite
 
-import java.lang.System.Logger.Level.ERROR
-import java.lang.System.Logger.Level.INFO
+import java.lang.System.Logger.Level
+import java.lang.System.Logger.Level.*
 
 typealias RequestLogFormatter = HttpExchange.(ms: Long) -> String?
 val defaultRequestLogFormatter: RequestLogFormatter = { ms ->
   "$remoteAddress $method $path$query: $statusCode in $ms ms - $browser" +
-    (failure?.let { if (it is StatusCodeException && it.message != null) " - ${it.message}" else "- $it" } ?: "")
+    (failure?.let { e -> if (e is StatusCodeException) e.message?.let { m -> " - $m" } else " - $e" } ?: "")
 }
 
 open class RequestLogger(
@@ -23,5 +23,8 @@ open class RequestLogger(
     return handler(exchange)
   }
 
-  open fun logLevel(e: Throwable?) = if (e != null && (e !is StatusCodeException || e.statusCode.isError)) ERROR else INFO
+  open fun logLevel(e: Throwable?): Level = if (e == null) INFO
+    else if (e is NotFoundException || e is UnauthorizedException) WARNING
+    else if (e !is StatusCodeException || e.statusCode.isError) ERROR
+    else INFO
 }
