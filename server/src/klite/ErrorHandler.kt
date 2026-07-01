@@ -84,5 +84,6 @@ data class ErrorResponse(
   val type: URI? = null,
   val instance: String? = null
 ) {
+  @Deprecated("Backwards-compatibility", replaceWith = ReplaceWith("detail")) val message get() = detail
   override fun toString() = "$status $title\n${detail ?: ""}"
 }
