@@ -18,9 +18,7 @@ import kotlin.reflect.full.isSubclassOf
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
-private data class XmlPathMeta(val path: String, val property: KProperty1<*, *>? = null) {
-  val isCollection = (property?.returnType?.classifier as? KClass<*>)?.isSubclassOf(Collection::class) == true
-}
+private data class PropInfo(val path: String, val prop: KProperty1<*, *>, val isCollection: Boolean, val elemType: KClass<*>?)
 
 @Suppress("UNCHECKED_CAST")
 class XMLParser(
@@ -46,8 +44,11 @@ class XMLParser(
         path = "/${paths.joinToString("/")}"
         text.setLength(0)
         val current = mutableMapOf<String, Any>()
+        val attrs = mutableMapOf<String, String>()
         for (i in 0 until attributes.length) {
-          current["@${attributes.getLocalName(i) ?: attributes.getQName(i)}"] = attributes.getValue(i)
+          val attrName = "@${attributes.getLocalName(i) ?: attributes.getQName(i)}"
+          attrs[attrName] = attributes.getValue(i)
+          current[attrName] = attributes.getValue(i)
         }
         stack.add(current)
       }
@@ -82,88 +83,64 @@ class XMLParser(
   }
 
   fun <T : Any> parse(xml: InputStream, type: KClass<T>): T {
-    val nodes = parseNodes(xml)
-    val metaMap = type.readXmlAnnotationsMeta()
-    return nodeToObject(nodes, type, metaMap)
-  }
+    val props = type.readProps()
+    val values = mutableMapOf<String, Any>()
+    val collectedItems = mutableMapOf<String, MutableList<Any>>()
+    val complexProps = props.filter { v -> v.value.isCollection && v.value.elemType != null && !Converter.supports(v.value.elemType!!) }
 
-  private fun navigatePath(nodes: XmlNode, path: String): Any? {
-    // Try direct lookup first (handles attribute paths like "id/@schemeAgencyId" → "id@schemeAgencyId")
-    val flattened = path.replace("/@", "@")
-    nodes[flattened]?.let { return it }
+    parseSax(xml, onEnd = { current, parent, path, text ->
+      if (text.isNotEmpty()) current[""] = text
 
-    // Try path-based navigation
-    val parts = path.split("/").filter { it.isNotEmpty() }
-    var current: Any = nodes
-    for (part in parts) {
-      if (part.startsWith("@")) {
-        val attrName = part.substring(1)
-        val map = current as? Map<*, *> ?: return null
-        current = map.entries.firstOrNull { it.key.toString().endsWith("@$attrName") }?.value ?: return null
-      } else {
-        current = (current as? Map<*, *>)?.get(part) ?: return null
-      }
-    }
-    return current
-  }
-
-  // For relative paths, search recursively in nested maps
-  private fun findValue(nodes: XmlNode, path: String): Any? {
-    navigatePath(nodes, path)?.let { return it }
-    // Search in nested maps for relative paths
-    if (!path.startsWith("/")) {
-      for ((_, v) in nodes) {
-        if (v is Map<*, *>) {
-          @Suppress("UNCHECKED_CAST")
-          findValue(v as XmlNode, path)?.let { return it }
+      // Complex collection: create typed object from accumulated children
+      for ((collPath, info) in complexProps) {
+        if (path.endsWith("/$collPath") || path == "/$collPath") {
+          val elemValues = mutableMapOf<String, Any>()
+          current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
+          if (text.isNotEmpty()) elemValues[""] = text
+          collectedItems.getOrPut(info.path) { mutableListOf() }.add(
+            buildObject(elemValues, info.elemType!!, info.elemType.readProps()))
+          if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
+          return@parseSax
         }
       }
-    }
-    return null
-  }
 
-  private fun <T: Any> nodeToObject(nodes: XmlNode, type: KClass<T>, metaMap: Map<String, XmlPathMeta>): T {
-    val constructorArgs = mutableMapOf<String, Any?>()
-
-    for ((_, meta) in metaMap) {
-      val prop = meta.property ?: continue
-      if (meta.isCollection) {
-        val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*>
-        val rawList = findValue(nodes, meta.path)
-        if (rawList is List<*>) {
-          if (listType != null && Converter.supports(listType)) {
-            constructorArgs[prop.name] = rawList.map { Converter.from(it.toString(), listType) }
-          } else if (listType != null) {
-            constructorArgs[prop.name] = rawList.map { item ->
-              when (item) {
-                is Map<*, *> -> nodeToObject(item as XmlNode, listType, listType.readXmlAnnotationsMeta())
-                else -> Converter.from(item.toString(), listType)
-              }
-            }
-          } else {
-            constructorArgs[prop.name] = rawList
-          }
-        } else if (rawList != null) {
-          // Single element wrapped in list
-          val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*>
-          if (listType != null && Converter.supports(listType)) {
-            constructorArgs[prop.name] = listOf(Converter.from(rawList.toString(), listType))
-          } else if (listType != null) {
-            constructorArgs[prop.name] = when (rawList) {
-              is Map<*, *> -> listOf(nodeToObject(rawList as XmlNode, listType, listType.readXmlAnnotationsMeta()))
-              else -> listOf(Converter.from(rawList.toString(), listType))
-            }
-          } else {
-            constructorArgs[prop.name] = listOf(rawList)
-          }
+      // Simple collection: accumulate text values
+      for ((propPath, info) in props) {
+        if (info.isCollection && matchPath(path, propPath) && text.isNotEmpty()) {
+          (values.getOrPut(propPath) { mutableListOf<String>() } as MutableCollection<String>).add(text)
+          return@parseSax
         }
-      } else {
-        val value = findValue(nodes, meta.path)
-        if (value != null) constructorArgs[prop.name] = Converter.from(value.toString(), prop.returnType)
       }
-    }
 
-    return type.createFrom(constructorArgs)
+      // Simple property: extract text or attribute value
+      for ((propPath, info) in props) {
+        if (info.isCollection) continue
+        if (propPath.contains("/@")) {
+          val (elemName, attrKey) = propPath.split("/@", limit = 2)
+          if (path.endsWith("/$elemName") && current.containsKey("@$attrKey")) {
+            values[propPath] = current["@$attrKey"]!!
+          }
+        } else if (text.isNotEmpty() && matchPath(path, propPath)) {
+          values[propPath] = text
+        }
+      }
+
+      // Propagate to parent
+      if (parent != null) {
+        val name = path.substringAfterLast("/")
+        val existing = parent[name]
+        if (existing == null) parent[name] = if (text.isNotEmpty() && current.size <= 1) text else current.toMap()
+        else parent[name] = when {
+          existing is MutableList<*> -> (existing as MutableList<Any>).apply { add(current.toMap()) }
+          existing is Map<*, *> && current.size <= 1 && text.isNotEmpty() -> mutableListOf(existing, text)
+          existing is String && text.isNotEmpty() && current.size <= 1 -> mutableListOf(existing, text)
+          else -> existing
+        }
+      }
+    })
+
+    collectedItems.forEach { (path, items) -> values[path] = items }
+    return buildObject(values, type, props)
   }
 
   fun parseNodes(xml: InputStream): XmlNode {
@@ -177,14 +154,11 @@ class XMLParser(
         val textNode = current.remove("")
         if (textNode != null) {
           val existing = parent[name]
-          if (existing == null) {
-            parent[name] = textNode
-          } else {
-            parent[name] = when (existing) {
-              is MutableCollection<*> -> (existing as MutableCollection<Any>).apply { add(textNode) }
-              is String -> mutableListOf(existing, textNode)
-              else -> existing
-            }
+          if (existing == null) parent[name] = textNode
+          else parent[name] = when (existing) {
+            is MutableCollection<*> -> (existing as MutableCollection<Any>).apply { add(textNode) }
+            is String -> mutableListOf(existing, textNode)
+            else -> existing
           }
           current.forEach { (k, v) -> parent["$name$k"] = v }
         } else when (val existing = parent[name]) {
@@ -200,12 +174,35 @@ class XMLParser(
     return root?.toMap() ?: emptyMap()
   }
 
-  private fun KClass<*>.readXmlAnnotationsMeta(): Map<String, XmlPathMeta> = publicProperties.values
-    .associate { prop ->
-      val ann = prop.findAnnotation<XmlPath>()
-      val path = ann?.path ?: prop.name
-      path to XmlPathMeta(path, prop)
+  private fun KClass<*>.readProps(): Map<String, PropInfo> = publicProperties.values
+    .mapNotNull { prop ->
+      val path = prop.findAnnotation<XmlPath>()?.path ?: prop.name
+      val propType = prop.returnType.classifier as? KClass<*> ?: return@mapNotNull null
+      val isCol = propType.isSubclassOf(Collection::class)
+      val elemType = if (isCol) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
+      path to PropInfo(path, prop, isCol, elemType)
+    }.toMap()
+
+  private fun matchPath(fullPath: String, path: String): Boolean =
+    fullPath == path || fullPath.endsWith("/$path") || (!path.startsWith("/") && fullPath.endsWith(path))
+
+  private fun <T: Any> buildObject(values: Map<String, Any>, type: KClass<T>, props: Map<String, PropInfo>): T {
+    val constructorArgs = mutableMapOf<String, Any?>()
+    for ((_, info) in props) {
+      val value = values[info.path] ?: continue
+      if (info.isCollection) {
+        val list = if (value is Collection<*>) value.map { it.toString() } else listOf(value.toString())
+        constructorArgs[info.prop.name] = if (info.elemType != null && Converter.supports(info.elemType))
+          list.map { Converter.from(it, info.elemType) } else value
+      } else if (value is Map<*, *>) {
+        val nestedType = info.prop.returnType.classifier as KClass<*>
+        constructorArgs[info.prop.name] = buildObject(value as XmlNode, nestedType, nestedType.readProps())
+      } else {
+        constructorArgs[info.prop.name] = Converter.from(value.toString(), info.prop.returnType)
+      }
     }
+    return type.createFrom(constructorArgs)
+  }
 }
 
 typealias XmlNode = Map<String, Any>
