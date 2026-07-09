@@ -54,7 +54,6 @@ subprojects {
       freeCompilerArgs.addAll(
         "-Xreturn-value-checker=check",
         "-Xcollection-literals",
-        "-Xcontext-parameters",
         "-opt-in=kotlin.ExperimentalStdlibApi",
         "-opt-in=kotlin.time.ExperimentalTime",
       )
