@@ -18,7 +18,9 @@ import kotlin.reflect.full.isSubclassOf
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
-private data class XmlPathMeta(val path: String, val isCollection: Boolean, val property: KProperty1<*, *>?)
+private data class XmlPathMeta(val path: String, val property: KProperty1<*, *>? = null) {
+  val isCollection = (property?.returnType?.classifier as? KClass<*>)?.isSubclassOf(Collection::class) == true
+}
 
 @Suppress("UNCHECKED_CAST")
 class XMLParser(
@@ -224,18 +226,15 @@ class XMLParser(
   }
 
   private fun KClass<*>.readXmlAnnotationsMeta(): Map<String, XmlPathMeta> = publicProperties.values
-    .mapNotNull { prop ->
-      prop.findAnnotation<XmlPath>()?.let { ann ->
-        val isCollection = (prop.returnType.classifier as? KClass<*>)?.isSubclassOf(Collection::class) == true
-        ann.path to XmlPathMeta(ann.path, isCollection, prop)
-      }
-    }.toMap()
+    .mapNotNull { prop -> prop.findAnnotation<XmlPath>()?.let { ann ->
+        ann.path to XmlPathMeta(ann.path, prop)
+    }}.toMap()
 
   private fun Map<String, XmlPathMeta>.findMeta(parentPath: String, name: String): XmlPathMeta {
     val fullPath = "$parentPath/$name"
     return this[fullPath] ?: this[name] ?:
       entries.firstOrNull { (key, _) -> !key.startsWith("/") && fullPath.endsWith(key) }?.value ?:
-      XmlPathMeta(fullPath, false, null)
+      XmlPathMeta(fullPath)
   }
 
   private fun <T: Any> createFromValues(values: Map<String, Any>, type: KClass<T>, metaMap: Map<String, XmlPathMeta>): T {
