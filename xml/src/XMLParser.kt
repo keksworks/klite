@@ -33,12 +33,12 @@ class XMLParser(
   inline fun <reified T: Any> parse(xml: InputStream): T = parse(xml, T::class)
 
   private fun parseSax(xml: InputStream,
-                       onStart: (path: String, attrs: Map<String, String>) -> Unit = { _, _ -> },
-                       onEnd: (path: String, text: String, attrs: Map<String, String>) -> Unit = { _, _, _ -> }) {
+                       onStart: (current: MutableMap<String, Any>, path: String) -> Unit = { _, _ -> },
+                       onEnd: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit = { _, _, _, _ -> }) {
     var path = ""
     val text = StringBuilder()
     val paths = mutableListOf<String>()
-    val attrsList = mutableListOf<MutableMap<String, String>>()
+    val stack = mutableListOf<MutableMap<String, Any>>()
 
     factory.newSAXParser().parse(xml, object : DefaultHandler() {
       override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
@@ -46,12 +46,12 @@ class XMLParser(
         paths.add(name)
         path = "/${paths.joinToString("/")}"
         text.setLength(0)
-        val attrs = mutableMapOf<String, String>()
+        val current = mutableMapOf<String, Any>()
         for (i in 0 until attributes.length) {
-          attrs["@${attributes.getLocalName(i) ?: attributes.getQName(i)}"] = attributes.getValue(i)
+          current["@${attributes.getLocalName(i) ?: attributes.getQName(i)}"] = attributes.getValue(i)
         }
-        attrsList.add(attrs)
-        onStart(path, attrs)
+        stack.add(current)
+        onStart(current, path)
       }
 
       override fun characters(ch: CharArray, start: Int, length: Int) {
@@ -60,8 +60,9 @@ class XMLParser(
 
       override fun endElement(uri: String?, localName: String?, qName: String) {
         val trimmed = text.toString().trim()
-        val attrs = attrsList.removeAt(attrsList.lastIndex)
-        onEnd(path, trimmed, attrs)
+        val current = stack.removeAt(stack.lastIndex)
+        val parent = stack.lastOrNull()
+        onEnd(current, parent, path, trimmed)
         paths.removeAt(paths.lastIndex)
         path = if (paths.isEmpty()) "" else "/${paths.joinToString("/")}"
         text.setLength(0)
@@ -70,9 +71,9 @@ class XMLParser(
   }
 
   fun parse(xml: InputStream, callback: (parentPath: String, name: String, text: String) -> Unit) {
-    parseSax(xml, onEnd = { path, text, attrs ->
+    parseSax(xml, onEnd = { current, _, path, text ->
       if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), text)
-      attrs.forEach { (name, value) -> callback(path, name, value) }
+      current.forEach { (name, value) -> if (value is String) callback(path, name, value) }
     })
   }
 
@@ -112,51 +113,36 @@ class XMLParser(
       if (listType != null && !Converter.supports(listType)) collectionTargets[path] = meta to listType
     }
 
-    // elementStack: tracks accumulated values for each nesting level
-    val stack = mutableListOf(mutableMapOf<String, Any>())
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
 
-    parseSax(xml,
-      onStart = { _, attrs ->
-        stack.add(mutableMapOf())
-        attrs.forEach { (k, v) -> stack.last()[k] = v }
-      },
-      onEnd = { path, text, _ ->
-        val elemValues = stack.removeAt(stack.lastIndex)
-        if (text.isNotEmpty()) elemValues[""] = text
+    parseSax(xml) { current, parent, path, text ->
+      if (text.isNotEmpty()) current[""] = text
 
-        // Check if this element should become a typed object
-        for ((collPath, pair) in collectionTargets) {
-          if (path.endsWith(collPath)) {
-            val (meta, listType) = pair
-            val item = createFromValues(elemValues, listType, listType.readXmlAnnotationsMeta())
-            collectedItems.getOrPut(meta.path) { mutableListOf() }.add(item)
-            // Also add to parent so simple values propagate
-            if (stack.isNotEmpty()) stack.last()[path.substringAfterLast("/")] = elemValues.toMap()
-            return@parseSax
-          }
+      // Check if this element should become a typed object
+      for ((collPath, pair) in collectionTargets) {
+        if (path.endsWith(collPath)) {
+          val (meta, listType) = pair
+          val item = createFromValues(current, listType, listType.readXmlAnnotationsMeta())
+          collectedItems.getOrPut(meta.path) { mutableListOf() }.add(item)
+          if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
+          return@parseSax
         }
+      }
 
-        // Propagate to parent
-        if (stack.isNotEmpty()) {
-          val name = path.substringAfterLast("/")
-          val parent = stack.last()
-          val existing = parent[name]
-          if (existing == null) parent[name] = if (text.isNotEmpty() && elemValues.size <= 1) text else elemValues.toMap()
-          else {
-            val map = elemValues.toMap()
-            parent[name] = when (existing) {
-              is MutableList<*> -> (existing as MutableList<Any>).apply { add(map) }
-              is Map<*, *> -> mutableListOf(existing, map)
-              else -> existing
-            }
+      // Propagate to parent
+      if (parent != null) {
+        val name = path.substringAfterLast("/")
+        val existing = parent[name]
+        if (existing == null) parent[name] = if (text.isNotEmpty() && current.size <= 1) text else current.toMap()
+        else {
+          val map = current.toMap()
+          parent[name] = when (existing) {
+            is MutableList<*> -> (existing as MutableList<Any>).apply { add(map) }
+            is Map<*, *> -> mutableListOf(existing, map)
+            else -> existing
           }
         }
       }
-    )
-
-    for ((path, meta) in metaMap) {
-      if (!meta.isCollection || collectionTargets.containsKey(path)) continue
     }
 
     for ((path, meta) in metaMap) {
@@ -164,7 +150,7 @@ class XMLParser(
       val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*>
       if (listType != null && Converter.supports(listType)) {
         val texts = mutableListOf<String>()
-        parseSax(xml) { elemPath, text, _ ->
+        parseSax(xml) { _, _, elemPath, text ->
           if (text.isNotEmpty() && elemPath.endsWith(path)) texts.add(text)
         }
         result[meta.property.name] = texts.map { Converter.from(it, listType) }
@@ -173,9 +159,7 @@ class XMLParser(
 
     for ((path, meta) in metaMap) {
       if (meta.property == null) continue
-      if (meta.isCollection && !collectionTargets.containsKey(path) && !result.containsKey(meta.property.name)) {
-        continue
-      }
+      if (meta.isCollection && !collectionTargets.containsKey(path) && !result.containsKey(meta.property.name)) continue
       if (!meta.isCollection) continue
       val collected = collectedItems[path]
       if (collected != null) result[meta.property.name] = collected
@@ -185,44 +169,28 @@ class XMLParser(
   }
 
   fun parseNodes(xml: InputStream): XmlNode {
-    data class ElemState(val children: MutableMap<String, Any> = mutableMapOf(),
-                         val text: StringBuilder = StringBuilder(),
-                         val attrs: MutableMap<String, String> = mutableMapOf())
-    val stack = mutableListOf<ElemState>()
+    var root: MutableMap<String, Any>? = null
 
-    parseSax(xml,
-      onStart = { _, attrs -> stack.add(ElemState(attrs = attrs.toMutableMap())) },
-      onEnd = { path, text, _ ->
-        val state = stack.removeAt(stack.lastIndex)
-        if (text.isNotEmpty()) state.text.append(text)
-        val elemText = state.text.toString().trim()
+    parseSax(xml) { current, parent, path, text ->
+      if (text.isNotEmpty()) current[""] = text
 
-        val result = mutableMapOf<String, Any>()
-        if (elemText.isNotEmpty()) result[""] = elemText
-        result.putAll(state.children)
-        result.putAll(state.attrs)
-
-        if (stack.isNotEmpty()) {
-          val name = path.substringAfterLast("/")
-          val parent = stack.last().children
-          val textNode = result.remove("")
-          if (textNode != null) {
-            parent[name] = textNode
-            result.forEach { (k, v) -> parent["$name$k"] = v }
-          } else when (val existing = parent[name]) {
-            null -> parent[name] = result
-            is MutableList<*> -> (existing as MutableList<Any>).add(result)
-            else -> parent[name] = mutableListOf(existing, result)
-          }
-        } else {
-          // Root element
-          val name = path.substringAfterLast("/")
-          stack.add(ElemState(children = mutableMapOf(name to result)))
+      if (parent != null) {
+        val name = path.substringAfterLast("/")
+        val textNode = current.remove("")
+        if (textNode != null) {
+          parent[name] = textNode
+          current.forEach { (k, v) -> parent["$name$k"] = v }
+        } else when (val existing = parent[name]) {
+          null -> parent[name] = current
+          is MutableList<*> -> (existing as MutableList<Any>).add(current)
+          else -> parent[name] = mutableListOf(existing, current)
         }
+      } else {
+        root = mutableMapOf(path.substringAfterLast("/") to current)
       }
-    )
+    }
 
-    return if (stack.isNotEmpty()) stack.first().children.toMap() else emptyMap()
+    return root?.toMap() ?: emptyMap()
   }
 
   private fun KClass<*>.readXmlAnnotationsMeta(): Map<String, XmlPathMeta> = publicProperties.values
@@ -242,7 +210,7 @@ class XMLParser(
     for ((_, meta) in metaMap) {
       val prop = meta.property ?: continue
       val value = values[meta.path]
-      if (meta.isCollection && value is List<*>) {
+      if (meta.isCollection && value is Collection<*>) {
         val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*>
         constructorArgs[prop.name] = if (listType != null && Converter.supports(listType))
           value.map { Converter.from(it.toString(), listType) } else value
