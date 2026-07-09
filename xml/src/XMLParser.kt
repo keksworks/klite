@@ -42,7 +42,6 @@ class XMLParser(
     val handler = object : DefaultHandler() {
       override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
         val elementName = localName ?: qName
-        val parentPath = currentPath
         currentPath += "/$elementName"
         currentText.setLength(0)
 
@@ -85,9 +84,14 @@ class XMLParser(
 
     if (hasComplexCollections) return parseWithNodes(xml, type, metaMap)
 
+    // Pre-compute relative path lookups for O(1) access
+    val relativePaths = metaMap.entries
+      .filter { (key, _) -> !key.startsWith("/") }
+      .associate { (key, meta) -> key to meta }
+
     val values = mutableMapOf<String, Any>()
     parse(xml) { parentPath, name, text ->
-      val meta = metaMap.find(parentPath, name)
+      val meta = metaMap.find(parentPath, name, relativePaths)
       if (meta.isCollection) {
         (values.getOrPut(meta.path) { mutableListOf<String>() } as MutableList<String>).add(text)
       } else {
@@ -108,6 +112,7 @@ class XMLParser(
       if (!meta.isCollection) continue
 
       val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*> ?: continue
+      val listMetaMap = listType.readXmlAnnotationsMeta()
       val pathParts = meta.path.split("/").filter { it.isNotEmpty() }
 
       // Navigate the node tree to find the collection
@@ -120,10 +125,9 @@ class XMLParser(
         constructorArgs[meta.propertyName] = currentNode.map { item ->
           when (item) {
             is Map<*, *> -> {
-              // Convert map to the target type
               val itemValues = mutableMapOf<String, Any>()
               item.forEach { (k, v) -> if (k is String) itemValues[k] = v ?: "" }
-              createFromValues(itemValues, listType, listType.readXmlAnnotationsMeta())
+              createFromValues(itemValues, listType, listMetaMap)
             }
             else -> Converter.from(item.toString(), listType)
           }
@@ -143,10 +147,11 @@ class XMLParser(
       }
     }.toMap()
 
-  private fun Map<String, XmlPathMeta>.find(parentPath: String, name: String): XmlPathMeta {
+  private fun Map<String, XmlPathMeta>.find(parentPath: String, name: String,
+                                            relativePaths: Map<String, XmlPathMeta> = emptyMap()): XmlPathMeta {
     val fullPath = "$parentPath/$name"
     return this[fullPath] ?: this[name] ?:
-      entries.firstOrNull { !it.key.startsWith("/") && fullPath.endsWith(it.key) }?.value ?:
+      relativePaths.entries.firstOrNull { (key, _) -> fullPath.endsWith(key) }?.value ?:
       XmlPathMeta(fullPath, false, "")
   }
 
