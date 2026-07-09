@@ -103,26 +103,37 @@ class XMLParser(
 
   private fun <T: Any> parseComplex(xml: InputStream, type: KClass<T>, metaMap: Map<String, XmlPathMeta>): T {
     val result = mutableMapOf<String, Any?>()
-    val collectionTargets = mutableMapOf<String, Pair<XmlPathMeta, KClass<*>>>()
+    val complexTargets = mutableMapOf<String, Pair<XmlPathMeta, KClass<*>>>()
+    val simpleTargets = mutableMapOf<String, Pair<XmlPathMeta, KClass<*>>>()
 
     for ((path, meta) in metaMap) {
       if (!meta.isCollection || meta.property == null) continue
-      val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*>
-      if (listType != null && !Converter.supports(listType)) collectionTargets[path] = meta to listType
+      val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*> ?: continue
+      if (Converter.supports(listType)) simpleTargets[path] = meta to listType
+      else complexTargets[path] = meta to listType
     }
 
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
+    val simpleTexts = mutableMapOf<String, MutableList<String>>()
 
     parseSax(xml) { current, parent, path, text ->
       if (text.isNotEmpty()) current[""] = text
 
-      // Check if this element should become a typed object
-      for ((collPath, pair) in collectionTargets) {
+      // Complex collection: create typed object
+      for ((collPath, pair) in complexTargets) {
         if (path.endsWith(collPath)) {
           val (meta, listType) = pair
-          val item = createFromValues(current, listType, listType.readXmlAnnotationsMeta())
-          collectedItems.getOrPut(meta.path) { mutableListOf() }.add(item)
+          collectedItems.getOrPut(meta.path) { mutableListOf() }.add(
+            createFromValues(current, listType, listType.readXmlAnnotationsMeta()))
           if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
+          return@parseSax
+        }
+      }
+
+      // Simple collection: collect text
+      for ((collPath, pair) in simpleTargets) {
+        if (path.endsWith(collPath) && text.isNotEmpty()) {
+          simpleTexts.getOrPut(pair.first.path) { mutableListOf() }.add(text)
           return@parseSax
         }
       }
@@ -143,24 +154,13 @@ class XMLParser(
       }
     }
 
-    for ((path, meta) in metaMap) {
-      if (!meta.isCollection || collectionTargets.containsKey(path) || meta.property == null) continue
-      val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*>
-      if (listType != null && Converter.supports(listType)) {
-        val texts = mutableListOf<String>()
-        parseSax(xml) { _, _, elemPath, text ->
-          if (text.isNotEmpty() && elemPath.endsWith(path)) texts.add(text)
-        }
-        result[meta.property.name] = texts.map { Converter.from(it, listType) }
+    for ((_, meta) in metaMap) {
+      if (meta.property == null || !meta.isCollection) continue
+      collectedItems[meta.path]?.let { result[meta.property.name] = it }
+      simpleTexts[meta.path]?.let { texts ->
+        val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*>
+        result[meta.property.name] = if (listType != null) texts.map { Converter.from(it, listType) } else texts
       }
-    }
-
-    for ((path, meta) in metaMap) {
-      if (meta.property == null) continue
-      if (meta.isCollection && !collectionTargets.containsKey(path) && !result.containsKey(meta.property.name)) continue
-      if (!meta.isCollection) continue
-      val collected = collectedItems[path]
-      if (collected != null) result[meta.property.name] = collected
     }
 
     return type.createFrom(result)
