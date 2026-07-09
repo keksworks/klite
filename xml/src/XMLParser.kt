@@ -33,7 +33,6 @@ class XMLParser(
   inline fun <reified T: Any> parse(xml: InputStream): T = parse(xml, T::class)
 
   private fun parseSax(xml: InputStream,
-                       onStart: (current: MutableMap<String, Any>, path: String) -> Unit = { _, _ -> },
                        onEnd: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit = { _, _, _, _ -> }) {
     var path = ""
     val text = StringBuilder()
@@ -51,7 +50,6 @@ class XMLParser(
           current["@${attributes.getLocalName(i) ?: attributes.getQName(i)}"] = attributes.getValue(i)
         }
         stack.add(current)
-        onStart(current, path)
       }
 
       override fun characters(ch: CharArray, start: Int, length: Int) {
@@ -71,10 +69,10 @@ class XMLParser(
   }
 
   fun parse(xml: InputStream, callback: (parentPath: String, name: String, text: String) -> Unit) {
-    parseSax(xml, onEnd = { current, _, path, text ->
+    parseSax(xml) { current, _, path, text ->
       if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), text)
       current.forEach { (name, value) -> if (value is String) callback(path, name, value) }
-    })
+    }
   }
 
   fun parsePathMap(xml: InputStream): Map<String, String> {
