@@ -192,9 +192,11 @@ class XMLParser(
   }
 
   private fun KClass<*>.readXmlAnnotationsMeta(): Map<String, XmlPathMeta> = publicProperties.values
-    .mapNotNull { prop -> prop.findAnnotation<XmlPath>()?.let { ann ->
-        ann.path to XmlPathMeta(ann.path, prop)
-    }}.toMap()
+    .associate { prop ->
+      val ann = prop.findAnnotation<XmlPath>()
+      val path = ann?.path ?: prop.name
+      path to XmlPathMeta(path, prop)
+    }
 
   private fun Map<String, XmlPathMeta>.findMeta(parentPath: String, name: String): XmlPathMeta {
     val fullPath = "$parentPath/$name"

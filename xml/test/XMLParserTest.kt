@@ -119,8 +119,8 @@ class XMLParserTest {
 
   data class Book(
     @XmlPath("@id") val id: Int,
-    @XmlPath("title") val title: String,
-    @XmlPath("author") val author: String
+    val title: String,
+    val author: String
   )
 
   data class Library(
