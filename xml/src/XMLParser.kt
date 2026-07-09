@@ -92,6 +92,7 @@ class XMLParser(
 
     if (hasComplexCollections) return parseComplex(xml, type, metaMap)
 
+    // Simple path: collect values via SAX callback
     val values = mutableMapOf<String, Any>()
     parse(xml) { parentPath, name, text ->
       val meta = metaMap.findMeta(parentPath, name)
@@ -102,7 +103,6 @@ class XMLParser(
   }
 
   private fun <T: Any> parseComplex(xml: InputStream, type: KClass<T>, metaMap: Map<String, XmlPathMeta>): T {
-    val result = mutableMapOf<String, Any?>()
     val complexTargets = mutableMapOf<String, Pair<XmlPathMeta, KClass<*>>>()
     val simpleTargets = mutableMapOf<String, Pair<XmlPathMeta, KClass<*>>>()
 
@@ -115,16 +115,30 @@ class XMLParser(
 
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
     val simpleTexts = mutableMapOf<String, MutableList<String>>()
+    val values = mutableMapOf<String, Any>()
 
     parseSax(xml) { current, parent, path, text ->
       if (text.isNotEmpty()) current[""] = text
 
       // Complex collection: create typed object
       for ((collPath, pair) in complexTargets) {
-        if (path.endsWith(collPath)) {
+        if (path.endsWith("/$collPath") || path == "/$collPath") {
           val (meta, listType) = pair
+          val metaMap = listType.readXmlAnnotationsMeta()
+          // For nested collections (like author in Book), propagate values from current
+          for ((_, innerMeta) in metaMap) {
+            if (innerMeta.isCollection && innerMeta.property != null) {
+              val innerName = innerMeta.property.name
+              val innerPath = innerMeta.path
+              // Check if current has a list for this property
+              val existing = current[innerName] ?: current[innerPath]
+              if (existing is List<*>) {
+                current[innerPath] = existing
+              }
+            }
+          }
           collectedItems.getOrPut(meta.path) { mutableListOf() }.add(
-            createFromValues(current, listType, listType.readXmlAnnotationsMeta()))
+            createFromValues(current, listType, metaMap))
           if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
           return@parseSax
         }
@@ -132,7 +146,7 @@ class XMLParser(
 
       // Simple collection: collect text
       for ((collPath, pair) in simpleTargets) {
-        if (path.endsWith(collPath) && text.isNotEmpty()) {
+        if (path.endsWith("/$collPath") && text.isNotEmpty()) {
           simpleTexts.getOrPut(pair.first.path) { mutableListOf() }.add(text)
           return@parseSax
         }
@@ -144,26 +158,27 @@ class XMLParser(
         val existing = parent[name]
         if (existing == null) parent[name] = if (text.isNotEmpty() && current.size <= 1) text else current.toMap()
         else {
-          val map = current.toMap()
-          parent[name] = when (existing) {
-            is MutableList<*> -> (existing as MutableList<Any>).apply { add(map) }
-            is Map<*, *> -> mutableListOf(existing, map)
+          parent[name] = when {
+            existing is MutableList<*> -> (existing as MutableList<Any>).apply { add(current.toMap()) }
+            existing is Map<*, *> && current.size <= 1 && text.isNotEmpty() -> mutableListOf(existing, text)
+            existing is String && text.isNotEmpty() && current.size <= 1 -> mutableListOf(existing, text)
             else -> existing
           }
         }
       }
     }
 
+    // Build result
     for ((_, meta) in metaMap) {
       if (meta.property == null || !meta.isCollection) continue
-      collectedItems[meta.path]?.let { result[meta.property.name] = it }
+      collectedItems[meta.path]?.let { values[meta.path] = it.toList() }
       simpleTexts[meta.path]?.let { texts ->
         val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*>
-        result[meta.property.name] = if (listType != null) texts.map { Converter.from(it, listType) } else texts
+        values[meta.path] = if (listType != null) texts.map { Converter.from(it, listType) } else texts
       }
     }
 
-    return type.createFrom(result)
+    return createFromValues(values, type, metaMap)
   }
 
   fun parseNodes(xml: InputStream): XmlNode {
@@ -176,7 +191,16 @@ class XMLParser(
         val name = path.substringAfterLast("/")
         val textNode = current.remove("")
         if (textNode != null) {
-          parent[name] = textNode
+          val existing = parent[name]
+          if (existing == null) {
+            parent[name] = textNode
+          } else {
+            parent[name] = when (existing) {
+              is MutableList<*> -> (existing as MutableList<Any>).apply { add(textNode) }
+              is String -> mutableListOf(existing, textNode)
+              else -> existing
+            }
+          }
           current.forEach { (k, v) -> parent["$name$k"] = v }
         } else when (val existing = parent[name]) {
           null -> parent[name] = current
@@ -210,12 +234,23 @@ class XMLParser(
     for ((_, meta) in metaMap) {
       val prop = meta.property ?: continue
       val value = values[meta.path]
-      if (meta.isCollection && value is Collection<*>) {
-        val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*>
-        constructorArgs[prop.name] = if (listType != null && Converter.supports(listType))
-          value.map { Converter.from(it.toString(), listType) } else value
-      } else if (value != null) {
-        constructorArgs[prop.name] = Converter.from(value.toString(), prop.returnType)
+      if (value != null) {
+        if (meta.isCollection) {
+          val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*>
+          if (value is Collection<*> && listType != null && !Converter.supports(listType)) {
+            // Already a list of complex objects (e.g. List<Book>) - pass through
+            constructorArgs[prop.name] = value.toList()
+          } else if (listType != null && Converter.supports(listType)) {
+            // Simple list (e.g. List<String>) - convert each element
+            val strList = if (value is Collection<*>) value.map { it.toString() } else listOf(value.toString())
+            constructorArgs[prop.name] = strList.mapTo(mutableListOf()) { Converter.from(it, listType) }
+          } else {
+            val strList = if (value is Collection<*>) value.map { it.toString() } else listOf(value.toString())
+            constructorArgs[prop.name] = strList
+          }
+        } else {
+          constructorArgs[prop.name] = Converter.from(value.toString(), prop.returnType)
+        }
       }
     }
     return type.createFrom(constructorArgs)

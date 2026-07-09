@@ -37,8 +37,13 @@ class XMLParserTest {
         <title>Dune</title>
         <author>Herbert</author>
       </book>
+      <book id="12">
+        <title>12 Chairs</title>
+        <author>Ilf</author>
+        <author>Petrov</author>
+      </book>
     </library>
-  """.trimIndent().byteInputStream()
+  """.byteInputStream()
 
   @Test fun parse() {
     expect(parser.parse<Identifier>(xml)).toEqual(
@@ -77,12 +82,13 @@ class XMLParserTest {
     expect(library).toEqual(mapOf(
       "book" to listOf(
         mapOf("@id" to "1", "title" to "The Hobbit", "author" to "Tolkien"),
-        mapOf("@id" to "2", "title" to "Dune", "author" to "Herbert")
+        mapOf("@id" to "2", "title" to "Dune", "author" to "Herbert"),
+        mapOf("@id" to "12", "title" to "12 Chairs", "author" to listOf("Ilf", "Petrov"))
       )
     ))
 
     expect(library.nodes("book").first().text("title")).toEqual("The Hobbit")
-    expect(library.nodes("book").last().text("@id")).toEqual("2")
+    expect(library.nodes("book").last().text("@id")).toEqual("12")
   }
 
   data class Identifier(
@@ -120,7 +126,7 @@ class XMLParserTest {
   data class Book(
     @XmlPath("@id") val id: Int,
     val title: String,
-    val author: String
+    @XmlPath("author") val authors: List<String>
   )
 
   data class Library(
@@ -130,8 +136,9 @@ class XMLParserTest {
   @Test fun parseWithNestedRepeatedElements() {
     val result = parser.parse<Library>(xmlWithRepeating)
     expect(result.books).toEqual(listOf(
-      Book(1, "The Hobbit", "Tolkien"),
-      Book(2, "Dune", "Herbert")
+      Book(1, "The Hobbit", listOf("Tolkien")),
+      Book(2, "Dune", listOf("Herbert")),
+      Book(12, "12 Chairs", listOf("Ilf", "Petrov")),
     ))
   }
 }
