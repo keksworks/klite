@@ -118,6 +118,7 @@ class XMLParserTest {
   }
 
   data class Book(
+    @XmlPath("@id") val id: Int,
     @XmlPath("title") val title: String,
     @XmlPath("author") val author: String
   )
@@ -129,8 +130,8 @@ class XMLParserTest {
   @Test fun parseWithNestedRepeatedElements() {
     val result = parser.parse<Library>(xmlWithRepeating)
     expect(result.books).toEqual(listOf(
-      Book("The Hobbit", "Tolkien"),
-      Book("Dune", "Herbert")
+      Book(1, "The Hobbit", "Tolkien"),
+      Book(2, "Dune", "Herbert")
     ))
   }
 }
