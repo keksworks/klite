@@ -11,13 +11,14 @@ import javax.xml.parsers.SAXParserFactory
 import kotlin.annotation.AnnotationRetention.RUNTIME
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
 
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
-private data class XmlPathMeta(val path: String, val isCollection: Boolean, val propertyName: String)
+private data class XmlPathMeta(val path: String, val isCollection: Boolean, val property: KProperty1<*, *>?)
 
 @Suppress("UNCHECKED_CAST")
 class XMLParser(
@@ -82,10 +83,10 @@ class XMLParser(
   fun <T : Any> parse(xml: InputStream, type: KClass<T>): T {
     val metaMap = type.readXmlAnnotationsMeta()
     val hasComplexCollections = metaMap.values.any { meta ->
-      meta.isCollection && type.publicProperties[meta.propertyName]?.let { prop ->
-        val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*>
+      meta.isCollection && meta.property != null && run {
+        val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*>
         listType != null && !Converter.supports(listType)
-      } == true
+      }
     }
 
     if (hasComplexCollections) return parseComplex(xml, type, metaMap)
@@ -100,13 +101,12 @@ class XMLParser(
   }
 
   private fun <T: Any> parseComplex(xml: InputStream, type: KClass<T>, metaMap: Map<String, XmlPathMeta>): T {
-    val props = type.publicProperties
     val result = mutableMapOf<String, Any?>()
     val collectionTargets = mutableMapOf<String, Pair<XmlPathMeta, KClass<*>>>()
 
     for ((path, meta) in metaMap) {
-      if (!meta.isCollection) continue
-      val listType = props[meta.propertyName]?.returnType?.arguments?.first()?.type?.classifier as? KClass<*>
+      if (!meta.isCollection || meta.property == null) continue
+      val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*>
       if (listType != null && !Converter.supports(listType)) collectionTargets[path] = meta to listType
     }
 
@@ -115,7 +115,7 @@ class XMLParser(
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
 
     parseSax(xml,
-      onStart = { path, attrs ->
+      onStart = { _, attrs ->
         stack.add(mutableMapOf())
         attrs.forEach { (k, v) -> stack.last()[k] = v }
       },
@@ -158,25 +158,25 @@ class XMLParser(
     }
 
     for ((path, meta) in metaMap) {
-      if (!meta.isCollection || collectionTargets.containsKey(path)) continue
-      val listType = props[meta.propertyName]?.returnType?.arguments?.first()?.type?.classifier as? KClass<*>
+      if (!meta.isCollection || collectionTargets.containsKey(path) || meta.property == null) continue
+      val listType = meta.property.returnType.arguments.first().type?.classifier as? KClass<*>
       if (listType != null && Converter.supports(listType)) {
         val texts = mutableListOf<String>()
-        parseSax(xml, onEnd = { elemPath, text, _ ->
+        parseSax(xml) { elemPath, text, _ ->
           if (text.isNotEmpty() && elemPath.endsWith(path)) texts.add(text)
-        })
-        result[meta.propertyName] = texts.map { Converter.from(it, listType) }
+        }
+        result[meta.property.name] = texts.map { Converter.from(it, listType) }
       }
     }
 
     for ((path, meta) in metaMap) {
-      if (meta.isCollection && !collectionTargets.containsKey(path) && !result.containsKey(meta.propertyName)) {
-        // Already handled above
+      if (meta.property == null) continue
+      if (meta.isCollection && !collectionTargets.containsKey(path) && !result.containsKey(meta.property.name)) {
         continue
       }
       if (!meta.isCollection) continue
       val collected = collectedItems[path]
-      if (collected != null) result[meta.propertyName] = collected
+      if (collected != null) result[meta.property.name] = collected
     }
 
     return type.createFrom(result)
@@ -227,7 +227,7 @@ class XMLParser(
     .mapNotNull { prop ->
       prop.findAnnotation<XmlPath>()?.let { ann ->
         val isCollection = (prop.returnType.classifier as? KClass<*>)?.isSubclassOf(Collection::class) == true
-        ann.path to XmlPathMeta(ann.path, isCollection, prop.name)
+        ann.path to XmlPathMeta(ann.path, isCollection, prop)
       }
     }.toMap()
 
@@ -235,20 +235,20 @@ class XMLParser(
     val fullPath = "$parentPath/$name"
     return this[fullPath] ?: this[name] ?:
       entries.firstOrNull { (key, _) -> !key.startsWith("/") && fullPath.endsWith(key) }?.value ?:
-      XmlPathMeta(fullPath, false, "")
+      XmlPathMeta(fullPath, false, null)
   }
 
   private fun <T: Any> createFromValues(values: Map<String, Any>, type: KClass<T>, metaMap: Map<String, XmlPathMeta>): T {
     val constructorArgs = mutableMapOf<String, Any?>()
     for ((_, meta) in metaMap) {
-      val prop = type.publicProperties[meta.propertyName] ?: continue
+      val prop = meta.property ?: continue
       val value = values[meta.path]
       if (meta.isCollection && value is List<*>) {
         val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*>
-        constructorArgs[meta.propertyName] = if (listType != null && Converter.supports(listType))
+        constructorArgs[prop.name] = if (listType != null && Converter.supports(listType))
           value.map { Converter.from(it.toString(), listType) } else value
       } else if (value != null) {
-        constructorArgs[meta.propertyName] = Converter.from(value.toString(), prop.returnType)
+        constructorArgs[prop.name] = Converter.from(value.toString(), prop.returnType)
       }
     }
     return type.createFrom(constructorArgs)
