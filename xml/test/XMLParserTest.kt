@@ -98,4 +98,39 @@ class XMLParserTest {
     @XmlPath("dangerousGoodsIndicator")
     val dangerousGoods: Boolean = false
   )
+
+  @Language("XML")
+  val xmlWithRepeatedSimple = """
+    <library>
+      <book>The Hobbit</book>
+      <book>Dune</book>
+      <book>Narnia</book>
+    </library>
+  """.trimIndent().byteInputStream()
+
+  data class SimpleLibrary(
+    @XmlPath("library/book") val books: List<String>
+  )
+
+  @Test fun parseWithRepeatedElements() {
+    val result = parser.parse<SimpleLibrary>(xmlWithRepeatedSimple)
+    expect(result.books).toEqual(listOf("The Hobbit", "Dune", "Narnia"))
+  }
+
+  data class Book(
+    @XmlPath("title") val title: String,
+    @XmlPath("author") val author: String
+  )
+
+  data class Library(
+    @XmlPath("library/book") val books: List<Book>
+  )
+
+  @Test fun parseWithNestedRepeatedElements() {
+    val result = parser.parse<Library>(xmlWithRepeating)
+    expect(result.books).toEqual(listOf(
+      Book("The Hobbit", "Tolkien"),
+      Book("Dune", "Herbert")
+    ))
+  }
 }

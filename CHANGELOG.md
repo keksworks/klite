@@ -9,6 +9,7 @@
 * slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging
 * slf4j: MDC is now supported with `use<RequestMDCContext>()`
 * xml: parseNodes() now always parses attributes with @ prefix, no matter if the element has children or not, to avoid confusion
+* xml: parse() now supports nested data classes annotated with @XmlPath
 * push: a new module with WebPushClient introduced for sending push notifications to browsers
 
 # TODO
