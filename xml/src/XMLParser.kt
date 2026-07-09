@@ -82,18 +82,14 @@ class XMLParser(
       }
     }
 
-    if (hasComplexCollections) return parseWithNodes(xml, type, metaMap)
+    if (hasComplexCollections) return parseWithCallbacks(xml, type, metaMap)
 
-    // Pre-compute relative path lookups for O(1) access
-    val relativePaths = metaMap.entries
-      .filter { (key, _) -> !key.startsWith("/") }
-      .associate { (key, meta) -> key to meta }
-
+    // Simple path: collect values via SAX callback
     val values = mutableMapOf<String, Any>()
     parse(xml) { parentPath, name, text ->
-      val meta = metaMap.find(parentPath, name, relativePaths)
+      val meta = metaMap.find(parentPath, name)
       if (meta.isCollection) {
-        (values.getOrPut(meta.path) { mutableListOf<String>() } as MutableList<String>).add(text)
+        (values.getOrPut(meta.path) { mutableListOf<String>() } as MutableCollection<String>).add(text)
       } else {
         values[meta.path] = text
       }
@@ -102,35 +98,133 @@ class XMLParser(
     return createFromValues(values, type, metaMap)
   }
 
-  private fun <T: Any> parseWithNodes(xml: InputStream, type: KClass<T>, metaMap: Map<String, XmlPathMeta>): T {
-    val nodes = parseNodes(xml)
-    val props = type.publicProperties
+  private fun <T: Any> parseWithCallbacks(xml: InputStream, type: KClass<T>, metaMap: Map<String, XmlPathMeta>): T {
     val constructorArgs = mutableMapOf<String, Any?>()
+    val collectedItems = mutableMapOf<String, MutableList<Any>>()
+    val listAccumulators = mutableMapOf<String, MutableList<String>>()
 
-    for ((_, meta) in metaMap) {
-      val prop = props[meta.propertyName] ?: continue
+    // Pre-compute collection paths and their target types
+    val collectionInfo = mutableMapOf<String, Pair<XmlPathMeta, KClass<*>>>()
+    for ((path, meta) in metaMap) {
       if (!meta.isCollection) continue
+      val listType = type.publicProperties[meta.propertyName]?.returnType
+        ?.arguments?.first()?.type?.classifier as? KClass<*> ?: continue
+      if (!Converter.supports(listType)) {
+        collectionInfo[path] = meta to listType
+      }
+    }
 
-      val listType = prop.returnType.arguments.first().type?.classifier as? KClass<*> ?: continue
-      val listMetaMap = listType.readXmlAnnotationsMeta()
-      val pathParts = meta.path.split("/").filter { it.isNotEmpty() }
+    // Track element state for object creation
+    var currentPath = ""
+    val elementStack = mutableListOf<String>()
+    val contentStack = mutableListOf<StringBuilder>()
+    val attrsStack = mutableListOf<Map<String, String>>()
+    // Stack of value maps for each element being processed
+    val valueStack = mutableListOf<MutableMap<String, Any>>()
 
-      // Navigate the node tree to find the collection
-      var currentNode: Any = nodes
-      for (part in pathParts) {
-        currentNode = (currentNode as? Map<*, *>)?.get(part) ?: break
+    val handler = object : DefaultHandler() {
+      override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
+        val elementName = localName ?: qName
+        elementStack.add(elementName)
+        currentPath = "/" + elementStack.joinToString("/")
+        contentStack.add(StringBuilder())
+
+        val attrs = mutableMapOf<String, String>()
+        for (i in 0 until attributes.length) {
+          val attrName = attributes.getLocalName(i) ?: attributes.getQName(i)
+          attrs["@$attrName"] = attributes.getValue(i)
+        }
+        attrsStack.add(attrs)
+        valueStack.add(mutableMapOf())
       }
 
-      if (currentNode is List<*>) {
-        constructorArgs[meta.propertyName] = currentNode.map { item ->
-          when (item) {
-            is Map<*, *> -> {
-              val itemValues = mutableMapOf<String, Any>()
-              item.forEach { (k, v) -> if (k is String) itemValues[k] = v ?: "" }
-              createFromValues(itemValues, listType, listMetaMap)
-            }
-            else -> Converter.from(item.toString(), listType)
+      override fun characters(ch: CharArray, start: Int, length: Int) {
+        contentStack.last().append(ch, start, length)
+      }
+
+      override fun endElement(uri: String?, localName: String?, qName: String) {
+        val elementPath = currentPath
+        val text = contentStack.removeAt(contentStack.lastIndex).toString().trim()
+        val attrs = attrsStack.removeAt(attrsStack.lastIndex)
+        val elementValues = valueStack.removeAt(valueStack.lastIndex)
+
+        // Add text and attributes to this element's values
+        if (text.isNotEmpty()) elementValues[""] = text
+        attrs.forEach { (k, v) -> elementValues[k] = v }
+
+        // Check if this element matches a collection path
+        var handled = false
+        for ((collPath, pair) in collectionInfo) {
+          val (meta, listType) = pair
+          val pathParts = collPath.split("/").filter { it.isNotEmpty() }
+          val elemParts = elementPath.split("/").filter { it.isNotEmpty() }
+
+          if (elemParts.size >= pathParts.size && elemParts.takeLast(pathParts.size) == pathParts) {
+            // This element should become an object
+            val itemMetaMap = listType.readXmlAnnotationsMeta()
+            val item = createFromValues(elementValues, listType, itemMetaMap)
+            collectedItems.getOrPut(meta.path) { mutableListOf() }.add(item)
+            handled = true
+            break
           }
+        }
+
+        // If not handled as complex collection, check for simple collection accumulation
+        if (!handled) {
+          for ((path, meta) in metaMap) {
+            if (!meta.isCollection) continue
+            val pathParts = path.split("/").filter { it.isNotEmpty() }
+            val elemParts = elementPath.split("/").filter { it.isNotEmpty() }
+
+            if (elemParts.size >= pathParts.size && elemParts.takeLast(pathParts.size) == pathParts) {
+              val listType = type.publicProperties[meta.propertyName]?.returnType
+                ?.arguments?.first()?.type?.classifier as? KClass<*>
+              if (listType != null && Converter.supports(listType) && text.isNotEmpty()) {
+                listAccumulators.getOrPut(meta.path) { mutableListOf() }.add(text)
+              }
+              break
+            }
+          }
+        }
+
+        // Pass values up to parent element
+        if (valueStack.isNotEmpty() && elementValues.isNotEmpty()) {
+          val parentValues = valueStack.last()
+          val elementName = elementStack.last()
+          // If element has children, it's a nested object; store as map
+          val hasChildren = elementValues.any { (k, _) -> k.isNotEmpty() && k != "" }
+          if (hasChildren) {
+            parentValues[elementName] = elementValues.toMap()
+          } else if (text.isNotEmpty()) {
+            parentValues[elementName] = text
+          }
+          // Store repeated elements as lists
+          val existing = parentValues[elementName]
+          if (existing != null && existing != text) {
+            parentValues[elementName] = when (existing) {
+              is MutableList<*> -> (existing as MutableList<Any>).apply { add(elementValues.toMap()) }
+              else -> mutableListOf(existing, elementValues.toMap())
+            }
+          }
+        }
+
+        elementStack.removeAt(elementStack.lastIndex)
+        currentPath = "/" + elementStack.joinToString("/")
+      }
+    }
+
+    factory.newSAXParser().parse(xml, handler)
+
+    // Build constructor args
+    for ((path, meta) in metaMap) {
+      if (meta.isCollection) {
+        val listType = type.publicProperties[meta.propertyName]?.returnType
+          ?.arguments?.first()?.type?.classifier as? KClass<*>
+
+        if (listType != null && !Converter.supports(listType)) {
+          constructorArgs[meta.propertyName] = collectedItems[path] ?: emptyList<Any>()
+        } else {
+          constructorArgs[meta.propertyName] = listAccumulators[path] ?: emptyList<String>()
         }
       }
     }
@@ -138,20 +232,10 @@ class XMLParser(
     return type.createFrom(constructorArgs)
   }
 
-  private fun KClass<*>.readXmlAnnotationsMeta(): Map<String, XmlPathMeta> = publicProperties.values
-    .mapNotNull { prop ->
-      prop.findAnnotation<XmlPath>()?.let { ann ->
-        val returnClass = prop.returnType.classifier as? KClass<*>
-        val isCollection = returnClass?.isSubclassOf(Collection::class) == true
-        ann.path to XmlPathMeta(ann.path, isCollection, prop.name)
-      }
-    }.toMap()
-
-  private fun Map<String, XmlPathMeta>.find(parentPath: String, name: String,
-                                            relativePaths: Map<String, XmlPathMeta> = emptyMap()): XmlPathMeta {
+  private fun Map<String, XmlPathMeta>.find(parentPath: String, name: String): XmlPathMeta {
     val fullPath = "$parentPath/$name"
     return this[fullPath] ?: this[name] ?:
-      relativePaths.entries.firstOrNull { (key, _) -> fullPath.endsWith(key) }?.value ?:
+      entries.firstOrNull { (key, _) -> !key.startsWith("/") && fullPath.endsWith(key) }?.value ?:
       XmlPathMeta(fullPath, false, "")
   }
 
@@ -177,6 +261,15 @@ class XMLParser(
 
     return type.createFrom(constructorArgs)
   }
+
+  private fun KClass<*>.readXmlAnnotationsMeta(): Map<String, XmlPathMeta> = publicProperties.values
+    .mapNotNull { prop ->
+      prop.findAnnotation<XmlPath>()?.let { ann ->
+        val returnClass = prop.returnType.classifier as? KClass<*>
+        val isCollection = returnClass?.isSubclassOf(Collection::class) == true
+        ann.path to XmlPathMeta(ann.path, isCollection, prop.name)
+      }
+    }.toMap()
 
   fun parsePathMap(xml: InputStream): Map<String, String> {
     val result = mutableMapOf<String, String>()
