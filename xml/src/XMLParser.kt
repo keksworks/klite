@@ -113,7 +113,7 @@ class XMLParser(
             val textNode = (child as? XmlNode)?.get("")
             if (textNode != null) {
               children[name] = textNode
-              child.forEach { if (it.key != "") children[name + "@" + it.key] = it.value }
+              child.forEach { if (it.key != "") children[name + it.key] = it.value }
             } else when (val v = children[name]) {
               null -> children[name] = child
               is MutableList<*> -> v as MutableList<Any> += child
@@ -124,7 +124,7 @@ class XMLParser(
             textContent = e.asCharacters().data.trim()
           }
           e.isEndElement -> {
-            val attrs = start.attributes.asSequence().associate { it.name.localPart to it.value }
+            val attrs = start.attributes.asSequence().associate { "@${it.name.localPart}" to it.value }
             if (textContent.isEmpty()) return children + attrs
             if (children.isEmpty() && attrs.isEmpty()) return textContent
             return mapOf("" to textContent) + children + attrs
