@@ -84,10 +84,6 @@ class XMLParser(
   fun <T : Any> parse(xml: InputStream, type: KClass<T>): T {
     val nodes = parseNodes(xml)
     val metaMap = type.readXmlAnnotationsMeta()
-    for ((_, meta) in metaMap) {
-      if (meta.property == null) continue
-      val value = navigatePath(nodes, meta.path)
-    }
     return nodeToObject(nodes, type, metaMap)
   }
 
@@ -185,7 +181,7 @@ class XMLParser(
             parent[name] = textNode
           } else {
             parent[name] = when (existing) {
-              is MutableList<*> -> (existing as MutableList<Any>).apply { add(textNode) }
+              is MutableCollection<*> -> (existing as MutableCollection<Any>).apply { add(textNode) }
               is String -> mutableListOf(existing, textNode)
               else -> existing
             }
@@ -210,13 +206,6 @@ class XMLParser(
       val path = ann?.path ?: prop.name
       path to XmlPathMeta(path, prop)
     }
-
-  private fun Map<String, XmlPathMeta>.findMeta(parentPath: String, name: String): XmlPathMeta {
-    val fullPath = "$parentPath/$name"
-    return this[fullPath] ?: this[name] ?:
-      entries.firstOrNull { (key, _) -> !key.startsWith("/") && fullPath.endsWith(key) }?.value ?:
-      XmlPathMeta(fullPath)
-  }
 }
 
 typealias XmlNode = Map<String, Any>
