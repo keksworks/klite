@@ -141,4 +141,42 @@ class XMLParserTest {
       Book(12, "12 Chairs", listOf("Ilf", "Petrov")),
     ))
   }
+
+  @Test fun `xml with root attributes`() {
+    data class RootAttrs(@XmlPath("@id") val id: Int, @XmlPath("@name") val name: String)
+    @Language("XML") val xml = """<item id="42" name="test"/>"""
+    val result = parser.parse<RootAttrs>(xml.byteInputStream())
+    expect(result.id).toEqual(42)
+    expect(result.name).toEqual("test")
+  }
+
+  data class NestedItem(val value: String)
+  data class RootWithNested(
+    @XmlPath("@requestId") val requestId: String,
+    val item: NestedItem,
+    @XmlPath("tag") val tags: List<String>
+  )
+
+  @Test fun `xml with nested objects`() {
+    @Language("XML") val xml = """
+      <root requestId="req-1">
+        <item><value>hello</value></item>
+        <tag>a</tag>
+        <tag>b</tag>
+      </root>
+    """
+    val result = parser.parse<RootWithNested>(xml.byteInputStream())
+    expect(result.requestId).toEqual("req-1")
+    expect(result.item).toEqual(NestedItem("hello"))
+    expect(result.tags).toEqual(listOf("a", "b"))
+  }
+
+  @Test fun `nested default values`() {
+    data class Inner(val x: String, val y: String = "default")
+    data class RootWithDefaults(@XmlPath("inner") val inner: Inner)
+    @Language("XML") val xml = """<root><inner><x>1</x></inner></root>"""
+    val result = parser.parse<RootWithDefaults>(xml.byteInputStream())
+    expect(result.inner.x).toEqual("1")
+    expect(result.inner.y).toEqual("default")
+  }
 }

@@ -10,6 +10,7 @@ typealias JsonList = List<JsonNode>
 inline fun <T: Any> JsonNode.get(key: String) = (get(key) ?: throw NullPointerException("$key is absent")) as T
 inline fun <T: Any> JsonNode.getOrNull(key: String) = get(key) as T?
 
+inline fun JsonNode.at(key: String) = get<JsonNode>(key)
 inline fun JsonNode.getString(key: String) = get<String>(key)
 inline fun JsonNode.getInt(key: String) = get<Number>(key).toInt()
 inline fun JsonNode.getLong(key: String) = get<Number>(key).toLong()

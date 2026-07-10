@@ -3,6 +3,7 @@ package klite.xml
 import klite.Converter
 import klite.createFrom
 import klite.publicProperties
+import org.intellij.lang.annotations.Language
 import org.xml.sax.Attributes
 import org.xml.sax.helpers.DefaultHandler
 import java.io.InputStream
@@ -28,9 +29,9 @@ class XMLParser(
     setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
   }
 ) {
-  inline fun <reified T: Any> parse(xml: InputStream): T = parse(xml, T::class)
+  inline fun <reified T: Any> parse(@Language("xml") xml: InputStream): T = parse(xml, T::class)
 
-  private fun parseSax(xml: InputStream,
+  private fun parseSax(@Language("xml") xml: InputStream,
                        onEnd: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit = { _, _, _, _ -> }) {
     var path = ""
     val text = StringBuilder()
@@ -69,20 +70,20 @@ class XMLParser(
     })
   }
 
-  fun parse(xml: InputStream, callback: (parentPath: String, name: String, text: String) -> Unit) {
+  fun parse(@Language("xml") xml: InputStream, callback: (parentPath: String, name: String, text: String) -> Unit) {
     parseSax(xml) { current, _, path, text ->
       if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), text)
       current.forEach { (name, value) -> if (value is String) callback(path, name, value) }
     }
   }
 
-  fun parsePathMap(xml: InputStream): Map<String, String> {
+  fun parsePathMap(@Language("xml") xml: InputStream): Map<String, String> {
     val result = mutableMapOf<String, String>()
     parse(xml) { parentPath, name, text -> result["$parentPath/$name"] = text }
     return result
   }
 
-  fun <T : Any> parse(xml: InputStream, type: KClass<T>): T {
+  fun <T : Any> parse(@Language("xml") xml: InputStream, type: KClass<T>): T {
     val props = type.readProps()
     val values = mutableMapOf<String, Any>()
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
@@ -115,13 +116,28 @@ class XMLParser(
       // Simple property: extract text or attribute value
       for ((propPath, info) in props) {
         if (info.isCollection) continue
-        if (propPath.contains("/@")) {
+        if (propPath.startsWith("@")) {
+          val attrKey = propPath
+          if (current.containsKey(attrKey)) {
+            values[propPath] = current[attrKey]!!
+          }
+        } else if (propPath.contains("/@")) {
           val (elemName, attrKey) = propPath.split("/@", limit = 2)
           if (path.endsWith("/$elemName") && current.containsKey("@$attrKey")) {
             values[propPath] = current["@$attrKey"]!!
           }
         } else if (text.isNotEmpty() && matchPath(path, propPath)) {
           values[propPath] = text
+        }
+      }
+
+      // Store root element data directly into values
+      if (parent == null) {
+        for ((propPath, info) in props) {
+          if (info.isCollection) continue
+          if (current.containsKey(propPath)) {
+            values[propPath] = current[propPath]!!
+          }
         }
       }
 
