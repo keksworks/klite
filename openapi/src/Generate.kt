@@ -55,7 +55,7 @@ internal fun toOperation(route: Route): Pair<String, Any> {
   val op = route.findAnnotation<Operation>()
   val funHandler = route.handler as? FunHandler
   return (op?.method?.trimToNull() ?: route.method.name).lowercase() to mapOf(
-    "operationId" to route.handler.let { (if (it is FunHandler) it.instance::class.simpleName + "." + it.f.name else it::class.simpleName) },
+    "operationId" to funHandler?.let { it.instance::class.simpleName + "." + it.f.name },
     "tags" to listOfNotNull(funHandler?.let { it.instance::class.annotation<Tag>()?.name ?: it.instance::class.simpleName }),
     "parameters" to funHandler?.let {
       it.params.map { p -> toParameter(p, op) }.filter { it["in"] != null }
