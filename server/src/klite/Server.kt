@@ -20,11 +20,10 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.full.primaryConstructor
 
 val Config.port: Int get() = optional("PORT", "8080").toInt()
-val Config.numWorkers: Int get() = optional("NUM_WORKERS")?.toInt() ?: getRuntime().availableProcessors()
 
 class Server(
   val listen: InetSocketAddress = InetSocketAddress(Config.port),
-  val workerPool: ExecutorService = Executors.newWorkStealingPool(Config.numWorkers),
+  val workerPool: ExecutorService = Executors.newVirtualThreadPerTaskExecutor(),
   registry: MutableRegistry = DependencyInjectingRegistry().apply {
     register<RequestLogger>()
     register<TextBody>()
@@ -47,6 +46,7 @@ class Server(
     currentThread().run { name = requestIdGenerator.prefix + "/" + name }
     val kliteVersion = javaClass.`package`.implementationVersion ?: "dev"
     log.info("klite ${kliteVersion}, config " + Config.active)
+    Config.optional("NUM_WORKERS")?.let { log.warn("NUM_WORKERS is deprecated and has no effect now with virtual threads") }
   }
 
   private val http = HttpServer.create().apply { executor = workerPool }

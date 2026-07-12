@@ -1,10 +1,13 @@
 package klite.jdbc
 
-import klite.*
+import klite.Config
+import klite.Extension
+import klite.Server
 import klite.StatusCode.Companion.Conflict
+import klite.register
 import javax.sql.DataSource
 
-val Config.dbPoolMaxSize get() = optional("DB_POOL_SIZE")?.toInt() ?: (numWorkers + (optional("JOB_WORKERS", "5").toInt()))
+val Config.dbPoolMaxSize get() = optional("DB_POOL_SIZE")?.toInt() ?: 50
 
 /** See [HikariModule] if you want to use Hikari */
 open class DBModule(val dataSource: DataSource = PooledDataSource(ConfigDataSource())): Extension {
