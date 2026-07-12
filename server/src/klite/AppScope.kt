@@ -1,20 +1,18 @@
 package klite
 
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.ThreadContextElement
-import kotlin.coroutines.AbstractCoroutineContextElement
-import kotlin.coroutines.CoroutineContext
+import java.lang.Thread.currentThread
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
-// TODO
-object AppScope: CoroutineScope {
-  private val exceptionHandler = CoroutineExceptionHandler { _, e -> logger().error("Async operation failed", e) }
-  override val coroutineContext get() = NonCancellable + exceptionHandler + ThreadNameContext(Thread.currentThread().name + "+async")
-}
+object AppScope {
+  private val executor = Executors.newVirtualThreadPerTaskExecutor()
 
-class ThreadNameContext(private val requestId: String): ThreadContextElement<String?>, AbstractCoroutineContextElement(Key) {
-  companion object Key: CoroutineContext.Key<ThreadNameContext>
-  override fun updateThreadContext(context: CoroutineContext) = Thread.currentThread().also { it.name = requestId }.name
-  override fun restoreThreadContext(context: CoroutineContext, oldState: String?) { Thread.currentThread().name = oldState }
+  fun <T> async(task: Callable<T>): Future<T> {
+    val threadName = currentThread().name
+    return executor.submit(Callable {
+      currentThread().name = "$threadName+async"
+      task.call()
+    })
+  }
 }
