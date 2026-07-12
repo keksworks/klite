@@ -5,8 +5,11 @@ import klite.createFrom
 import klite.publicProperties
 import org.intellij.lang.annotations.Language
 import org.xml.sax.Attributes
+import org.xml.sax.InputSource
 import org.xml.sax.helpers.DefaultHandler
 import java.io.InputStream
+import java.io.Reader
+import java.io.StringReader
 import javax.xml.XMLConstants
 import javax.xml.parsers.SAXParserFactory
 import kotlin.annotation.AnnotationRetention.RUNTIME
@@ -29,9 +32,7 @@ class XMLParser(
     setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
   }
 ) {
-  inline fun <reified T: Any> parse(@Language("xml") xml: InputStream): T = parse(xml, T::class)
-
-  private fun parseSax(@Language("xml") xml: InputStream,
+  private fun parseSax(@Language("xml") xml: InputSource,
                        onEnd: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit = { _, _, _, _ -> }) {
     var path = ""
     val text = StringBuilder()
@@ -70,26 +71,34 @@ class XMLParser(
     })
   }
 
-  fun parse(@Language("xml") xml: InputStream, callback: (parentPath: String, name: String, text: String) -> Unit) {
+  internal fun parse(@Language("xml") xml: InputSource, callback: (parentPath: String, name: String, text: String) -> Unit) {
     parseSax(xml) { current, _, path, text ->
       if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), text)
       current.forEach { (name, value) -> if (value is String) callback(path, name, value) }
     }
   }
 
-  fun parsePathMap(@Language("xml") xml: InputStream): Map<String, String> {
+  fun parsePathMap(@Language("xml") xml: InputStream) = parsePathMap(InputSource(xml))
+  fun parsePathMap(@Language("xml") xml: Reader) = parsePathMap(InputSource(xml))
+  fun parsePathMap(@Language("xml") xml: String) = parsePathMap(StringReader(xml))
+
+  internal fun parsePathMap(@Language("xml") xml: InputSource): Map<String, String> {
     val result = mutableMapOf<String, String>()
     parse(xml) { parentPath, name, text -> result["$parentPath/$name"] = text }
     return result
   }
 
-  fun <T : Any> parse(@Language("xml") xml: InputStream, type: KClass<T>): T {
+  inline fun <reified T: Any> parse(@Language("xml") xml: InputStream): T = parse(InputSource(xml), T::class)
+  inline fun <reified T: Any> parse(@Language("xml") xml: Reader): T = parse(InputSource(xml), T::class)
+  inline fun <reified T: Any> parse(@Language("xml") xml: String): T = parse(StringReader(xml))
+
+  fun <T : Any> parse(@Language("xml") xml: InputSource, type: KClass<T>): T {
     val props = type.readProps()
     val values = mutableMapOf<String, Any>()
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
     val complexProps = props.filter { v -> v.value.isCollection && v.value.elemType != null && !Converter.supports(v.value.elemType!!) }
 
-    parseSax(xml, onEnd = { current, parent, path, text ->
+    parseSax(xml) { current, parent, path, text ->
       if (text.isNotEmpty()) current[""] = text
 
       // Complex collection: create typed object from accumulated children
@@ -153,13 +162,17 @@ class XMLParser(
           else -> existing
         }
       }
-    })
+    }
 
     collectedItems.forEach { (path, items) -> values[path] = items }
     return buildObject(values, type, props)
   }
 
-  fun parseNodes(xml: InputStream): XmlNode {
+  fun parseNodes(xml: InputStream) = parseNodes(InputSource(xml))
+  fun parseNodes(xml: Reader) = parseNodes(InputSource(xml))
+  fun parseNodes(xml: String) = parseNodes(StringReader(xml))
+
+  internal fun parseNodes(xml: InputSource): XmlNode {
     var root: MutableMap<String, Any>? = null
 
     parseSax(xml) { current, parent, path, text ->
@@ -221,6 +234,7 @@ class XMLParser(
   }
 }
 
+// TODO: unify with JsonNode
 typealias XmlNode = Map<String, Any>
 
 fun <T: Any> XmlNode.childOrNull(key: String) = get(key) as T?
