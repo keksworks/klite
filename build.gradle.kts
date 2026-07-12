@@ -46,11 +46,11 @@ subprojects {
     }
   }
 
-  java.sourceCompatibility = JavaVersion.VERSION_17
+  java.sourceCompatibility = JavaVersion.VERSION_21
 
   tasks.withType<KotlinCompile> {
     compilerOptions {
-      jvmTarget.set(JvmTarget.JVM_17)
+      jvmTarget.set(JvmTarget.JVM_21)
       freeCompilerArgs.addAll(
         "-Xreturn-value-checker=check",
         "-Xcollection-literals",

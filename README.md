@@ -55,6 +55,7 @@ fun main() {
 
 * Java 6+ built-in non-blocking jdk.httpserver
 * Re-routable Java 9+ System.Logger
+* Java 21 is the minimum supported version
 
 # Modules
 

@@ -18,7 +18,7 @@ import kotlin.reflect.typeOf
 
 class ConverterTest {
   @Test fun `pre-defined`() {
-    expect(Converter.from<Locale>("et_EE")).toEqual(Locale("et", "EE"))
+    expect(Converter.from<Locale>("et_EE")).toEqual(Locale.of("et", "EE"))
     expect(Converter.from<Decimal>("123.45")).toEqual("123.45".d)
     expect(Converter.supports(Locale::class)).toEqual(true)
   }

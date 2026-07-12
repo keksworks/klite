@@ -70,6 +70,6 @@ class DecimalTest {
   }
 
   @Test fun formatting() {
-    expect(NumberFormat.getNumberInstance(Locale("et")).format(10500.24.d)).toEqual("10 500,24")
+    expect(NumberFormat.getNumberInstance(Locale.of("et")).format(10500.24.d)).toEqual("10 500,24")
   }
 }
