@@ -15,9 +15,9 @@ open class OAuthRoutes(private val userProvider: OAuthUserProvider, registry: Re
   private fun client(provider: String?) = (if (provider == null) clients.values.firstOrNull() else clients[provider.uppercase()]) ?:
     error("No ${provider ?: ""}OAuthClient registered")
 
-  @GET open suspend fun start(e: HttpExchange) = start(null, e)
+  @GET open fun start(e: HttpExchange) = start(null, e)
 
-  @GET("/:provider") open suspend fun start(@PathParam provider: String?, e: HttpExchange) =
+  @GET("/:provider") open fun start(@PathParam provider: String?, e: HttpExchange) =
     if (e.query("error_message") != null) e.redirectToLogin(null, "oauthProviderRefused")
     else if (e.query("state") != null) accept(provider, e.query("code"), e.query("state")!!, e)
     else {
@@ -26,9 +26,9 @@ open class OAuthRoutes(private val userProvider: OAuthUserProvider, registry: Re
       e.redirect(client(provider).startAuthUrl(nonce, e.fullUrl(e.path), e.lang))
     }
 
-  @POST open suspend fun accept(@BodyParam code: String?, @BodyParam state: String?, e: HttpExchange) = accept(null, code, state, e)
+  @POST open fun accept(@BodyParam code: String?, @BodyParam state: String?, e: HttpExchange) = accept(null, code, state, e)
 
-  @POST("/:provider") open suspend fun accept(@PathParam provider: String?, @BodyParam code: String?, @BodyParam state: String?, e: HttpExchange) {
+  @POST("/:provider") open fun accept(@PathParam provider: String?, @BodyParam code: String?, @BodyParam state: String?, e: HttpExchange) {
     val nonceKey = "oauth_$state"
     val originalUrl = e.session[nonceKey]?.let { URI(it) } ?: throw ForbiddenException("Invalid or expired OAuth state")
     e.session[nonceKey] = null

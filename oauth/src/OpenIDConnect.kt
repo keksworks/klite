@@ -2,9 +2,9 @@ package klite.oauth
 
 import klite.HttpExchange
 import klite.info
-import klite.json.getOrNull
 import klite.json.parse
 import klite.logger
+import klite.nodes.textOrNull
 import klite.oauth.JWT.Companion.jsonMapper
 import klite.plus
 import java.net.URI
@@ -37,14 +37,14 @@ class OIDCConfig(
     jwksUri.toString(),
     httpClient
   ) {
-    override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
+    override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
       val jwt = token.idToken ?: error("id_token is required for OpenID Connect")
       if (keys == null) fetchKeys()
       jwt.verify(keys!!)
       return UserProfile(provider, jwt.payload.subject, jwt.payload.email!!,
-        jwt.payload.getOrNull("givenName") ?: jwt.payload.name!!.substringBefore(" "),
-        jwt.payload.getOrNull("familyName") ?: jwt.payload.name!!.substringAfter(" "),
-        jwt.payload.getOrNull<String>("picture")?.let { URI(it) }, jwt.payload.locale)
+        jwt.payload.textOrNull("givenName") ?: jwt.payload.name!!.substringBefore(" "),
+        jwt.payload.textOrNull("familyName") ?: jwt.payload.name!!.substringAfter(" "),
+        jwt.payload.textOrNull("picture")?.let { URI(it) }, jwt.payload.locale)
     }
   }
 }

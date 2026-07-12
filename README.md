@@ -41,8 +41,7 @@ fun main() {
 * 12-factor apps by default
 * Most behaviour can be overridden if necessary
 * Both route builder and annotated classes
-* Very easy to do simple things, e.g.
-  `@GET suspend fun route() = provider.fetchData()`
+* Very easy to do simple things, e.g. `@GET fun route() = provider.fetchData()`
 * Proper Kotlin coroutine support with working before/after filters for e.g. transactions and logging
 * Shared [type-safe value classes](core/src/Types.kt) across http parameters, database columns and json fields
 * Most app code will not depend on the framework, easy to switch

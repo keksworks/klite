@@ -10,6 +10,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.util.*
+import kotlin.time.Duration.Companion.seconds
 
 class SSERoutes {
   private val channel = Channel<Message>(100)
@@ -35,7 +36,7 @@ class SSERoutes {
         val data = mapOf("message" to "Hello $i")
         e.send(Event(data = data, id = UUID.randomUUID()))
         log.info("Sent $data")
-        delay(2000)
+        delay(2.seconds)
       }
       e.send(Event(name = "end"))
     } catch (e: IOException) {

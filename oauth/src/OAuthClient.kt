@@ -35,10 +35,10 @@ abstract class OAuthClient(provider: String? = null, scope: String? = null, auth
     "prompt" to "select_account"
   )
 
-  suspend fun authenticate(code: String, redirectUrl: URI) = fetchTokenResponse("authorization_code", code, redirectUrl)
-  suspend fun refresh(refreshToken: String) = fetchTokenResponse("refresh_token", refreshToken)
+  fun authenticate(code: String, redirectUrl: URI) = fetchTokenResponse("authorization_code", code, redirectUrl)
+  fun refresh(refreshToken: String) = fetchTokenResponse("refresh_token", refreshToken)
 
-  protected open suspend fun fetchTokenResponse(grantType: String, code: String, redirectUrl: URI? = null): OAuthTokenResponse =
+  protected open fun fetchTokenResponse(grantType: String, code: String, redirectUrl: URI? = null): OAuthTokenResponse =
     http.post<OAuthTokenResponse>(tokenUrl, urlEncodeParams(
       "grant_type" to grantType,
       (if (grantType == "authorization_code") "code" else grantType) to code,
@@ -49,14 +49,14 @@ abstract class OAuthClient(provider: String? = null, scope: String? = null, auth
       setHeader("Content-Type", MimeTypes.withCharset(MimeTypes.wwwForm))
     }.also { it.idToken?.verify() }
 
-  protected suspend fun fetchProfileResponse(token: OAuthTokenResponse): JsonNode = http.get(profileUrl!!) { authBearer(token.accessToken) }
+  protected fun fetchProfileResponse(token: OAuthTokenResponse): JsonNode = http.get(profileUrl!!) { authBearer(token.accessToken) }
 
-  abstract suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile
+  abstract fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile
 
   protected fun JsonNode.getLocale(key: String = "locale") = getOrNull<String>(key)?.let { Locale.forLanguageTag(it) }
 
   protected var keys: Map<String, JwkKey>? = null
-  suspend fun fetchKeys(): Map<String, JwkKey> {
+  fun fetchKeys(): Map<String, JwkKey> {
     keys = http.get<JwksKeysResponse>(jwkKeysUrl!!).keys.associateBy { it.kid }
     return keys!!
   }
@@ -71,7 +71,7 @@ class GoogleOAuthClient(httpClient: HttpClient): OAuthClient(
   jwkKeysUrl = "https://www.googleapis.com/oauth2/v3/certs",
   httpClient = httpClient
 ) {
-  override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
+  override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val res = fetchProfileResponse(token)
     val email = Email(res.getString("email"))
     return UserProfile(provider, res.getString("id"), email,
@@ -89,7 +89,7 @@ class MicrosoftOAuthClient(httpClient: HttpClient): OAuthClient(
   jwkKeysUrl = "https://login.microsoftonline.com/common/discovery/v2.0/keys",
   httpClient = httpClient
 ) {
-  override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
+  override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val res = fetchProfileResponse(token)
     val email = res.getOrNull("mail") ?: res.getOrNull<String>("userPrincipalName") ?: error("Cannot obtain user's email")
     return UserProfile(provider, res.getString("id"), Email(email), res.getOrNull("givenName") ?: email.substringBefore("@").capitalize(), res.getOrNull("surname") ?: "",
@@ -106,7 +106,7 @@ class FacebookOAuthClient(httpClient: HttpClient): OAuthClient(
   jwkKeysUrl = "https://www.facebook.com/.well-known/oauth/openid/jwks/",
   httpClient = httpClient
 ) {
-  override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
+  override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val res = fetchProfileResponse(token)
     val avatarData = res.getOrNull<JsonNode>("picture")?.getOrNull<JsonNode>("data")
     val avatarExists = avatarData?.getOrNull<Boolean>("is_silhouette") != true
@@ -126,7 +126,7 @@ class AppleOAuthClient(httpClient: HttpClient): OAuthClient(
   jwkKeysUrl = "https://appleid.apple.com/auth/keys",
   httpClient = httpClient
 ) {
-  override suspend fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
+  override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val email = token.idToken!!.payload.email!!
     val user = exchange.bodyParams["user"]?.let { http.json.parse<AppleUserProfile>(it.toString()) }
     return UserProfile(provider, token.idToken.payload.subject, email, user?.name?.firstName ?: email.value.substringBefore("@").capitalize(), user?.name?.lastName ?: "")
