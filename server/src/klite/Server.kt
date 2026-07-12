@@ -5,8 +5,9 @@ import klite.RequestMethod.GET
 import klite.StatusCode.Companion.NoContent
 import klite.StatusCode.Companion.NotFound
 import klite.StatusCode.Companion.OK
-import kotlinx.coroutines.*
-import kotlinx.coroutines.CoroutineStart.UNDISPATCHED
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Runnable
+import kotlinx.coroutines.runBlocking
 import java.lang.Runtime.getRuntime
 import java.lang.Thread.currentThread
 import java.net.InetSocketAddress
@@ -23,7 +24,6 @@ val Config.port: Int get() = optional("PORT", "8080").toInt()
 
 class Server(
   val listen: InetSocketAddress = InetSocketAddress(Config.port),
-  val workerPool: ExecutorService = Executors.newVirtualThreadPerTaskExecutor(),
   registry: MutableRegistry = DependencyInjectingRegistry().apply {
     register<RequestLogger>()
     register<TextBody>()
@@ -38,8 +38,8 @@ class Server(
   pathParamRegexer: PathParamRegexer = registry.require(),
   private val httpExchangeCreator: KFunction<HttpExchange> = HttpExchange::class.primaryConstructor!!,
 ): RouterConfig(registry, pathParamRegexer, decorators, registry.requireAll(), registry.requireAll()) {
-  private val requestScope = CoroutineScope(SupervisorJob() + workerPool.asCoroutineDispatcher())
   private val log = logger()
+  val workerPool: ExecutorService = Executors.newVirtualThreadPerTaskExecutor()
 
   init {
     registry.register(requestIdGenerator)
@@ -54,7 +54,7 @@ class Server(
 
   val address: InetSocketAddress get() = http.address ?: error("Server not started")
 
-  fun start(gracefulStopDelaySec: Int = 3, socketBacklog: Int = 0) {
+  fun start(gracefulStopDelaySec: Int = 3, socketBacklog: Int = 2048) {
     http.bind(listen, socketBacklog)
     log.info("Listening on http://${if (address.address.isAnyLocalAddress) "localhost" else address.hostString}:${address.port}")
     http.start()
@@ -87,10 +87,10 @@ class Server(
     addContext(prefix, this, Dispatchers.IO) { runHandler(this, route, PathParams.EMPTY) }
   }
 
-  private fun addContext(prefix: String, config: RouterConfig, extraCoroutineContext: CoroutineContext = EmptyCoroutineContext, handler: Handler) {
+  private fun addContext(prefix: String, config: RouterConfig, extraCoroutineContext: CoroutineContext = EmptyCoroutineContext, handler: suspend HttpExchange.() -> Unit) {
     http.createContext(prefix) { ex ->
       val requestId = requestIdGenerator(ex.requestHeaders)
-      requestScope.launch(ThreadNameContext(requestId) + extraCoroutineContext, start = UNDISPATCHED) {
+      runBlocking(Dispatchers.Unconfined + ThreadNameContext(requestId) + extraCoroutineContext) {
         httpExchangeCreator.call(ex, config, sessionStore, requestId).handler()
       }
     }

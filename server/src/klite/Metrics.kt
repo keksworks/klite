@@ -5,7 +5,6 @@ import java.io.File
 import java.io.OutputStream
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ForkJoinPool
 
 object Metrics {
   private val resolvers = ConcurrentHashMap<String, () -> Any?>().apply {
@@ -30,12 +29,6 @@ fun Server.metrics(path: String = "/metrics", befores: Router.() -> Unit = {}) {
 
 context(server: Server)
 fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotations: List<Annotation> = emptyList()) {
-  (server.workerPool as? ForkJoinPool)?.let {
-    Metrics.register("workerPool") {
-      mapOf("active" to it.activeThreadCount, "size" to it.poolSize, "max" to it.parallelism)
-    }
-  }
-
   Runtime.getRuntime().let {
     val mb = 1024f * 1024f
     val linuxSelfStatus = File("/proc/self/status").takeIf { it.canRead() }

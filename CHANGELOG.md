@@ -1,14 +1,15 @@
-# Unreleased
-* i18n: Lang.jsonMapper is no longer public to avoid mistakes of using it for other purposes. Create your own JsonMapper if you need it
+# Unreleased 2.0.0
+* server: workerPool now uses JVM Virtual Threads, Java 21+ is now required, NUM_WORKERS config option is deprecated
+* server: ErrorResponse is now RFC 7807 compatible (some fields renamed)
+* server: RequestLogger uses ERROR level for failed requests for easier alert triggering
+* server: remove KeyCipher compatibility with lower-security ECB mode introduced in 1.8.3
 * jdbc: optional dependency to json module added and functions jsonb() and getJson() are now provided
 * jdbc: introduce @JsonColumn annotation for entity properties to avoid redefining of mappers/persisters just for that
 * oauth: implement JWT HMAC/RSA/ES signature verification
 * oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
-* server: ErrorResponse is now RFC 7807 compatible (some fields renamed)
-* server: RequestLogger uses ERROR level for failed requests for easier alert triggering
-* server: remove KeyCipher compatibility with lower-security ECB mode introduced in 1.8.3
 * slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging
 * slf4j: MDC is now supported with `use<RequestMDCContext>()`
+* i18n: Lang.jsonMapper is no longer public to avoid mistakes of using it for other purposes. Create your own JsonMapper if you need it
 * core: klite.nodes.Node introduced as base of JsonNode and XmlNode with common functionality
 * xml: parseNodes() now always parses attributes with @ prefix, no matter if the element has children or not, to avoid confusion
 * xml: parse() now supports nested data classes annotated with @XmlPath
