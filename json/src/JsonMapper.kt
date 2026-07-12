@@ -1,5 +1,7 @@
 package klite.json
 
+import klite.KeyConverter
+import klite.ValueConverter
 import org.intellij.lang.annotations.Language
 import java.io.InputStream
 import java.io.OutputStream
@@ -34,15 +36,6 @@ data class JsonMapper(
 inline fun <reified T> JsonMapper.parse(json: Reader): T = parse(json, typeOf<T>())
 inline fun <reified T> JsonMapper.parse(@Language("JSON") json: String): T = parse(json, typeOf<T>())
 inline fun <reified T> JsonMapper.parse(json: InputStream): T = parse(json, typeOf<T>())
-
-@Deprecated("Use klite.ValueConverter instead", ReplaceWith("klite.ValueConverter<T>"))
-typealias ValueConverter<T> = klite.ValueConverter<T>
-@Deprecated("Use klite.KeyConverter instead", ReplaceWith("klite.KeyConverter"))
-typealias KeyConverter = klite.KeyConverter
-@Deprecated("Use klite.SnakeCase instead", ReplaceWith("klite.SnakeCase"))
-typealias SnakeCase = klite.SnakeCase
-@Deprecated("Use klite.Capitalize instead", ReplaceWith("klite.Capitalize"))
-typealias Capitalize = klite.Capitalize
 
 class FastStringWriter: Writer() {
   private val buf = StringBuilder()
