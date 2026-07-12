@@ -6,16 +6,13 @@
 * oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
 * server: ErrorResponse is now RFC 7807 compatible (some fields renamed)
 * server: RequestLogger uses ERROR level for failed requests for easier alert triggering
+* server: remove KeyCipher compatibility with lower-security ECB mode introduced in 1.8.3
 * slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging
 * slf4j: MDC is now supported with `use<RequestMDCContext>()`
 * core: klite.nodes.Node introduced as base of JsonNode and XmlNode with common functionality
 * xml: parseNodes() now always parses attributes with @ prefix, no matter if the element has children or not, to avoid confusion
 * xml: parse() now supports nested data classes annotated with @XmlPath
 * push: a new module with WebPushClient introduced for sending push notifications to browsers
-
-# TODO
-* remove KeyCipher compatibility with ECB mode
-* introduce openai api module with OpenAIClient for calling OpenAI-compatible API
 
 # 1.9.0
 * server: make it possible to override instanceId/prefix in RequestIdGenerator to support vendor-specific instance id headers, like FLY_ALLOC_ID

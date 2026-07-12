@@ -26,18 +26,8 @@ class KeyCipher(private val key: SecretKey) {
 
   fun decrypt(input: String): String {
     val bytes = input.base64UrlDecode()
-    try {
-      val iv = bytes.copyOfRange(0, 12)
-      val cipher = cipherFor(DECRYPT_MODE, iv)
-      return cipher.doFinal(bytes, 12, bytes.size - 12).decodeToString()
-    } catch (e: Exception) {
-      try {
-        // Backwards-compatibility with non-GCM mode
-        val cipher = Cipher.getInstance(key.algorithm).apply { init(DECRYPT_MODE, key) }
-        return cipher.doFinal(bytes).decodeToString()
-      } catch (_: Exception) {
-        throw e
-      }
-    }
+    val iv = bytes.copyOfRange(0, 12)
+    val cipher = cipherFor(DECRYPT_MODE, iv)
+    return cipher.doFinal(bytes, 12, bytes.size - 12).decodeToString()
   }
 }
