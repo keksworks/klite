@@ -2,6 +2,7 @@ package klite.xml
 
 import klite.Converter
 import klite.createFrom
+import klite.nodes.Node
 import klite.publicProperties
 import org.intellij.lang.annotations.Language
 import org.xml.sax.Attributes
@@ -215,7 +216,7 @@ class XMLParser(
   private fun matchPath(fullPath: String, path: String): Boolean =
     fullPath == path || fullPath.endsWith("/$path") || (!path.startsWith("/") && fullPath.endsWith(path))
 
-  private fun <T: Any> buildObject(values: Map<String, Any>, type: KClass<T>, props: Map<String, PropInfo>): T {
+  private fun <T: Any> buildObject(values: XmlNode, type: KClass<T>, props: Map<String, PropInfo>): T {
     val constructorArgs = mutableMapOf<String, Any?>()
     for ((_, info) in props) {
       val value = values[info.path] ?: continue
@@ -234,17 +235,4 @@ class XMLParser(
   }
 }
 
-// TODO: unify with JsonNode
-typealias XmlNode = Map<String, Any>
-
-fun <T: Any> XmlNode.childOrNull(key: String) = get(key) as T?
-fun <T: Any> XmlNode.child(key: String) = (childOrNull<T>(key) ?: throw NullPointerException("$key is absent"))
-fun <T> XmlNode.children(key: String): List<T> = childOrNull<Any>(key).let {
-  if (it == null) emptyList() else it as? List<T> ?: listOf(it as T)
-}
-fun XmlNode.at(key: String) = child<XmlNode>(key)
-fun XmlNode.nodes(key: String): List<XmlNode> = children(key)
-fun XmlNode.text(key: String) = child<String>(key)
-fun XmlNode.textOrNull(key: String) = childOrNull<String>(key)
-inline fun <reified T: Any> XmlNode.value(key: String) = Converter.from<T>(text(key))
-inline fun <reified T: Any> XmlNode.valueOrNull(key: String) = textOrNull(key)?.let { Converter.from<T>(it) }
+typealias XmlNode = Node

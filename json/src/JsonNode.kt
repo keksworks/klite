@@ -2,21 +2,27 @@
 package klite.json
 
 import klite.d
+import klite.nodes.*
 
-typealias JsonNode = Map<String, Any?>
+typealias JsonNode = Node
 typealias JsonList = List<JsonNode>
 
-@kotlin.internal.HidesMembers
-inline fun <T: Any> JsonNode.get(key: String) = (get(key) ?: throw NullPointerException("$key is absent")) as T
-inline fun <T: Any> JsonNode.getOrNull(key: String) = get(key) as T?
+@kotlin.internal.HidesMembers @Deprecated("Use child()", ReplaceWith("child(key)", "klite.nodes"))
+inline fun <T: Any> JsonNode.get(key: String) = child<T>(key)
 
-inline fun JsonNode.at(key: String) = get<JsonNode>(key)
-inline fun JsonNode.getString(key: String) = get<String>(key)
-inline fun JsonNode.getInt(key: String) = get<Number>(key).toInt()
-inline fun JsonNode.getLong(key: String) = get<Number>(key).toLong()
-inline fun JsonNode.getBigDecimal(key: String) = get<String>(key).toBigDecimal()
-inline fun JsonNode.getDecimal(key: String) = get<String>(key).d
-inline fun JsonNode.getBoolean(key: String) = get<Boolean>(key)
-inline fun <T> JsonNode.getList(key: String) = get<List<T>>(key)
-inline fun <T> JsonNode.getMap(key: String) = get<Map<String, T>>(key)
-inline fun JsonNode.getNode(key: String): JsonNode = getMap(key)
+@Deprecated("Use childOrNull()", ReplaceWith("childOrNull(key)", "klite.nodes"))
+inline fun <T: Any> JsonNode.getOrNull(key: String) = childOrNull<T>(key)
+
+inline fun JsonNode.getString(key: String) = text(key)
+inline fun JsonNode.getInt(key: String) = child<Number>(key).toInt()
+inline fun JsonNode.getLong(key: String) = child<Number>(key).toLong()
+inline fun JsonNode.getBigDecimal(key: String) = text(key).toBigDecimal()
+inline fun JsonNode.getDecimal(key: String) = text(key).d
+inline fun JsonNode.getBoolean(key: String) = child<Boolean>(key)
+
+@Deprecated("Use children()", ReplaceWith("children<T>(key)", "klite.nodes"))
+inline fun <T> JsonNode.getList(key: String) = children<T>(key)
+inline fun <T> JsonNode.getMap(key: String) = child<Map<String, T>>(key)
+
+@Deprecated("Use at()", ReplaceWith("at(key)", "klite.nodes"))
+inline fun JsonNode.getNode(key: String): JsonNode = at(key)

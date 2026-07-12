@@ -2,6 +2,10 @@ package klite.xml
 
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
+import klite.nodes.at
+import klite.nodes.nodes
+import klite.nodes.text
+import klite.nodes.value
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
 
