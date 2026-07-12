@@ -50,7 +50,7 @@ object ErrorResponseSerializer: KSerializer<ErrorResponse> {
       title = value.title,
       status = value.status.value,
       detail = value.detail,
-      instance = value.instance?.toString(),
+      instance = value.instance,
     ))
   override fun deserialize(decoder: Decoder): ErrorResponse = error("No need")
 
