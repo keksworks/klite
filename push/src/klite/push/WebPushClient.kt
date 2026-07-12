@@ -6,7 +6,6 @@ import klite.base64UrlEncode
 import klite.http.httpClient
 import klite.oauth.JWT
 import klite.oauth.JWT.Header
-import kotlinx.coroutines.future.await
 import java.math.BigInteger
 import java.net.URI
 import java.net.http.HttpClient
@@ -67,7 +66,7 @@ class WebPushClient(
     internal val RS_BYTES = ByteArray(12).also { it[10] = 16 }
   }
 
-  suspend fun send(subscription: PushSubscription, payload: ByteArray?, ttl: Int = this.ttl): HttpResponse<String> {
+  fun send(subscription: PushSubscription, payload: ByteArray?, ttl: Int = this.ttl): HttpResponse<String> {
     val encrypted = if (payload != null) encrypt(payload, subscription.keys) else null
     val jwt = createVapidJwt(subscription.endpoint)
     val key = vapidKeyPair.publicKey
@@ -80,7 +79,7 @@ class WebPushClient(
       .header("Authorization", "vapid t=$jwt, k=$key")
       .POST(if (encrypted != null) BodyPublishers.ofByteArray(encrypted) else BodyPublishers.noBody())
       .build()
-    return http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).await()
+    return http.send(req, HttpResponse.BodyHandlers.ofString())
   }
 
   internal fun createVapidJwt(endpoint: URI): JWT {

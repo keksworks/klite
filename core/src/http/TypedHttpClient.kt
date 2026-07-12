@@ -3,8 +3,6 @@ package klite.http
 import klite.error
 import klite.info
 import klite.logger
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.future.await
 import java.io.IOException
 import java.lang.StackWalker.Option.RETAIN_CLASS_REFERENCE
 import java.lang.reflect.Modifier.ABSTRACT
@@ -44,10 +42,10 @@ open class TypedHttpClient(
     .contentType("application/json; charset=UTF-8").accept("application/json")
     .timeout(10.seconds).reqModifier()
 
-  private suspend fun <T> request(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
+  private fun <T> request(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
     val req = buildReq(urlSuffix).builder().build()
     val start = System.nanoTime()
-    val res = http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).await()
+    val res = http.send(req, HttpResponse.BodyHandlers.ofString())
     val ms = (System.nanoTime() - start) / 1000_000
     val body = res.body().trim() // TODO: NPE -> return nullable type
     if (res.statusCode() < 300) {
@@ -59,14 +57,14 @@ open class TypedHttpClient(
     }
   }
 
-  suspend fun <T> retryRequest(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
+  fun <T> retryRequest(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
     for (i in 0..retryCount) {
       try {
         return request(urlSuffix, type, payload, builder)
       } catch (e: IOException) {
         if (i < retryCount) {
           logger.error("Failed $urlSuffix, retry ${i + 1} after $retryAfter", e)
-          delay(retryAfter.inWholeMilliseconds)
+          Thread.sleep(retryAfter.inWholeMilliseconds)
         } else {
           logger.error("Failed $urlSuffix: ${payload?.trimToLog()}", e)
           throw e
@@ -76,28 +74,28 @@ open class TypedHttpClient(
     error("Unreachable")
   }
 
-  suspend inline fun <reified T> request(urlSuffix: String, payload: String? = null, noinline builder: RequestModifier): T =
+  inline fun <reified T> request(urlSuffix: String, payload: String? = null, noinline builder: RequestModifier): T =
     retryRequest(urlSuffix, typeOf<T>(), payload, builder)
 
-  suspend fun <T> get(urlSuffix: String, type: KType, modifier: RequestModifier? = null): T =
+  fun <T> get(urlSuffix: String, type: KType, modifier: RequestModifier? = null): T =
     retryRequest(urlSuffix, type) { GET().apply(modifier) }
-  suspend inline fun <reified T> get(urlSuffix: String, noinline modifier: RequestModifier? = null): T = get(urlSuffix, typeOf<T>(), modifier)
+  inline fun <reified T> get(urlSuffix: String, noinline modifier: RequestModifier? = null): T = get(urlSuffix, typeOf<T>(), modifier)
 
-  suspend fun <T> post(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
+  fun <T> post(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
     retryRequest(urlSuffix, type, it) { POST(BodyPublishers.ofString(it)).apply(modifier) } }
-  suspend inline fun <reified T> post(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = post(urlSuffix, o, typeOf<T>(), modifier)
+  inline fun <reified T> post(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = post(urlSuffix, o, typeOf<T>(), modifier)
 
-  suspend fun <T> put(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
+  fun <T> put(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
     retryRequest(urlSuffix, type, it) { PUT(BodyPublishers.ofString(it)).apply(modifier) } }
-  suspend inline fun <reified T> put(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = put(urlSuffix, o, typeOf<T>(), modifier)
+  inline fun <reified T> put(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = put(urlSuffix, o, typeOf<T>(), modifier)
 
-  suspend fun <T> delete(urlSuffix: String, type: KType, modifier: RequestModifier? = null): T =
+  fun <T> delete(urlSuffix: String, type: KType, modifier: RequestModifier? = null): T =
     retryRequest(urlSuffix, type) { DELETE().apply(modifier) }
-  suspend inline fun <reified T> delete(urlSuffix: String, noinline modifier: RequestModifier? = null): T = delete(urlSuffix, typeOf<T>(), modifier)
+  inline fun <reified T> delete(urlSuffix: String, noinline modifier: RequestModifier? = null): T = delete(urlSuffix, typeOf<T>(), modifier)
 
-  suspend fun <T> patch(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
+  fun <T> patch(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
     retryRequest(urlSuffix, type, it) { method("PATCH", BodyPublishers.ofString(it)).apply(modifier) } }
-  suspend inline fun <reified T> patch(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = patch(urlSuffix, o, typeOf<T>(), modifier)
+  inline fun <reified T> patch(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = patch(urlSuffix, o, typeOf<T>(), modifier)
 
   private fun HttpRequest.Builder.apply(modifier: RequestModifier?) = modifier?.let { it() } ?: this
 

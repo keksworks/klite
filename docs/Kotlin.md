@@ -35,6 +35,5 @@
 | **Value transformation**     | `list.stream().map(i -> i * 2).collect(toList());`                                                                        | `list.map { it * 2 }`                                                   | `list.map(i => i * 2)`                                                   |
 | **Semicolons**               | Required                                                                                                                  | Optional                                                                | Optional                                                                 |
 | **Readable test names**      | `@Test void myCoolMethodDoesThisAndThat() {}`                                                                             | `@Test fun ``my cool method does this and that``() {}`                  | `test('my cool method does this and that')`                              |
-| **Asynchronous Code**        | `CompletableFuture.supplyAsync(() -> ...)` (no syntactic support)                                                         | `suspend` functions built-in                                            | `async function fetchData() { ... }` async/await built-in                |
 
 See [TSGenerator](../json/src/TSGenerator.kt) in klite-json for generating TypeScript interfaces from Kotlin data classes.
