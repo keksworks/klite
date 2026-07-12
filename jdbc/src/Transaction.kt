@@ -2,14 +2,11 @@ package klite.jdbc
 
 import klite.error
 import klite.logger
-import kotlinx.coroutines.ThreadContextElement
 import java.sql.Connection
 import java.sql.SQLException
 import javax.sql.DataSource
 import kotlin.annotation.AnnotationTarget.CLASS
 import kotlin.annotation.AnnotationTarget.FUNCTION
-import kotlin.coroutines.AbstractCoroutineContextElement
-import kotlin.coroutines.CoroutineContext
 
 /** Disable transaction for a route or a job. This will most likely leave the connection in auto-commit mode (depending on connection pool settings). */
 @Target(FUNCTION, CLASS) annotation class NoTransaction
@@ -58,11 +55,4 @@ fun <R> DataSource.withConnection(block: Connection.() -> R): R {
   val tx = Transaction.current()
   return if (tx != null) tx.connection(this).block()
          else connection.use(block)
-}
-
-class TransactionContext(val tx: Transaction? = Transaction.current()): ThreadContextElement<Transaction?>, AbstractCoroutineContextElement(Key) {
-  companion object Key: CoroutineContext.Key<TransactionContext>
-
-  override fun updateThreadContext(context: CoroutineContext) = Transaction.current().also { tx?.attachToThread() }
-  override fun restoreThreadContext(context: CoroutineContext, oldState: Transaction?) { oldState?.attachToThread() ?: tx?.detachFromThread() }
 }

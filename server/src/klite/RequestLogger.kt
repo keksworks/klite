@@ -14,7 +14,7 @@ open class RequestLogger(
 ): Decorator {
   private val log = logger()
 
-  override suspend fun invoke(exchange: HttpExchange, handler: Handler): Any? {
+  override fun invoke(exchange: HttpExchange, handler: Handler): Any? {
     val start = System.nanoTime()
     exchange.onComplete {
       val ms = (System.nanoTime() - start) / 1000_000

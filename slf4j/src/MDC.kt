@@ -46,7 +46,7 @@ class RequestMDCContext(val initial: MutableMap<String, String?> = HashMap()): E
     decorator { exchange, handler -> decorate(exchange, handler) }
   }
 
-  suspend fun decorate(e: HttpExchange, handler: Handler): Any? {
+  fun decorate(e: HttpExchange, handler: Handler): Any? {
     adapter.init(initial)
     return try {
       handler(e)

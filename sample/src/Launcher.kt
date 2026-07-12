@@ -7,11 +7,9 @@ import klite.oauth.AuthRoutes
 import klite.oauth.OAuthRoutes
 import klite.oauth.OAuthUserProvider
 import klite.openapi.openApi
-import kotlinx.coroutines.delay
 import users.UserRepository
 import java.net.InetSocketAddress
 import java.nio.file.Path
-import kotlin.time.Duration.Companion.seconds
 
 fun main() {
   sampleServer().start()
@@ -39,7 +37,7 @@ fun sampleServer(port: Int = Config.port): Server {
       get { "Hello World" }
 
       get("/delay") {
-        delay(1.seconds)
+        Thread.sleep(1000)
         "Waited for 1 sec"
       }
 

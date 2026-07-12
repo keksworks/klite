@@ -1,13 +1,13 @@
 package klite
 
-typealias Handler = suspend HttpExchange.() -> Any?
-typealias Decorator = suspend (exchange: HttpExchange, handler: Handler) -> Any?
+typealias Handler = HttpExchange.() -> Any?
+typealias Decorator = (exchange: HttpExchange, handler: Handler) -> Any?
 
 fun Decorator.wrap(handler: Handler): Handler = { invoke(this, handler) }
 fun List<Decorator>.wrap(handler: Handler) = foldRight(handler) { d, h -> d.wrap(h) }
 
 fun interface Before {
-  suspend fun before(exchange: HttpExchange)
+  fun before(exchange: HttpExchange)
 }
 
 fun Before.toDecorator(): Decorator = { ex, handler ->
@@ -15,7 +15,7 @@ fun Before.toDecorator(): Decorator = { ex, handler ->
 }
 
 fun interface After {
-  suspend fun after(exchange: HttpExchange, error: Throwable?)
+  fun after(exchange: HttpExchange, error: Throwable?)
 }
 
 fun After.toDecorator(): Decorator = { ex, handler ->

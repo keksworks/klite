@@ -2,7 +2,10 @@ package klite.jobs
 
 import ch.tutteli.atrium.api.fluent.en_GB.notToEqualNull
 import ch.tutteli.atrium.api.verbs.expect
-import io.mockk.*
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.spyk
+import io.mockk.verify
 import klite.RequestIdGenerator
 import klite.Server
 import klite.jdbc.Transaction
@@ -23,7 +26,7 @@ class JobRunnerTest {
 
   class MyJob: Job {
     override val allowParallelRun = true
-    override suspend fun run() {
+    override fun run() {
       expect(Transaction.current()).notToEqualNull()
     }
   }
@@ -59,7 +62,7 @@ class JobRunnerTest {
     val dailyRunner = slot<Runnable>()
     verify { executor.scheduleAtFixedRate(capture(dailyRunner), match { it > 0 }, 86400000, MILLISECONDS) }
     dailyRunner.captured.run()
-    coVerify { job.run() }
+    verify { job.run() }
   }
 
   @Test fun `scheduleMonthly not today`() {
@@ -68,6 +71,6 @@ class JobRunnerTest {
     val dailyRunner = slot<Runnable>()
     verify { executor.scheduleAtFixedRate(capture(dailyRunner), match { it > 0 }, 86400000, MILLISECONDS) }
     dailyRunner.captured.run()
-    coVerify(exactly = 0) { job.run() }
+    verify(exactly = 0) { job.run() }
   }
 }

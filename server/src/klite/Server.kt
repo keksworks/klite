@@ -5,9 +5,7 @@ import klite.RequestMethod.GET
 import klite.StatusCode.Companion.NoContent
 import klite.StatusCode.Companion.NotFound
 import klite.StatusCode.Companion.OK
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Runnable
-import kotlinx.coroutines.runBlocking
 import java.lang.Runtime.getRuntime
 import java.lang.Thread.currentThread
 import java.net.InetSocketAddress
@@ -15,8 +13,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.primaryConstructor
 
@@ -24,6 +20,7 @@ val Config.port: Int get() = optional("PORT", "8080").toInt()
 
 class Server(
   val listen: InetSocketAddress = InetSocketAddress(Config.port),
+  val workerPool: ExecutorService = Executors.newVirtualThreadPerTaskExecutor(),
   registry: MutableRegistry = DependencyInjectingRegistry().apply {
     register<RequestLogger>()
     register<TextBody>()
@@ -39,14 +36,13 @@ class Server(
   private val httpExchangeCreator: KFunction<HttpExchange> = HttpExchange::class.primaryConstructor!!,
 ): RouterConfig(registry, pathParamRegexer, decorators, registry.requireAll(), registry.requireAll()) {
   private val log = logger()
-  val workerPool: ExecutorService = Executors.newVirtualThreadPerTaskExecutor()
 
   init {
     registry.register(requestIdGenerator)
     currentThread().run { name = requestIdGenerator.prefix + "/" + name }
     val kliteVersion = javaClass.`package`.implementationVersion ?: "dev"
     log.info("klite ${kliteVersion}, config " + Config.active)
-    Config.optional("NUM_WORKERS")?.let { log.warn("NUM_WORKERS is deprecated and has no effect now with virtual threads") }
+    Config.optional("NUM_WORKERS")?.let { log.warn("NUM_WORKERS is deprecated and has no effect on virtual threads") }
   }
 
   private val http = HttpServer.create().apply { executor = workerPool }
@@ -84,19 +80,18 @@ class Server(
 
   fun assets(prefix: String, handler: AssetsHandler) {
     val route = Route(GET, prefix.toRegex(), handler::class.annotations, handler).apply { decoratedHandler = decorators.wrap(handler) }
-    addContext(prefix, this, Dispatchers.IO) { runHandler(this, route, PathParams.EMPTY) }
+    addContext(prefix, this) { runHandler(this, route, PathParams.EMPTY) }
   }
 
-  private fun addContext(prefix: String, config: RouterConfig, extraCoroutineContext: CoroutineContext = EmptyCoroutineContext, handler: suspend HttpExchange.() -> Unit) {
+  private fun addContext(prefix: String, config: RouterConfig, handler: HttpExchange.() -> Unit) {
     http.createContext(prefix) { ex ->
       val requestId = requestIdGenerator(ex.requestHeaders)
-      runBlocking(Dispatchers.Unconfined + ThreadNameContext(requestId) + extraCoroutineContext) {
-        httpExchangeCreator.call(ex, config, sessionStore, requestId).handler()
-      }
+      currentThread().name = requestId
+      httpExchangeCreator.call(ex, config, sessionStore, requestId).handler()
     }
   }
 
-  private suspend fun runHandler(exchange: HttpExchange, route: Route, pathParams: PathParams) {
+  private fun runHandler(exchange: HttpExchange, route: Route, pathParams: PathParams) {
     try {
       requestsActive.incrementAndGet()
       exchange.route = route

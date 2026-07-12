@@ -1,6 +1,8 @@
 package klite.annotations
 
 import klite.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import java.io.InputStream
 import java.lang.reflect.InvocationTargetException
 import kotlin.annotation.AnnotationTarget.*
@@ -62,11 +64,12 @@ private val packageName = GET::class.java.packageName
 private val KAnnotatedElement.kliteAnnotation get() = annotations.filter { it.annotationClass.java.packageName == packageName }
   .let { if (it.size > 1) error("$this cannot have multiple klite annotations: $it") else it.firstOrNull() }
 
-class FunHandler(val instance: Any, val f: KFunction<*>): suspend (HttpExchange) -> Any? {
+class FunHandler(val instance: Any, val f: KFunction<*>): (HttpExchange) -> Any? {
   val params = f.parameters.map(::Param)
-  override suspend fun invoke(e: HttpExchange): Any? = try {
+  override fun invoke(e: HttpExchange): Any? = try {
     val args = params.associate { p -> p.p to p.valueFrom(e, instance) }.filter { !it.key.isOptional || it.value != null }
-    f.callSuspendBy(args)
+    if (f.isSuspend) runBlocking(Dispatchers.Unconfined) { f.callSuspendBy(args) }
+    else f.callBy(args)
   } catch (e: InvocationTargetException) {
     throw e.targetException
   }

@@ -16,7 +16,7 @@ open class CorsHandler(
   val allowedMethods: Set<RequestMethod> = setOf(GET, POST, PUT, PATCH, DELETE),
   val allowedHeaders: Set<String>? = null
 ): Before {
-  override suspend fun before(exchange: HttpExchange) {
+  override fun before(exchange: HttpExchange) {
     val origin = exchange.header("Origin") ?: return
     if (allowedOrigins == null || allowedOrigins.contains(origin)) {
       exchange.header("Access-Control-Allow-Origin", origin)
