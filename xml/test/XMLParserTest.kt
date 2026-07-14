@@ -10,6 +10,7 @@ import klite.nodes.text
 import klite.nodes.value
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
+import kotlin.reflect.KType
 
 class XMLParserTest {
   val parser = XMLParser()
@@ -377,5 +378,24 @@ class XMLParserTest {
     @Language("XML") val xml = """<root><item><item_name>value</item_name></item></root>"""
     val result = snakeParser.parse<PathMapChild>(xml.byteInputStream())
     expect(result.itemName).toEqual("value")
+  }
+
+  data class Color(val r: Int, val g: Int, val b: Int)
+  data class Paint(val name: String, val color: Color)
+
+  @Test fun `value converter receives target type for type-specific conversion`() {
+    val colorParser = XMLParser(values = object : ValueConverter<Any?>() {
+      override fun from(o: Any?, type: KType?): Any? {
+        if (o is String && type?.classifier == Color::class) {
+          val parts = o.split(",").map { it.trim().toInt() }
+          return Color(parts[0], parts[1], parts[2])
+        }
+        return o
+      }
+    })
+    @Language("XML") val xml = """<root><name>sky</name><color>100,150,200</color></root>"""
+    val result = colorParser.parse<Paint>(xml.byteInputStream())
+    expect(result.name).toEqual("sky")
+    expect(result.color).toEqual(Color(100, 150, 200))
   }
 }

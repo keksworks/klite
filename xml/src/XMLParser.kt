@@ -53,7 +53,7 @@ class XMLParser(
           val rawName = "@" + (attributes.getLocalName(i) ?: attributes.getQName(i))
           val attrName = keys.from(rawName)
           attrs[attrName] = attributes.getValue(i)
-          current[attrName] = values.from(attributes.getValue(i))!!
+          current[attrName] = attributes.getValue(i)
         }
         stack.add(current)
       }
@@ -102,15 +102,14 @@ class XMLParser(
     val complexProps = props.filter { v -> v.value.isCollection && v.value.elemType != null && !Converter.supports(v.value.elemType!!) }
 
     parseSax(xml) { current, parent, path, text ->
-      val converted: Any? = this@XMLParser.values.from(text)
-      if (text.isNotEmpty()) current[""] = converted!!
+      if (text.isNotEmpty()) current[""] = text
 
       // Complex collection: create typed object from accumulated children
       for ((collPath, info) in complexProps) {
         if (path.endsWith("/$collPath") || path == "/$collPath") {
           val elemValues = mutableMapOf<String, Any>()
           current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
-          if (text.isNotEmpty()) elemValues[""] = converted!!
+          if (text.isNotEmpty()) elemValues[""] = text
           collectedItems.getOrPut(info.path) { mutableListOf() }.add(
             buildObject(elemValues, info.elemType!!, info.elemType.readProps()))
           if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
@@ -121,7 +120,7 @@ class XMLParser(
       // Simple collection: accumulate text values
       for ((propPath, info) in props) {
         if (info.isCollection && matchPath(path, propPath) && text.isNotEmpty()) {
-          (values.getOrPut(propPath) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(converted)
+          (values.getOrPut(propPath) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(text)
           return@parseSax
         }
       }
@@ -140,7 +139,7 @@ class XMLParser(
             values[propPath] = current["@$attrKey"]!!
           }
         } else if (text.isNotEmpty() && matchPath(path, propPath)) {
-          if (converted != null) values[propPath] = converted
+          values[propPath] = text
         }
       }
 
@@ -230,23 +229,29 @@ class XMLParser(
   private fun <T: Any> buildObject(values: XmlNode, type: KClass<T>, props: Map<String, PropInfo>): T {
     val constructorArgs = mutableMapOf<String, Any?>()
     for ((_, info) in props) {
-      val value = values[info.path] ?: continue
+      val rawValue = values[info.path] ?: continue
+      val kType = info.prop.returnType
       if (info.isCollection) {
-        val rawList = if (value is Collection<*>) value.toList() else listOf(value)
+        val rawList = if (rawValue is Collection<*>) rawValue.toList() else listOf(rawValue)
         constructorArgs[info.prop.name] = if (info.elemType != null && Converter.supports(info.elemType))
-          rawList.map { Converter.from(it.toString(), info.elemType) }
+          rawList.map { this@XMLParser.values.from(it, kType.arguments.firstOrNull()?.type) ?: it }
         else if (info.elemType != null)
           rawList.map { if (it is Map<*, *>) buildObject(it as XmlNode, info.elemType, info.elemType.readProps()) else it }
         else rawList
-      } else if (value is Map<*, *>) {
-        val nestedType = info.prop.returnType.classifier as KClass<*>
-        constructorArgs[info.prop.name] = buildObject(value as XmlNode, nestedType, nestedType.readProps())
+      } else if (rawValue is Map<*, *>) {
+        val nestedType = kType.classifier as KClass<*>
+        constructorArgs[info.prop.name] = buildObject(rawValue as XmlNode, nestedType, nestedType.readProps())
       } else {
-        val propType = info.prop.returnType.classifier as? KClass<*> ?: continue
-        if (Converter.supports(propType))
-          constructorArgs[info.prop.name] = Converter.from(value.toString(), propType)
-        else
-          constructorArgs[info.prop.name] = buildObject(mapOf("" to value) as XmlNode, propType, propType.readProps())
+        val converted = this@XMLParser.values.from(rawValue, kType)
+        if (converted !== rawValue) {
+          constructorArgs[info.prop.name] = converted ?: rawValue
+        } else {
+          val propType = kType.classifier as? KClass<*> ?: continue
+          if (Converter.supports(propType))
+            constructorArgs[info.prop.name] = Converter.from(rawValue.toString(), propType)
+          else
+            constructorArgs[info.prop.name] = buildObject(mapOf("" to rawValue) as XmlNode, propType, propType.readProps())
+        }
       }
     }
     return type.createFrom(constructorArgs)
