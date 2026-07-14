@@ -22,7 +22,7 @@ class XmlParserTest {
         <modeCode>SEA</modeCode>
         <dangerousGoodsIndicator>true</dangerousGoodsIndicator>
       </transportMovement>
-    """.trimIndent().byteInputStream()
+    """.trimIndent()
 
   @Language("XML")
   val xmlWithNamespaces = """
@@ -31,7 +31,7 @@ class XmlParserTest {
         <z:modeCode>SEA</z:modeCode>
         <x:dangerousGoodsIndicator>true</x:dangerousGoodsIndicator>
       </x:transportMovement>
-    """.trimIndent().byteInputStream()
+    """.trimIndent()
 
   @Language("XML")
   val xmlWithRepeating = """
@@ -50,7 +50,7 @@ class XmlParserTest {
         <author>Petrov</author>
       </book>
     </library>
-  """.byteInputStream()
+  """
 
   @Test fun parse() {
     expect(parser.parse<Identifier>(xml)).toEqual(
@@ -119,7 +119,7 @@ class XmlParserTest {
       <book>Dune</book>
       <book>Narnia</book>
     </library>
-  """.trimIndent().byteInputStream()
+  """.trimIndent()
 
   data class SimpleLibrary(
     @XmlPath("library/book") val books: List<String>
@@ -152,7 +152,7 @@ class XmlParserTest {
   @Test fun `xml with root attributes`() {
     data class RootAttrs(@XmlPath("@id") val id: Int, @XmlPath("@name") val name: String)
     @Language("XML") val xml = """<item id="42" name="test"/>"""
-    val result = parser.parse<RootAttrs>(xml.byteInputStream())
+    val result = parser.parse<RootAttrs>(xml)
     expect(result.id).toEqual(42)
     expect(result.name).toEqual("test")
   }
@@ -172,7 +172,7 @@ class XmlParserTest {
         <tag>b</tag>
       </root>
     """
-    val result = parser.parse<RootWithNested>(xml.byteInputStream())
+    val result = parser.parse<RootWithNested>(xml)
     expect(result.requestId).toEqual("req-1")
     expect(result.item).toEqual(NestedItem("hello"))
     expect(result.tags).toEqual(listOf("a", "b"))
@@ -182,7 +182,7 @@ class XmlParserTest {
     data class Inner(val x: String, val y: String = "default")
     data class RootWithDefaults(@XmlPath("inner") val inner: Inner)
     @Language("XML") val xml = """<root><inner><x>1</x></inner></root>"""
-    val result = parser.parse<RootWithDefaults>(xml.byteInputStream())
+    val result = parser.parse<RootWithDefaults>(xml)
     expect(result.inner.x).toEqual("1")
     expect(result.inner.y).toEqual("default")
   }
@@ -198,7 +198,7 @@ class XmlParserTest {
         <item id="3"><name>Third</name></item>
       </root>
     """.trimIndent()
-    val result = parser.parse<Container>(xml.byteInputStream())
+    val result = parser.parse<Container>(xml)
     expect(result.items).toEqual(listOf(
       Item("1", "First"),
       Item("2", "Second"),
@@ -227,7 +227,7 @@ class XmlParserTest {
         </book>
       </library>
     """.trimIndent()
-    val result = parser.parse<LibraryWithAuthors>(xml.byteInputStream())
+    val result = parser.parse<LibraryWithAuthors>(xml)
     expect(result.books).toEqual(listOf(
       BookWithAuthors(1, "The Hobbit", listOf(Author("Tolkien"))),
       BookWithAuthors(2, "Dune", listOf(Author("Herbert"))),
@@ -239,7 +239,7 @@ class XmlParserTest {
 
   @Test fun `single complex child in list is wrapped correctly`() {
     @Language("XML") val xml = """<root><child><name>Only</name></child></root>"""
-    val result = parser.parse<SingleComplexList>(xml.byteInputStream())
+    val result = parser.parse<SingleComplexList>(xml)
     expect(result.children).toEqual(listOf(OnlyChild("Only")))
   }
 
@@ -257,7 +257,7 @@ class XmlParserTest {
         <tag>a</tag>
       </root>
     """.trimIndent()
-    val result = parser.parse<ParentWithTextChild>(xml.byteInputStream())
+    val result = parser.parse<ParentWithTextChild>(xml)
     expect(result.requestId).toEqual("req-1")
     expect(result.id).toEqual(TextOnlyId("ABC-123"))
     expect(result.tags).toEqual(listOf("a"))
@@ -277,7 +277,7 @@ class XmlParserTest {
         <tag>y</tag>
       </root>
     """.trimIndent()
-    val result = parser.parse<ParentWithAttrChild>(xml.byteInputStream())
+    val result = parser.parse<ParentWithAttrChild>(xml)
     expect(result.id).toEqual(AttrAndTextId("XYZ-789", "ISO"))
     expect(result.tags).toEqual(listOf("x", "y"))
   }
@@ -304,7 +304,7 @@ class XmlParserTest {
         </item>
       </root>
     """.trimIndent()
-    val result = parser.parse<DeepRoot>(xml.byteInputStream())
+    val result = parser.parse<DeepRoot>(xml)
     expect(result.items).toEqual(listOf(
       OuterItem(1, InnerItem(DeepNestedId("AAA", "primary"), "First item")),
       OuterItem(2, InnerItem(DeepNestedId("BBB"), "Second item")),
@@ -323,7 +323,7 @@ class XmlParserTest {
         <my_value data_type="test">hello</my_value>
       </root>
     """.trimIndent()
-    val result = snakeParser.parse<SnakeProps>(xml.byteInputStream())
+    val result = snakeParser.parse<SnakeProps>(xml)
     expect(result.myValue).toEqual("hello")
     expect(result.dataType).toEqual("test")
   }
@@ -341,7 +341,7 @@ class XmlParserTest {
       }
     })
     @Language("XML") val xml = """<root><count>5</count><label>hello</label></root>"""
-    val result = upperValuesParser.parse<CustomValueProps>(xml.byteInputStream())
+    val result = upperValuesParser.parse<CustomValueProps>(xml)
     expect(result.count).toEqual(5)
     expect(result.label).toEqual("HELLO")
   }
@@ -366,7 +366,7 @@ class XmlParserTest {
         </item>
       </root>
     """.trimIndent()
-    val result = customParser.parse<CombinedChild>(xml.byteInputStream())
+    val result = customParser.parse<CombinedChild>(xml)
     expect(result.itemName).toEqual("tibboH ehT")
     expect(result.description).toEqual("cissalc A")
   }
@@ -376,7 +376,7 @@ class XmlParserTest {
   @Test fun `key converter with nested elements`() {
     val snakeParser = XmlParser(keys = SnakeCase)
     @Language("XML") val xml = """<root><item><item_name>value</item_name></item></root>"""
-    val result = snakeParser.parse<PathMapChild>(xml.byteInputStream())
+    val result = snakeParser.parse<PathMapChild>(xml)
     expect(result.itemName).toEqual("value")
   }
 
@@ -394,7 +394,7 @@ class XmlParserTest {
       }
     })
     @Language("XML") val xml = """<root><name>sky</name><color>100,150,200</color></root>"""
-    val result = colorParser.parse<Paint>(xml.byteInputStream())
+    val result = colorParser.parse<Paint>(xml)
     expect(result.name).toEqual("sky")
     expect(result.color).toEqual(Color(100, 150, 200))
   }

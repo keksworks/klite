@@ -167,9 +167,7 @@ class XmlParser(
     var root: MutableMap<String, Any>? = null
 
     parseSax(xml) { current, parent, path, text ->
-      // Skip attribute onEnd calls - attributes are handled during text content processing
       if (path.substringAfterLast("/").startsWith("@")) return@parseSax
-
       if (text.isNotEmpty()) current[""] = text
 
       if (parent != null) {
