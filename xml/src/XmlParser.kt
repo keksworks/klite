@@ -107,14 +107,13 @@ class XmlParser(
     val props = type.readProps()
     val values = mutableMapOf<String, Any>()
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
-    val complexProps = props.filter { v -> v.value.isComplexCollection }
 
     parseSax(xml) { current, parent, path, text ->
       if (text.isNotEmpty()) current[""] = text
 
       // Complex collection: create typed object from accumulated children
-      for ((collPath, info) in complexProps) {
-        if (path.endsWith("/$collPath") || path == "/$collPath") {
+      for ((propPath, info) in props) {
+        if (info.isComplexCollection && path.endsWith("/$propPath")) {
           val elemValues = mutableMapOf<String, Any>()
           current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
           if (text.isNotEmpty()) elemValues[""] = text
