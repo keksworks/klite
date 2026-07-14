@@ -43,7 +43,7 @@ class XmlParser(
   private val values: ValueConverter<Any?> = ValueConverter()
 ) {
   private fun parseSax(@Language("xml") xml: InputSource,
-                       onEnd: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit) {
+                       callback: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit) {
     val text = StringBuilder()
     val paths = mutableListOf<String>()
     val stack = mutableListOf<MutableMap<String, Any>>()
@@ -69,7 +69,9 @@ class XmlParser(
         val trimmed = text.toString().trim()
         val current = stack.removeLast()
         val parent = stack.lastOrNull()
-        onEnd(current, parent, "/${paths.joinToString("/")}", trimmed)
+        val path = "/${paths.joinToString("/")}"
+        current.entries.toList().forEach { (name, value) -> if (name.startsWith("@") && value is String) callback(current, parent, "$path/$name", value) }
+        callback(current, parent, path, trimmed)
         paths.removeLast()
         text.setLength(0)
       }
@@ -79,7 +81,7 @@ class XmlParser(
   internal fun parse(@Language("xml") xml: InputSource, callback: (parentPath: String, name: String, text: Any?) -> Unit) {
     parseSax(xml) { current, _, path, text ->
       if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), this@XmlParser.values.from(text))
-      current.forEach { (name, value) -> if (value is String) callback(path, name, value) }
+      current.forEach { (name, value) -> if (!name.startsWith("@") && value is String) callback(path, name, value) }
     }
   }
 
@@ -119,16 +121,6 @@ class XmlParser(
           } else if (text.isNotEmpty()) {
             (values.getOrPut(p.path) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(text)
             return@parseSax
-          }
-        } else if (p.path.startsWith("@")) {
-          val attrKey = p.path
-          if (current.containsKey(attrKey)) {
-            values[p.path] = current[attrKey]!!
-          }
-        } else if (p.path.contains("/@")) {
-          val (elemName, attrKey) = p.path.split("/@", limit = 2)
-          if (path.endsWith("/$elemName") && current.containsKey("@$attrKey")) {
-            values[p.path] = current["@$attrKey"]!!
           }
         } else if (text.isNotEmpty() && matchPath(path, p.path)) {
           values[p.path] = text
@@ -175,6 +167,9 @@ class XmlParser(
     var root: MutableMap<String, Any>? = null
 
     parseSax(xml) { current, parent, path, text ->
+      // Skip attribute onEnd calls - attributes are handled during text content processing
+      if (path.substringAfterLast("/").startsWith("@")) return@parseSax
+
       if (text.isNotEmpty()) current[""] = text
 
       if (parent != null) {
