@@ -1,9 +1,7 @@
 package klite.xml
 
-import klite.Converter
-import klite.createFrom
+import klite.*
 import klite.nodes.Node
-import klite.publicProperties
 import org.intellij.lang.annotations.Language
 import org.xml.sax.Attributes
 import org.xml.sax.InputSource
@@ -20,6 +18,7 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
 
+/** Supports absolute and relative paths, empty path means current element, attributes start with @ */
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
@@ -31,7 +30,9 @@ class XMLParser(
     isNamespaceAware = true
     setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
     setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
-  }
+  },
+  private val keys: KeyConverter = KeyConverter(),
+  private val values: ValueConverter<Any?> = ValueConverter()
 ) {
   private fun parseSax(@Language("xml") xml: InputSource,
                        onEnd: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit = { _, _, _, _ -> }) {
@@ -42,16 +43,17 @@ class XMLParser(
 
     factory.newSAXParser().parse(xml, object : DefaultHandler() {
       override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
-        val name = localName ?: qName
+        val name = keys.from(localName ?: qName)
         paths.add(name)
         path = "/${paths.joinToString("/")}"
         text.setLength(0)
         val current = mutableMapOf<String, Any>()
         val attrs = mutableMapOf<String, String>()
         for (i in 0 until attributes.length) {
-          val attrName = "@${attributes.getLocalName(i) ?: attributes.getQName(i)}"
+          val rawName = "@" + (attributes.getLocalName(i) ?: attributes.getQName(i))
+          val attrName = keys.from(rawName)
           attrs[attrName] = attributes.getValue(i)
-          current[attrName] = attributes.getValue(i)
+          current[attrName] = values.from(attributes.getValue(i))!!
         }
         stack.add(current)
       }
@@ -72,9 +74,9 @@ class XMLParser(
     })
   }
 
-  internal fun parse(@Language("xml") xml: InputSource, callback: (parentPath: String, name: String, text: String) -> Unit) {
+  internal fun parse(@Language("xml") xml: InputSource, callback: (parentPath: String, name: String, text: Any?) -> Unit) {
     parseSax(xml) { current, _, path, text ->
-      if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), text)
+      if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), this@XMLParser.values.from(text))
       current.forEach { (name, value) -> if (value is String) callback(path, name, value) }
     }
   }
@@ -83,8 +85,8 @@ class XMLParser(
   fun parsePathMap(@Language("xml") xml: Reader) = parsePathMap(InputSource(xml))
   fun parsePathMap(@Language("xml") xml: String) = parsePathMap(StringReader(xml))
 
-  internal fun parsePathMap(@Language("xml") xml: InputSource): Map<String, String> {
-    val result = mutableMapOf<String, String>()
+  internal fun parsePathMap(@Language("xml") xml: InputSource): XmlNode {
+    val result = mutableMapOf<String, Any?>()
     parse(xml) { parentPath, name, text -> result["$parentPath/$name"] = text }
     return result
   }
@@ -100,14 +102,15 @@ class XMLParser(
     val complexProps = props.filter { v -> v.value.isCollection && v.value.elemType != null && !Converter.supports(v.value.elemType!!) }
 
     parseSax(xml) { current, parent, path, text ->
-      if (text.isNotEmpty()) current[""] = text
+      val converted: Any? = this@XMLParser.values.from(text)
+      if (text.isNotEmpty()) current[""] = converted!!
 
       // Complex collection: create typed object from accumulated children
       for ((collPath, info) in complexProps) {
         if (path.endsWith("/$collPath") || path == "/$collPath") {
           val elemValues = mutableMapOf<String, Any>()
           current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
-          if (text.isNotEmpty()) elemValues[""] = text
+          if (text.isNotEmpty()) elemValues[""] = converted!!
           collectedItems.getOrPut(info.path) { mutableListOf() }.add(
             buildObject(elemValues, info.elemType!!, info.elemType.readProps()))
           if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
@@ -118,7 +121,7 @@ class XMLParser(
       // Simple collection: accumulate text values
       for ((propPath, info) in props) {
         if (info.isCollection && matchPath(path, propPath) && text.isNotEmpty()) {
-          (values.getOrPut(propPath) { mutableListOf<String>() } as MutableCollection<String>).add(text)
+          (values.getOrPut(propPath) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(converted)
           return@parseSax
         }
       }
@@ -137,7 +140,7 @@ class XMLParser(
             values[propPath] = current["@$attrKey"]!!
           }
         } else if (text.isNotEmpty() && matchPath(path, propPath)) {
-          values[propPath] = text
+          if (converted != null) values[propPath] = converted
         }
       }
 
@@ -146,7 +149,14 @@ class XMLParser(
         for ((propPath, info) in props) {
           if (info.isCollection) continue
           if (current.containsKey(propPath)) {
-            values[propPath] = current[propPath]!!
+            val incoming = current[propPath]!!
+            val propType = info.prop.returnType.classifier as? KClass<*>
+            if (incoming is Map<*, *>) {
+              // For complex types, always provide the full Map; for simple types, preserve converted value
+              if (propType == null || !Converter.supports(propType)) values[propPath] = incoming
+            } else if (values[propPath] == null) {
+              values[propPath] = incoming
+            }
           }
         }
       }

@@ -2,6 +2,8 @@ package klite.xml
 
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
+import klite.SnakeCase
+import klite.ValueConverter
 import klite.nodes.at
 import klite.nodes.nodes
 import klite.nodes.text
@@ -306,5 +308,74 @@ class XMLParserTest {
       OuterItem(1, InnerItem(DeepNestedId("AAA", "primary"), "First item")),
       OuterItem(2, InnerItem(DeepNestedId("BBB"), "Second item")),
     ))
+  }
+
+  data class SnakeProps(
+    val myValue: String,
+    @XmlPath("@dataType") val dataType: String
+  )
+
+  @Test fun `key converter transforms element and attribute names`() {
+    val snakeParser = XMLParser(keys = SnakeCase)
+    @Language("XML") val xml = """
+      <root>
+        <my_value dataType="test">hello</my_value>
+      </root>
+    """.trimIndent()
+    val result = snakeParser.parse<SnakeProps>(xml.byteInputStream())
+    expect(result.myValue).toEqual("hello")
+    expect(result.dataType).toEqual("test")
+  }
+
+  data class CustomValueProps(
+    val count: Int,
+    val label: String
+  )
+
+  @Test fun `value converter transforms text content`() {
+    val upperValuesParser = XMLParser(values = object : ValueConverter<Any?>() {
+      override fun from(o: Any?): Any? = when (o) {
+        is String -> o.uppercase()
+        else -> o
+      }
+    })
+    @Language("XML") val xml = """<root><count>5</count><label>hello</label></root>"""
+    val result = upperValuesParser.parse<CustomValueProps>(xml.byteInputStream())
+    expect(result.count).toEqual(5)
+    expect(result.label).toEqual("HELLO")
+  }
+
+  data class CombinedChild(val itemName: String, val description: String)
+
+  @Test fun `both key and value converters together`() {
+    val customParser = XMLParser(
+      keys = SnakeCase,
+      values = object : ValueConverter<Any?>() {
+        override fun from(o: Any?): Any? = when (o) {
+          is String -> o.reversed()
+          else -> o
+        }
+      }
+    )
+    @Language("XML") val xml = """
+      <root>
+        <item>
+          <item_name>The Hobbit</item_name>
+          <description>A classic</description>
+        </item>
+      </root>
+    """.trimIndent()
+    val result = customParser.parse<CombinedChild>(xml.byteInputStream())
+    expect(result.itemName).toEqual("tibboH ehT")
+    expect(result.description).toEqual("cissalc A")
+  }
+
+  data class PathMapChild(val itemName: String)
+
+  @Test fun `key converter with nested elements`() {
+    val snakeParser = XMLParser(keys = SnakeCase)
+    @Language("XML") val xml = """<root><item><item_name>value</item_name></item></root>"""
+    val result = snakeParser.parse<PathMapChild>(xml.byteInputStream())
+    expect(result.itemName).toEqual("value")
   }
 }
