@@ -13,7 +13,7 @@ class UserTest {
 
   @Test fun json() {
     val addressJson = json.render(address)
-    expect(addressJson).toEqual("""{"city":"Tallinn","countryCode":"EE","id":"a7f033bc-04f3-4cc0-94f1-564783cab08f","userId":"d7242ad0-11ea-4991-93af-7f9e08784bce"}""")
+    expect(addressJson).toEqual("""{"city":"Tallinn","countryCode":"EE","id":"a7f033bc-04f3-4cc0-94f1-564783cab08f","userId":"4024d2bc-ebb1-11ef-b470-0fea3b49cda0"}""")
     expect(json.parse<Address>(addressJson)).toEqual(address)
   }
 }
