@@ -12,8 +12,8 @@ import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KType
 
-class XMLParserTest {
-  val parser = XMLParser()
+class XmlParserTest {
+  val parser = XmlParser()
 
   @Language("XML")
   val xml = """
@@ -317,7 +317,7 @@ class XMLParserTest {
   )
 
   @Test fun `key converter transforms element and attribute names`() {
-    val snakeParser = XMLParser(keys = SnakeCase)
+    val snakeParser = XmlParser(keys = SnakeCase)
     @Language("XML") val xml = """
       <root>
         <my_value data_type="test">hello</my_value>
@@ -334,7 +334,7 @@ class XMLParserTest {
   )
 
   @Test fun `value converter transforms text content`() {
-    val upperValuesParser = XMLParser(values = object : ValueConverter<Any?>() {
+    val upperValuesParser = XmlParser(values = object : ValueConverter<Any?>() {
       override fun from(o: Any?): Any? = when (o) {
         is String -> o.uppercase()
         else -> o
@@ -349,7 +349,7 @@ class XMLParserTest {
   data class CombinedChild(val itemName: String, val description: String)
 
   @Test fun `both key and value converters together`() {
-    val customParser = XMLParser(
+    val customParser = XmlParser(
       keys = SnakeCase,
       values = object : ValueConverter<Any?>() {
         override fun from(o: Any?): Any? = when (o) {
@@ -374,7 +374,7 @@ class XMLParserTest {
   data class PathMapChild(val itemName: String)
 
   @Test fun `key converter with nested elements`() {
-    val snakeParser = XMLParser(keys = SnakeCase)
+    val snakeParser = XmlParser(keys = SnakeCase)
     @Language("XML") val xml = """<root><item><item_name>value</item_name></item></root>"""
     val result = snakeParser.parse<PathMapChild>(xml.byteInputStream())
     expect(result.itemName).toEqual("value")
@@ -384,7 +384,7 @@ class XMLParserTest {
   data class Paint(val name: String, val color: Color)
 
   @Test fun `value converter receives target type for type-specific conversion`() {
-    val colorParser = XMLParser(values = object : ValueConverter<Any?>() {
+    val colorParser = XmlParser(values = object : ValueConverter<Any?>() {
       override fun from(o: Any?, type: KType?): Any? {
         if (o is String && type?.classifier == Color::class) {
           val parts = o.split(",").map { it.trim().toInt() }

@@ -17,4 +17,3 @@ class UserTest {
     expect(json.parse<Address>(addressJson)).toEqual(address)
   }
 }
-

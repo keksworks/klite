@@ -24,8 +24,11 @@ annotation class XmlPath(val path: String)
 
 private data class PropInfo(val path: String, val prop: KProperty1<*, *>, val isCollection: Boolean, val elemType: KClass<*>?)
 
+@Deprecated("Use XmlParser instead", ReplaceWith("XmlParser"))
+typealias XMLParser = XmlParser
+
 @Suppress("UNCHECKED_CAST")
-class XMLParser(
+class XmlParser(
   private val factory: SAXParserFactory = SAXParserFactory.newInstance().apply {
     isNamespaceAware = true
     setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
@@ -76,7 +79,7 @@ class XMLParser(
 
   internal fun parse(@Language("xml") xml: InputSource, callback: (parentPath: String, name: String, text: Any?) -> Unit) {
     parseSax(xml) { current, _, path, text ->
-      if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), this@XMLParser.values.from(text))
+      if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), this@XmlParser.values.from(text))
       current.forEach { (name, value) -> if (value is String) callback(path, name, value) }
     }
   }
@@ -234,7 +237,7 @@ class XMLParser(
       if (info.isCollection) {
         val rawList = if (rawValue is Collection<*>) rawValue.toList() else listOf(rawValue)
         constructorArgs[info.prop.name] = if (info.elemType != null && Converter.supports(info.elemType))
-          rawList.map { this@XMLParser.values.from(it, kType.arguments.firstOrNull()?.type) ?: it }
+          rawList.map { this@XmlParser.values.from(it, kType.arguments.firstOrNull()?.type) ?: it }
         else if (info.elemType != null)
           rawList.map { if (it is Map<*, *>) buildObject(it as XmlNode, info.elemType, info.elemType.readProps()) else it }
         else rawList
@@ -242,7 +245,7 @@ class XMLParser(
         val nestedType = kType.classifier as KClass<*>
         constructorArgs[info.prop.name] = buildObject(rawValue as XmlNode, nestedType, nestedType.readProps())
       } else {
-        val converted = this@XMLParser.values.from(rawValue, kType)
+        val converted = this@XmlParser.values.from(rawValue, kType)
         if (converted !== rawValue) {
           constructorArgs[info.prop.name] = converted ?: rawValue
         } else {
