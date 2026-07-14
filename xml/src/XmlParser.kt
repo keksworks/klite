@@ -43,25 +43,20 @@ class XmlParser(
   private val values: ValueConverter<Any?> = ValueConverter()
 ) {
   private fun parseSax(@Language("xml") xml: InputSource,
-                       onEnd: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit = { _, _, _, _ -> }) {
-    var path = ""
+                       onEnd: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit) {
     val text = StringBuilder()
     val paths = mutableListOf<String>()
     val stack = mutableListOf<MutableMap<String, Any>>()
 
     factory.newSAXParser().parse(xml, object : DefaultHandler() {
       override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
-        val name = keys.from(localName ?: qName)
-        paths.add(name)
-        path = "/${paths.joinToString("/")}"
+        val tag = keys.from(localName ?: qName)
+        paths.add(tag)
         text.setLength(0)
         val current = mutableMapOf<String, Any>()
-        val attrs = mutableMapOf<String, String>()
         for (i in 0 until attributes.length) {
-          val rawName = "@" + (attributes.getLocalName(i) ?: attributes.getQName(i))
-          val attrName = keys.from(rawName)
-          attrs[attrName] = attributes.getValue(i)
-          current[attrName] = attributes.getValue(i)
+          val attrName = "@" + (attributes.getLocalName(i) ?: attributes.getQName(i))
+          current[keys.from(attrName)] = attributes.getValue(i)
         }
         stack.add(current)
       }
@@ -72,11 +67,10 @@ class XmlParser(
 
       override fun endElement(uri: String?, localName: String?, qName: String) {
         val trimmed = text.toString().trim()
-        val current = stack.removeAt(stack.lastIndex)
+        val current = stack.removeLast()
         val parent = stack.lastOrNull()
-        onEnd(current, parent, path, trimmed)
-        paths.removeAt(paths.lastIndex)
-        path = if (paths.isEmpty()) "" else "/${paths.joinToString("/")}"
+        onEnd(current, parent, "/${paths.joinToString("/")}", trimmed)
+        paths.removeLast()
         text.setLength(0)
       }
     })
