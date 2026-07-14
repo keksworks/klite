@@ -22,7 +22,12 @@ import kotlin.reflect.full.isSubclassOf
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
-private data class PropInfo(val path: String, val prop: KProperty1<*, *>, val isCollection: Boolean, val elemType: KClass<*>?)
+private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
+  val type = prop.returnType.classifier as? KClass<*>
+  val isCollection = type?.isSubclassOf(Collection::class) == true
+  val elemType = if (isCollection) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
+  val isComplexCollection = isCollection && elemType != null && !Converter.supports(elemType)
+}
 
 @Deprecated("Use XmlParser instead", ReplaceWith("XmlParser"))
 typealias XMLParser = XmlParser
@@ -102,7 +107,7 @@ class XmlParser(
     val props = type.readProps()
     val values = mutableMapOf<String, Any>()
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
-    val complexProps = props.filter { v -> v.value.isCollection && v.value.elemType != null && !Converter.supports(v.value.elemType!!) }
+    val complexProps = props.filter { v -> v.value.isComplexCollection }
 
     parseSax(xml) { current, parent, path, text ->
       if (text.isNotEmpty()) current[""] = text
@@ -152,10 +157,9 @@ class XmlParser(
           if (info.isCollection) continue
           if (current.containsKey(propPath)) {
             val incoming = current[propPath]!!
-            val propType = info.prop.returnType.classifier as? KClass<*>
             if (incoming is Map<*, *>) {
               // For complex types, always provide the full Map; for simple types, preserve converted value
-              if (propType == null || !Converter.supports(propType)) values[propPath] = incoming
+              if (info.type == null || !Converter.supports(info.type)) values[propPath] = incoming
             } else if (values[propPath] == null) {
               values[propPath] = incoming
             }
@@ -218,13 +222,10 @@ class XmlParser(
   }
 
   private fun KClass<*>.readProps(): Map<String, PropInfo> = publicProperties.values
-    .mapNotNull { prop ->
+    .associate { prop ->
       val path = prop.findAnnotation<XmlPath>()?.path ?: prop.name
-      val propType = prop.returnType.classifier as? KClass<*> ?: return@mapNotNull null
-      val isCol = propType.isSubclassOf(Collection::class)
-      val elemType = if (isCol) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
-      path to PropInfo(path, prop, isCol, elemType)
-    }.toMap()
+      path to PropInfo(path, prop)
+    }
 
   private fun matchPath(fullPath: String, path: String): Boolean =
     fullPath == path || fullPath.endsWith("/$path") || (!path.startsWith("/") && fullPath.endsWith(path))
