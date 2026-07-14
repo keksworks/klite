@@ -398,4 +398,21 @@ class XmlParserTest {
     expect(result.name).toEqual("sky")
     expect(result.color).toEqual(Color(100, 150, 200))
   }
+
+  @Test fun `compound path matches inner element with attributes`() {
+    data class City(@XmlPath("country/name") val country: String, @XmlPath("country/@code") val countryCode: String?)
+    @Language("XML") val xml = """<root><city><country code="EE"><name>Estonia</name></country></city></root>"""
+    val result = parser.parse<City>(xml)
+    expect(result.country).toEqual("Estonia")
+    expect(result.countryCode).toEqual("EE")
+  }
+
+  data class RegistrationItem(val id: String, @XmlPath("registrationCountry/code") val countryCode: String?)
+  data class Document(@XmlPath("item") val items: List<RegistrationItem>)
+
+  @Test fun `compound path in nested list`() {
+    @Language("XML") val xml = """<doc><item><id>1</id><registrationCountry><code>EE</code></registrationCountry></item><item><id>2</id><registrationCountry><code>FI</code></registrationCountry></item></doc>"""
+    val result = parser.parse<Document>(xml)
+    expect(result.items).toEqual(listOf(RegistrationItem("1", "EE"), RegistrationItem("2", "FI")))
+  }
 }

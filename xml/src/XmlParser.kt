@@ -105,7 +105,8 @@ class XmlParser(
     val collectedItems = mutableMapOf<String, MutableList<Any>>()
 
     parseSax(xml) { current, parent, path, text ->
-      if (text.isNotEmpty()) current[""] = text
+      val isAttr = path.substringAfterLast("/").startsWith("@")
+      if (text.isNotEmpty() && !isAttr) current[""] = text
 
       val p = props[path] ?: props.entries.find { matchPath(path, it.key) }?.value
 
@@ -115,12 +116,22 @@ class XmlParser(
             val elemValues = mutableMapOf<String, Any>()
             current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
             if (text.isNotEmpty()) elemValues[""] = text
-            collectedItems.getOrPut(p.path) { mutableListOf() }.add(buildObject(elemValues, p.elemType!!, p.elemType.readProps()))
+            collectedItems.getOrPut(p.path) { mutableListOf() }.add(buildObject(elemValues, p.elemType!!, p.elemType.readProps(), values))
             if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
             return@parseSax
           } else if (text.isNotEmpty()) {
             (values.getOrPut(p.path) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(text)
             return@parseSax
+          }
+        } else if (!isAttr) {
+          // For compound paths matching at inner element with attributes, store element map for complex types
+          if (p.type != null && !Converter.supports(p.type) && current.any { it.key.startsWith("@") }) {
+            val elemValues = mutableMapOf<String, Any>()
+            current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
+            if (text.isNotEmpty()) elemValues[""] = text
+            values[p.path] = elemValues
+          } else if (text.isNotEmpty() && matchPath(path, p.path)) {
+            values[p.path] = text
           }
         } else if (text.isNotEmpty() && matchPath(path, p.path)) {
           values[p.path] = text
@@ -156,7 +167,7 @@ class XmlParser(
     }
 
     collectedItems.forEach { (path, items) -> values[path] = items }
-    return buildObject(values, type, props)
+    return buildObject(values, type, props, values)
   }
 
   fun parseNodes(xml: InputStream) = parseNodes(InputSource(xml))
@@ -200,24 +211,44 @@ class XmlParser(
     path to PropInfo(path, prop)
   }
 
-  private fun matchPath(fullPath: String, path: String): Boolean =
-    fullPath == path || fullPath.endsWith("/$path") || (!path.startsWith("/") && fullPath.endsWith(path))
+  private fun matchPath(fullPath: String, path: String): Boolean {
+    if (path.isEmpty()) return !fullPath.contains("/@")
+    return fullPath == path || fullPath.endsWith("/$path") || fullPath.endsWith(path)
+  }
 
-  private fun <T: Any> buildObject(values: XmlNode, type: KClass<T>, props: Map<String, PropInfo>): T {
+  private fun resolveCompoundPath(path: String, values: XmlNode, rootValues: Map<String, Any>): Any? {
+    if (!path.contains("/")) return null
+    val parts = path.split("/")
+    // Try to resolve from rootValues first, then from values
+    for (source in listOf(rootValues, values)) {
+      var current: Any? = source
+      for (part in parts) {
+        current = when (current) {
+          is Map<*, *> -> current[part]
+          else -> null
+        }
+        if (current == null) break
+      }
+      if (current != null) return current
+    }
+    return null
+  }
+
+  private fun <T: Any> buildObject(values: XmlNode, type: KClass<T>, props: Map<String, PropInfo>, rootValues: Map<String, Any>): T {
     val constructorArgs = mutableMapOf<String, Any?>()
     for ((_, info) in props) {
-      val rawValue = values[info.path] ?: continue
+      val rawValue = values[info.path] ?: rootValues[info.path] ?: resolveCompoundPath(info.path, values, rootValues) ?: continue
       val kType = info.prop.returnType
       if (info.isCollection) {
         val rawList = if (rawValue is Collection<*>) rawValue.toList() else listOf(rawValue)
         constructorArgs[info.prop.name] = if (info.elemType != null && Converter.supports(info.elemType))
           rawList.map { this@XmlParser.values.from(it, kType.arguments.firstOrNull()?.type) ?: it }
         else if (info.elemType != null)
-          rawList.map { if (it is Map<*, *>) buildObject(it as XmlNode, info.elemType, info.elemType.readProps()) else it }
+          rawList.map { if (it is Map<*, *>) buildObject(it as XmlNode, info.elemType, info.elemType.readProps(), rootValues) else it }
         else rawList
       } else if (rawValue is Map<*, *>) {
         val nestedType = kType.classifier as KClass<*>
-        constructorArgs[info.prop.name] = buildObject(rawValue as XmlNode, nestedType, nestedType.readProps())
+        constructorArgs[info.prop.name] = buildObject(rawValue as XmlNode, nestedType, nestedType.readProps(), rootValues)
       } else {
         val converted = this@XmlParser.values.from(rawValue, kType)
         if (converted !== rawValue) {
@@ -227,7 +258,7 @@ class XmlParser(
           if (Converter.supports(propType))
             constructorArgs[info.prop.name] = Converter.from(rawValue.toString(), propType)
           else
-            constructorArgs[info.prop.name] = buildObject(mapOf("" to rawValue) as XmlNode, propType, propType.readProps())
+            constructorArgs[info.prop.name] = buildObject(mapOf("" to rawValue) as XmlNode, propType, propType.readProps(), rootValues)
         }
       }
     }
