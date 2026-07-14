@@ -111,31 +111,22 @@ class XmlParser(
     parseSax(xml) { current, parent, path, text ->
       if (text.isNotEmpty()) current[""] = text
 
-      // Complex collection: create typed object from accumulated children
       for ((propPath, info) in props) {
-        if (info.isComplexCollection && path.endsWith("/$propPath")) {
-          val elemValues = mutableMapOf<String, Any>()
-          current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
-          if (text.isNotEmpty()) elemValues[""] = text
-          collectedItems.getOrPut(info.path) { mutableListOf() }.add(
-            buildObject(elemValues, info.elemType!!, info.elemType.readProps()))
-          if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
-          return@parseSax
-        }
-      }
-
-      // Simple collection: accumulate text values
-      for ((propPath, info) in props) {
-        if (info.isCollection && matchPath(path, propPath) && text.isNotEmpty()) {
-          (values.getOrPut(propPath) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(text)
-          return@parseSax
-        }
-      }
-
-      // Simple property: extract text or attribute value
-      for ((propPath, info) in props) {
-        if (info.isCollection) continue
-        if (propPath.startsWith("@")) {
+        if (info.isCollection) {
+          if (info.isComplexCollection && path.endsWith("/$propPath")) {
+            val elemValues = mutableMapOf<String, Any>()
+            current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
+            if (text.isNotEmpty()) elemValues[""] = text
+            collectedItems.getOrPut(info.path) { mutableListOf() }.add(
+              buildObject(elemValues, info.elemType!!, info.elemType.readProps())
+            )
+            if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
+            return@parseSax
+          } else if (matchPath(path, propPath) && text.isNotEmpty()) {
+            (values.getOrPut(propPath) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(text)
+            return@parseSax
+          }
+        } else if (propPath.startsWith("@")) {
           val attrKey = propPath
           if (current.containsKey(attrKey)) {
             values[propPath] = current[attrKey]!!
@@ -164,10 +155,7 @@ class XmlParser(
             }
           }
         }
-      }
-
-      // Propagate to parent
-      if (parent != null) {
+      } else {
         val name = path.substringAfterLast("/")
         val existing = parent[name]
         if (existing == null) parent[name] = if (text.isNotEmpty() && current.size <= 1) text else current.toMap()
