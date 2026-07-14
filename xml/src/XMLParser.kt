@@ -160,6 +160,7 @@ class XMLParser(
           existing is MutableList<*> -> (existing as MutableList<Any>).apply { add(current.toMap()) }
           existing is Map<*, *> && current.size <= 1 && text.isNotEmpty() -> mutableListOf(existing, text)
           existing is String && text.isNotEmpty() && current.size <= 1 -> mutableListOf(existing, text)
+          existing is Map<*, *> -> mutableListOf(existing, current.toMap())
           else -> existing
         }
       }
@@ -221,14 +222,21 @@ class XMLParser(
     for ((_, info) in props) {
       val value = values[info.path] ?: continue
       if (info.isCollection) {
-        val list = if (value is Collection<*>) value.map { it.toString() } else listOf(value.toString())
+        val rawList = if (value is Collection<*>) value.toList() else listOf(value)
         constructorArgs[info.prop.name] = if (info.elemType != null && Converter.supports(info.elemType))
-          list.map { Converter.from(it, info.elemType) } else value
+          rawList.map { Converter.from(it.toString(), info.elemType) }
+        else if (info.elemType != null)
+          rawList.map { if (it is Map<*, *>) buildObject(it as XmlNode, info.elemType, info.elemType.readProps()) else it }
+        else rawList
       } else if (value is Map<*, *>) {
         val nestedType = info.prop.returnType.classifier as KClass<*>
         constructorArgs[info.prop.name] = buildObject(value as XmlNode, nestedType, nestedType.readProps())
       } else {
-        constructorArgs[info.prop.name] = Converter.from(value.toString(), info.prop.returnType)
+        val propType = info.prop.returnType.classifier as? KClass<*> ?: continue
+        if (Converter.supports(propType))
+          constructorArgs[info.prop.name] = Converter.from(value.toString(), propType)
+        else
+          constructorArgs[info.prop.name] = buildObject(mapOf("" to value) as XmlNode, propType, propType.readProps())
       }
     }
     return type.createFrom(constructorArgs)
