@@ -319,7 +319,7 @@ class XMLParserTest {
     val snakeParser = XMLParser(keys = SnakeCase)
     @Language("XML") val xml = """
       <root>
-        <my_value dataType="test">hello</my_value>
+        <my_value data_type="test">hello</my_value>
       </root>
     """.trimIndent()
     val result = snakeParser.parse<SnakeProps>(xml.byteInputStream())
