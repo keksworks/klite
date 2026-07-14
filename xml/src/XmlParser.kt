@@ -105,33 +105,33 @@ class XmlParser(
     parseSax(xml) { current, parent, path, text ->
       if (text.isNotEmpty()) current[""] = text
 
-      for ((propPath, info) in props) {
-        if (info.isCollection) {
-          if (info.isComplexCollection && path.endsWith("/$propPath")) {
+      val p = props[path] ?: props.entries.find { matchPath(path, it.key) }?.value
+
+      if (p != null) {
+        if (p.isCollection) {
+          if (p.isComplexCollection) {
             val elemValues = mutableMapOf<String, Any>()
             current.forEach { (k, v) -> if (k.isNotEmpty()) elemValues[k] = v }
             if (text.isNotEmpty()) elemValues[""] = text
-            collectedItems.getOrPut(info.path) { mutableListOf() }.add(
-              buildObject(elemValues, info.elemType!!, info.elemType.readProps())
-            )
+            collectedItems.getOrPut(p.path) { mutableListOf() }.add(buildObject(elemValues, p.elemType!!, p.elemType.readProps()))
             if (parent != null) parent[path.substringAfterLast("/")] = current.toMap()
             return@parseSax
-          } else if (matchPath(path, propPath) && text.isNotEmpty()) {
-            (values.getOrPut(propPath) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(text)
+          } else if (text.isNotEmpty()) {
+            (values.getOrPut(p.path) { mutableListOf<Any?>() } as MutableCollection<Any?>).add(text)
             return@parseSax
           }
-        } else if (propPath.startsWith("@")) {
-          val attrKey = propPath
+        } else if (p.path.startsWith("@")) {
+          val attrKey = p.path
           if (current.containsKey(attrKey)) {
-            values[propPath] = current[attrKey]!!
+            values[p.path] = current[attrKey]!!
           }
-        } else if (propPath.contains("/@")) {
-          val (elemName, attrKey) = propPath.split("/@", limit = 2)
+        } else if (p.path.contains("/@")) {
+          val (elemName, attrKey) = p.path.split("/@", limit = 2)
           if (path.endsWith("/$elemName") && current.containsKey("@$attrKey")) {
-            values[propPath] = current["@$attrKey"]!!
+            values[p.path] = current["@$attrKey"]!!
           }
-        } else if (text.isNotEmpty() && matchPath(path, propPath)) {
-          values[propPath] = text
+        } else if (text.isNotEmpty() && matchPath(path, p.path)) {
+          values[p.path] = text
         }
       }
 
@@ -150,11 +150,11 @@ class XmlParser(
           }
         }
       } else {
-        val name = path.substringAfterLast("/")
-        val existing = parent[name]
-        if (existing == null) parent[name] = if (text.isNotEmpty() && current.size <= 1) text else current.toMap()
-        else parent[name] = when {
-          existing is MutableList<*> -> (existing as MutableList<Any>).apply { add(current.toMap()) }
+        val tag = path.substringAfterLast("/")
+        val existing = parent[tag]
+        if (existing == null) parent[tag] = if (text.isNotEmpty() && current.size <= 1) text else current.toMap()
+        else parent[tag] = when {
+          existing is MutableCollection<*> -> (existing as MutableCollection<Any>).apply { add(current.toMap()) }
           existing is Map<*, *> && current.size <= 1 && text.isNotEmpty() -> mutableListOf(existing, text)
           existing is String && text.isNotEmpty() && current.size <= 1 -> mutableListOf(existing, text)
           existing is Map<*, *> -> mutableListOf(existing, current.toMap())
@@ -202,11 +202,10 @@ class XmlParser(
     return root?.toMap() ?: emptyMap()
   }
 
-  private fun KClass<*>.readProps(): Map<String, PropInfo> = publicProperties.values
-    .associate { prop ->
-      val path = prop.findAnnotation<XmlPath>()?.path ?: prop.name
-      path to PropInfo(path, prop)
-    }
+  private fun KClass<*>.readProps(): Map<String, PropInfo> = publicProperties.values.associate { prop ->
+    val path = prop.findAnnotation<XmlPath>()?.path ?: prop.name
+    path to PropInfo(path, prop)
+  }
 
   private fun matchPath(fullPath: String, path: String): Boolean =
     fullPath == path || fullPath.endsWith("/$path") || (!path.startsWith("/") && fullPath.endsWith(path))
