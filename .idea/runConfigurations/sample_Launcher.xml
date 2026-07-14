@@ -1,5 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="sample/Launcher" type="JetRunConfigurationType">
+    <option name="ALTERNATIVE_JRE_PATH" value="25" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <option name="MAIN_CLASS_NAME" value="LauncherKt" />
     <module name="klite.sample.main" />
     <shortenClasspath name="NONE" />
