@@ -4,8 +4,8 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import klite.json.JsonMapper
 import klite.json.parse
+import klite.sample.users.TestData.address
 import org.junit.jupiter.api.Test
-import users.TestData.address
 import users.User.Address
 
 class UserTest {

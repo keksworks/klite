@@ -7,6 +7,7 @@ import klite.jdbc.or
 import klite.oauth.OAuthTokenResponse
 import klite.oauth.OAuthUserProvider
 import klite.oauth.UserProfile
+import users.User.Name
 import java.util.Locale.ENGLISH
 import javax.sql.DataSource
 
@@ -17,7 +18,7 @@ class UserRepository(db: DataSource): CrudRepository<User>(db, "users"), OAuthUs
 
   override fun provide(profile: UserProfile, tokenResponse: OAuthTokenResponse, exchange: HttpExchange) =
     by(profile.email) ?:
-    User(profile.email, profile.firstName, profile.lastName, profile.locale ?: ENGLISH, avatarUrl = profile.avatarUrl).also {
+    User(profile.email, Name(profile.firstName, profile.lastName), profile.locale ?: ENGLISH, avatarUrl = profile.avatarUrl).also {
       save(it)
     }
 }

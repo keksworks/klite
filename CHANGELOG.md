@@ -7,7 +7,7 @@
 * server: RequestLogger uses ERROR level for failed requests for easier alert triggering
 * server: remove KeyCipher compatibility with lower-security ECB mode introduced in 1.8.3
 * jdbc: optional dependency to json module added and functions jsonb() and getJson() are now provided
-* jdbc: introduce `@JsonColumn` annotation for entity properties to avoid redefining of mappers/persisters just for that
+* jdbc: introduce `@JsonColumn` and `@FlattenColumns` annotations for entity properties to avoid redefining of mappers/persisters just for that
 * oauth: implement JWT HMAC/RSA/ES signature verification
 * oauth: support for fetching of OpenID Connect (OIDC) configuration/keys
 * slf4j: EcsJsonLogger introduced for ECS-compatible JSON logging

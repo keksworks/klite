@@ -92,6 +92,16 @@ Experimental:
 * `NullableId<ID>` is also provided if you prefer to assign ids only during saving.
 * `UpdatabaleEntity` can be used for [optimistic locking](https://en.wikipedia.org/wiki/Optimistic_concurrency_control) when saving, not letting concurrent users overwrite each other's changes.
 
+## Simple ORM with annotations
+
+Any entity instance can be converted into a Map, suitable for `db.insert`/`upsert` using [toDBValues()](src/Values.kt), and
+[ResultSet.create<Entity>()](src/Values.kt) would load it from the ResultSet when querying using `db.select`/`query`.
+
+The following annotations are also supported for easy way to have less flat entity classes:
+
+`@JsonColumn` - will load/store the value of the property as `jsonb` column
+`@FlattenColumns` - will flatten every property into additional table columns
+
 ## Migrations
 
 [DBMigrator](src/migrator/DBMigrator.kt) is provided for simple SQL-based DB migrations, it supports a very similar syntax to [Liquibase SQL Format](https://docs.liquibase.com/concepts/basic/sql-format.html), see [sample](../sample/db/db.sql).

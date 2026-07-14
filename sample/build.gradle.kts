@@ -49,7 +49,7 @@ tasks.register<JavaExec>("types.ts") {
   args("${project.buildDir}/classes/kotlin/main",
     "-o", project.file("build/types.ts"),
     "-p", "// Generated automatically by ./gradlew types.ts\n",
-    "-t", "users.TestData"
+    "-t", "klite.sample.users.TestData"
   )
 }
 

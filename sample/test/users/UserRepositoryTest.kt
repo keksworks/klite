@@ -8,11 +8,12 @@ import klite.sample.DBTest
 import org.junit.jupiter.api.Test
 import users.Id
 import users.User
+import users.User.Name
 import users.UserRepository
 import java.util.Locale.ENGLISH
 
 class UserRepositoryTest: DBTest() {
-  val user = User(Email("test@user.com"), "Test", "User", ENGLISH, "phash")
+  val user = User(Email("test@user.com"), Name("Test", "User"), ENGLISH, "phash")
   val repository = UserRepository(db)
 
   @Test fun `save with predefined id`() {

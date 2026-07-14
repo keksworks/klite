@@ -7,3 +7,6 @@ import kotlin.annotation.AnnotationTarget.PROPERTY
 
 /** Auto-map value to a json column in the database */
 @Target(PROPERTY) annotation class JsonColumn
+
+/** Flatten object's properties as separate columns */
+@Target(PROPERTY) annotation class FlattenColumns

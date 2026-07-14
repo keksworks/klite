@@ -5,6 +5,7 @@ import java.sql.ResultSet
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.hasAnnotation
 
 inline fun <reified T: Any> ResultSet.create(vararg provided: PropValue<T, *>) = create(T::class, *provided)
 
@@ -18,11 +19,20 @@ fun <T: Any> ResultSet.create(type: KClass<T>, vararg provided: PropValue<T, *>,
     val column = columnPrefix + (prop?.colName ?: it.name)
     if (extraArgs.containsKey(it.name)) extraArgs[it.name!!]
     else if (prop?.findAnnotation<JsonColumn>() != null) getJsonOrNull(column, it.type)
+    else if (prop?.findAnnotation<FlattenColumns>() != null) create(it.type.classifier as KClass<T>, *provided, columnPrefix = columnPrefix)
     else if (it.isOptional) getOptional<T>(column, it.type).getOrDefault(AbsentValue)
     else get(column, it.type)
   }
 }
 
-fun <E: Any> E.toDBValues(): Map<KProperty1<E, *>, Any?> = toValues().mapValues { (k, v) ->
-  if (k.findAnnotation<JsonColumn>() != null) jsonb(v) else v
+fun <E: Any> E.toDBValues(): Map<KProperty1<E, *>, Any?> {
+  val values = toValues() as MutableMap
+  values.entries.toList().forEach { (prop, v) ->
+    if (prop.hasAnnotation<JsonColumn>()) values[prop] = jsonb(v)
+    else if (v != null && prop.hasAnnotation<FlattenColumns>()) {
+      values.remove(prop)
+      values += v.toDBValues() as Map<KProperty1<E, *>, Any?>
+    }
+  }
+  return values
 }
