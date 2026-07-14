@@ -4,5 +4,6 @@
     <inspection_tool class="MemberVisibilityCanBePrivate" enabled="true" level="INFO" enabled_by_default="true">
       <scope name="Tests" level="INFORMATION" enabled="true" />
     </inspection_tool>
+    <inspection_tool class="ReplaceWithStringBuilderAppendRange" enabled="false" level="WARNING" enabled_by_default="false" />
   </profile>
 </component>
