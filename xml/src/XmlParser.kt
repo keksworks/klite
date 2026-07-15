@@ -28,12 +28,23 @@ private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
   val elemType = if (isCollection) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
 }
 
-private data class XmlElement(
+/** Intermediate XML representation; text contains only direct text nodes, excluding child element text. */
+private class XmlElement(
   val name: String,
   val attributes: Map<String, String>,
   val text: String,
   val children: List<XmlElement>
-)
+) {
+  val descendantsByName by lazy {
+    val result = mutableMapOf<String, MutableList<XmlElement>>()
+    fun index(element: XmlElement) {
+      result.getOrPut(element.name) { mutableListOf() }.add(element)
+      element.children.forEach(::index)
+    }
+    index(this)
+    result
+  }
+}
 
 @Deprecated("Use XmlParser instead", ReplaceWith("XmlParser"))
 typealias XMLParser = XmlParser
@@ -182,17 +193,13 @@ class XmlParser(
     val parts = path.trim('/').split('/').filter(String::isNotEmpty)
     if (parts.size == 1 && parts.first().startsWith("@")) return attributes[parts.first()].let(::listOfNotNull)
 
-    fun descendants(element: XmlElement): Sequence<XmlElement> = sequence {
-      yield(element)
-      element.children.forEach { yieldAll(descendants(it)) }
-    }
     fun follow(element: XmlElement, remaining: List<String>): List<Any> {
       if (remaining.isEmpty()) return listOf(element)
       val part = remaining.first()
       if (part.startsWith("@")) return element.attributes[part].let(::listOfNotNull)
       return element.children.filter { it.name == part }.flatMap { follow(it, remaining.drop(1)) }
     }
-    return descendants(this).filter { it.name == parts.first() }.flatMap { follow(it, parts.drop(1)) }.toList()
+    return descendantsByName[parts.first()].orEmpty().flatMap { follow(it, parts.drop(1)) }
   }
 
   private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>): T {
