@@ -313,7 +313,7 @@ class XmlParserTest {
 
   data class SnakeProps(
     val myValue: String,
-    @XmlPath("@dataType") val dataType: String
+    @XmlPath("myValue/@dataType") val dataType: String
   )
 
   @Test fun `key converter transforms element and attribute names`() {
