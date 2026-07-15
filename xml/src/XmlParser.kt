@@ -18,7 +18,7 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
 
-/** Supports absolute and relative paths, empty path means current element, attributes start with @ */
+/** Supports absolute and relative paths (resolved from matching descendants), empty path means current element, attributes start with @ */
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
@@ -34,17 +34,7 @@ private class XmlElement(
   val attributes: Map<String, String>,
   val text: String,
   val children: List<XmlElement>
-) {
-  val elementsByName by lazy {
-    val result = mutableMapOf<String, MutableList<XmlElement>>()
-    fun index(element: XmlElement) {
-      result.getOrPut(element.name) { mutableListOf() }.add(element)
-      element.children.forEach(::index)
-    }
-    index(this)
-    result
-  }
-}
+)
 
 @Deprecated("Use XmlParser instead", ReplaceWith("XmlParser"))
 typealias XMLParser = XmlParser
@@ -195,11 +185,17 @@ class XmlParser(
 
     fun follow(element: XmlElement, remaining: List<String>): List<Any> {
       if (remaining.isEmpty()) return listOf(element)
-      val part = remaining.first()
-      if (part.startsWith("@")) return element.attributes[keys.from(part)].let(::listOfNotNull)
+      val rawPart = remaining.first()
+      if (rawPart.startsWith("@")) return element.attributes[keys.from(rawPart)].let(::listOfNotNull)
+      val part = keys.from(rawPart)
       return element.children.filter { it.name == part }.flatMap { follow(it, remaining.drop(1)) }
     }
-    return elementsByName[parts.first()].orEmpty().flatMap { follow(it, parts.drop(1)) }
+    val first = keys.from(parts.first())
+    fun matchingElements(element: XmlElement): List<XmlElement> =
+      listOfNotNull(element.takeIf { it.name == first }) + element.children.flatMap(::matchingElements)
+
+    val elements = if (name == first) listOf(this) else matchingElements(this)
+    return elements.flatMap { follow(it, parts.drop(1)) }
   }
 
   private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>): T {
