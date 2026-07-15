@@ -228,7 +228,7 @@ class XmlParser(
     val converted = values.from(text, type)
     if (converted !== text) return converted ?: text
     if (raw is XmlElement && classifier != null && !Converter.supports(classifier)) return buildObject(raw, classifier)
-    // Conversion precedence is custom converter, standard converter, then the raw value.
+    // Conversion precedence is custom converter, typed standard converter, then the raw value.
     return type?.let { Converter.from(text.toString(), it) } ?: text
   }
 }
