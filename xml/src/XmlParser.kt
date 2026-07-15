@@ -67,12 +67,12 @@ class XmlParser(
 
     factory.newSAXParser().parse(xml, object : DefaultHandler() {
       override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
-        val tag = keys.from(localName ?: qName)
+        val tag = keys.from(localName?.takeIf(String::isNotEmpty) ?: qName)
         paths.add(tag)
         text.setLength(0)
         val current = mutableMapOf<String, Any>()
         for (i in 0 until attributes.length) {
-          val attrName = "@" + (attributes.getLocalName(i) ?: attributes.getQName(i))
+          val attrName = "@" + (attributes.getLocalName(i).takeIf(String::isNotEmpty) ?: attributes.getQName(i))
           current[keys.from(attrName)] = attributes.getValue(i)
         }
         stack.add(current)
@@ -169,9 +169,9 @@ class XmlParser(
     factory.newSAXParser().parse(xml, object : DefaultHandler() {
       override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
         stack += OpenElement(
-          keys.from(localName ?: qName),
+          keys.from(localName?.takeIf(String::isNotEmpty) ?: qName),
           (0 until attributes.length).associate { index ->
-            keys.from("@" + (attributes.getLocalName(index) ?: attributes.getQName(index))) to attributes.getValue(index)
+            keys.from("@" + (attributes.getLocalName(index).takeIf(String::isNotEmpty) ?: attributes.getQName(index))) to attributes.getValue(index)
           }
         )
       }
