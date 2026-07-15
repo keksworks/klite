@@ -35,7 +35,7 @@ private class XmlElement(
   val text: String,
   val children: List<XmlElement>
 ) {
-  val descendantsByName by lazy {
+  val elementsByName by lazy {
     val result = mutableMapOf<String, MutableList<XmlElement>>()
     fun index(element: XmlElement) {
       result.getOrPut(element.name) { mutableListOf() }.add(element)
@@ -199,7 +199,7 @@ class XmlParser(
       if (part.startsWith("@")) return element.attributes[part].let(::listOfNotNull)
       return element.children.filter { it.name == part }.flatMap { follow(it, remaining.drop(1)) }
     }
-    return descendantsByName[parts.first()].orEmpty().flatMap { follow(it, parts.drop(1)) }
+    return elementsByName[parts.first()].orEmpty().flatMap { follow(it, parts.drop(1)) }
   }
 
   private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>): T {
