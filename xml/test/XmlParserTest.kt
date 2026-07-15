@@ -415,4 +415,14 @@ class XmlParserTest {
     val result = parser.parse<Document>(xml)
     expect(result.items).toEqual(listOf(RegistrationItem("1", "EE"), RegistrationItem("2", "FI")))
   }
+
+  @Test fun `parsePathMap with filter`() {
+    @Language("XML") val xml = """<root><name>Estonia</name><code>EE</code><population>1300000</population></root>"""
+    val filtered = parser.parsePathMap(xml) { it.endsWith("/name") || it.endsWith("/code") }
+    expect(filtered).toEqual(mapOf("/root/name" to "Estonia", "/root/code" to "EE"))
+    expect(filtered.containsKey("/root/population")).toEqual(false)
+
+    val all = parser.parsePathMap(xml)
+    expect(all.containsKey("/root/population")).toEqual(true)
+  }
 }

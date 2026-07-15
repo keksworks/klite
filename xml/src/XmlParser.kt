@@ -85,13 +85,16 @@ class XmlParser(
     }
   }
 
-  fun parsePathMap(@Language("xml") xml: InputStream) = parsePathMap(InputSource(xml))
-  fun parsePathMap(@Language("xml") xml: Reader) = parsePathMap(InputSource(xml))
-  fun parsePathMap(@Language("xml") xml: String) = parsePathMap(StringReader(xml))
+  fun parsePathMap(@Language("xml") xml: InputStream, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
+  fun parsePathMap(@Language("xml") xml: Reader, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
+  fun parsePathMap(@Language("xml") xml: String, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(StringReader(xml)), filter)
 
-  internal fun parsePathMap(@Language("xml") xml: InputSource): XmlNode {
+  internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((String) -> Boolean)? = null): XmlNode {
     val result = mutableMapOf<String, Any?>()
-    parse(xml) { parentPath, name, text -> result["$parentPath/$name"] = text }
+    parse(xml) { parentPath, name, text ->
+      val key = "$parentPath/$name"
+      if (filter == null || filter(key)) result[key] = text
+    }
     return result
   }
 
