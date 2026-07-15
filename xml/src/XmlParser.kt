@@ -49,6 +49,8 @@ class XmlParser(
   private val keys: KeyConverter = KeyConverter(),
   private val values: ValueConverter<Any?> = ValueConverter()
 ) {
+  private fun attributeKey(name: String) = keys.from(if (name.startsWith("@")) name else "@$name")
+
   private fun parseSax(@Language("xml") xml: InputSource,
                        callback: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit) {
     val text = StringBuilder()
@@ -62,8 +64,8 @@ class XmlParser(
         text.setLength(0)
         val current = mutableMapOf<String, Any>()
         for (i in 0 until attributes.length) {
-          val attrName = "@" + (attributes.getLocalName(i).takeIf(String::isNotEmpty) ?: attributes.getQName(i))
-          current[keys.from(attrName)] = attributes.getValue(i)
+          val attrName = attributes.getLocalName(i).takeIf(String::isNotEmpty) ?: attributes.getQName(i)
+          current[attributeKey(attrName)] = attributes.getValue(i)
         }
         stack.add(current)
       }
@@ -161,7 +163,7 @@ class XmlParser(
         stack += OpenElement(
           keys.from(localName?.takeIf(String::isNotEmpty) ?: qName),
           (0 until attributes.length).associate { index ->
-            keys.from("@" + (attributes.getLocalName(index).takeIf(String::isNotEmpty) ?: attributes.getQName(index))) to attributes.getValue(index)
+            attributeKey(attributes.getLocalName(index).takeIf(String::isNotEmpty) ?: attributes.getQName(index)) to attributes.getValue(index)
           }
         )
       }
@@ -181,12 +183,12 @@ class XmlParser(
   private fun XmlElement.values(path: String): List<Any> {
     if (path.isEmpty()) return listOf(text)
     val parts = path.trim('/').split('/').filter(String::isNotEmpty)
-    if (parts.size == 1 && parts.first().startsWith("@")) return attributes[keys.from(parts.first())].let(::listOfNotNull)
+    if (parts.size == 1 && parts.first().startsWith("@")) return attributes[attributeKey(parts.first())].let(::listOfNotNull)
 
     fun follow(element: XmlElement, remaining: List<String>): List<Any> {
       if (remaining.isEmpty()) return listOf(element)
       val rawPart = remaining.first()
-      if (rawPart.startsWith("@")) return element.attributes[keys.from(rawPart)].let(::listOfNotNull)
+      if (rawPart.startsWith("@")) return element.attributes[attributeKey(rawPart)].let(::listOfNotNull)
       val part = keys.from(rawPart)
       return element.children.filter { it.name == part }.flatMap { follow(it, remaining.drop(1)) }
     }
