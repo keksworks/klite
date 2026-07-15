@@ -180,7 +180,7 @@ class XmlParser(
   private fun XmlElement.values(path: String): List<Any> {
     if (path.isEmpty()) return listOf(text)
     val parts = path.trim('/').split('/').filter(String::isNotEmpty)
-    if (parts.size == 1 && parts.firstOrNull()?.startsWith("@") == true) return attributes[parts.first()].let(::listOfNotNull)
+    if (parts.size == 1 && parts.first().startsWith("@")) return attributes[parts.first()].let(::listOfNotNull)
 
     fun descendants(element: XmlElement): Sequence<XmlElement> = sequence {
       yield(element)
