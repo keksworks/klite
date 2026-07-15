@@ -46,7 +46,9 @@ subprojects {
     }
   }
 
-  java.sourceCompatibility = JavaVersion.VERSION_21
+  kotlin {
+    jvmToolchain(21)
+  }
 
   tasks.withType<KotlinCompile> {
     compilerOptions {
@@ -82,6 +84,9 @@ subprojects {
 
   tasks.test {
     useJUnitPlatform()
+    javaLauncher.set(javaToolchains.launcherFor {
+      languageVersion = JavaLanguageVersion.of(25)
+    })
     jvmArgs("--enable-preview", "--add-opens=java.base/java.lang=ALL-UNNAMED")
   }
 

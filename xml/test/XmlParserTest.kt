@@ -313,7 +313,8 @@ class XmlParserTest {
 
   data class SnakeProps(
     val myValue: String,
-    @XmlPath("@dataType") val dataType: String
+    // Relative paths locate descendant elements before reading their attributes.
+    @XmlPath("myValue/@dataType") val dataType: String
   )
 
   @Test fun `key converter transforms element and attribute names`() {
