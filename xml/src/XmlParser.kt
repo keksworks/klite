@@ -191,12 +191,12 @@ class XmlParser(
   private fun XmlElement.values(path: String): List<Any> {
     if (path.isEmpty()) return listOf(text)
     val parts = path.trim('/').split('/').filter(String::isNotEmpty)
-    if (parts.size == 1 && parts.first().startsWith("@")) return attributes[parts.first()].let(::listOfNotNull)
+    if (parts.size == 1 && parts.first().startsWith("@")) return attributes[keys.from(parts.first())].let(::listOfNotNull)
 
     fun follow(element: XmlElement, remaining: List<String>): List<Any> {
       if (remaining.isEmpty()) return listOf(element)
       val part = remaining.first()
-      if (part.startsWith("@")) return element.attributes[part].let(::listOfNotNull)
+      if (part.startsWith("@")) return element.attributes[keys.from(part)].let(::listOfNotNull)
       return element.children.filter { it.name == part }.flatMap { follow(it, remaining.drop(1)) }
     }
     return elementsByName[parts.first()].orEmpty().flatMap { follow(it, parts.drop(1)) }
