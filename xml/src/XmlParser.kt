@@ -28,7 +28,7 @@ private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
   val elemType = if (isCollection) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
 }
 
-/** Intermediate XML representation; text contains only direct text nodes, excluding child element text. */
+/** Intermediate XML representation with a lazy index of named descendants; text excludes child element text. */
 private class XmlElement(
   val name: String,
   val attributes: Map<String, String>,
@@ -228,7 +228,7 @@ class XmlParser(
     val converted = values.from(text, type)
     if (converted !== text) return converted ?: text
     if (raw is XmlElement && classifier != null && !Converter.supports(classifier)) return buildObject(raw, classifier)
-    // Unchanged values use the standard converter.
+    // Conversion precedence is custom converter, standard converter, then the raw value.
     return type?.let { Converter.from(text.toString(), it) } ?: text
   }
 }
