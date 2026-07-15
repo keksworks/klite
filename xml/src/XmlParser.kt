@@ -34,7 +34,17 @@ private class XmlElement(
   val attributes: Map<String, String>,
   val text: String,
   val children: List<XmlElement>
-)
+) {
+  val descendantsByName by lazy {
+    val result = mutableMapOf<String, MutableList<XmlElement>>()
+    fun index(element: XmlElement) {
+      result.getOrPut(element.name) { mutableListOf() }.add(element)
+      element.children.forEach(::index)
+    }
+    children.forEach(::index)
+    result
+  }
+}
 
 @Deprecated("Use XmlParser instead", ReplaceWith("XmlParser"))
 typealias XMLParser = XmlParser
@@ -193,10 +203,7 @@ class XmlParser(
       return element.children.filter { it.name == part }.flatMap { follow(it, remaining.drop(1)) }
     }
     val first = keys.from(parts.first())
-    fun matchingElements(element: XmlElement): List<XmlElement> =
-      listOfNotNull(element.takeIf { it.name == first }) + element.children.flatMap(::matchingElements)
-
-    val elements = if (name == first) listOf(this) else matchingElements(this)
+    val elements = if (name == first) listOf(this) else descendantsByName[first].orEmpty()
     return elements.flatMap { follow(it, parts.drop(1)) }
   }
 
@@ -221,6 +228,7 @@ class XmlParser(
     val converted = values.from(text, type)
     if (converted !== text) return converted ?: text
     if (raw is XmlElement && classifier != null && !Converter.supports(classifier)) return buildObject(raw, classifier)
+    // Unchanged values use the standard converter.
     return type?.let { Converter.from(text.toString(), it) } ?: text
   }
 }
