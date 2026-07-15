@@ -191,7 +191,10 @@ class XmlParser(
   private fun XmlElement.values(path: String): List<Any> {
     if (path.isEmpty()) return listOf(text)
     val parts = path.trim('/').split('/').filter(String::isNotEmpty)
-    if (parts.size == 1 && parts.first().startsWith("@")) return attributes[parts.first()].let(::listOfNotNull)
+    if (parts.size == 1 && parts.first().startsWith("@")) {
+      return attributes[parts.first()]?.let(::listOf) ?: elementsByName.values.flatten()
+        .mapNotNull { it.attributes[parts.first()] }
+    }
 
     fun follow(element: XmlElement, remaining: List<String>): List<Any> {
       if (remaining.isEmpty()) return listOf(element)
@@ -219,10 +222,10 @@ class XmlParser(
   }
 
   private fun value(raw: Any, type: kotlin.reflect.KType?, classifier: KClass<*>?): Any {
-    if (raw is XmlElement && classifier != null && !Converter.supports(classifier)) return buildObject(raw, classifier)
     val text = (raw as? XmlElement)?.text ?: raw
     val converted = values.from(text, type)
     if (converted !== text) return converted ?: text
+    if (raw is XmlElement && classifier != null && !Converter.supports(classifier)) return buildObject(raw, classifier)
     return type?.let { Converter.from(text.toString(), it) } ?: text
   }
 }
