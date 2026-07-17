@@ -27,7 +27,7 @@ import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-data class PushSubscription(val endpoint: URI, val keys: SubscriptionKeys)
+data class PushSubscription(val endpoint: URI, val keys: SubscriptionKeys, val expirationTime: Instant? = null)
 data class SubscriptionKeys(val p256dh: String, val auth: String)
 
 class WebPushClient(
