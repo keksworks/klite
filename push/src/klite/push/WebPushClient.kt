@@ -2,7 +2,6 @@ package klite.push
 
 import klite.Config
 import klite.base64UrlDecode
-import klite.base64UrlEncode
 import klite.http.httpClient
 import klite.oauth.JWT
 import klite.oauth.JWT.Header
@@ -30,32 +29,14 @@ import javax.crypto.spec.SecretKeySpec
 
 data class PushSubscription(val endpoint: URI, val keys: SubscriptionKeys)
 data class SubscriptionKeys(val p256dh: String, val auth: String)
-data class VapidKeyPair(val publicKey: String, val privateKey: ECPrivateKey)
-
-private fun ByteArray.padTo(n: Int) = when {
-  size == n -> this
-  size > n -> copyOfRange(size - n, size)
-  else -> ByteArray(n - size) + this
-}
 
 class WebPushClient(
-  private val vapidKeyPair: VapidKeyPair,
+  private val vapidKeyPair: VapidKeyPair = VapidKeyPair.load() ?: error("WEB_PUSH_VAPID_PUBLIC_KEY not configured"),
   private val http: HttpClient = httpClient(),
   private val ttl: Int = 86400,
   private val jwtSub: String = Config.optional("WEB_PUSH_SUB", "mailto:push@klite.dev"),
 ) {
   companion object {
-    fun generateKeyPair(): VapidKeyPair {
-      val kpg = KeyPairGenerator.getInstance("EC")
-      kpg.initialize(ECGenParameterSpec("secp256r1"))
-      val kp = kpg.generateKeyPair()
-      val pub = kp.public as ECPublicKey
-      val x = pub.w.affineX.toByteArray().padTo(32)
-      val y = pub.w.affineY.toByteArray().padTo(32)
-      val uncompressed = byteArrayOf(0x04) + x + y
-      return VapidKeyPair(uncompressed.base64UrlEncode(), kp.private as ECPrivateKey)
-    }
-
     private val P256_PARAMS: ECParameterSpec by lazy {
       val dummyKpg = KeyPairGenerator.getInstance("EC")
       dummyKpg.initialize(ECGenParameterSpec("secp256r1"))
