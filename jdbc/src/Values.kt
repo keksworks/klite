@@ -25,8 +25,8 @@ fun <T: Any> ResultSet.create(type: KClass<T>, vararg provided: PropValue<T, *>,
   }
 }
 
-fun <E: Any> E.toDBValues(): Map<KProperty1<E, *>, Any?> {
-  val values = toValues() as MutableMap
+fun <E: Any> E.toDBValues(provided: Map<KProperty1<E, *>, Any?> = emptyMap(), skip: Set<String> = emptySet()): Map<KProperty1<E, *>, Any?> {
+  val values = toValues(provided, skip) as MutableMap
   values.entries.toList().forEach { (prop, v) ->
     if (prop.hasAnnotation<JsonColumn>()) values[prop] = jsonb(v)
     else if (v != null && prop.hasAnnotation<FlattenColumns>()) {
