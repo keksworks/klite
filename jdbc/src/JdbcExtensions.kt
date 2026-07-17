@@ -161,11 +161,13 @@ fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, 
   val whereValues = whereValues(where)
   val valuesToSet = values.map { setValues(it) + whereValues }
   val expr = if (isPostgres)
-    insertExpr(table, first) + " on conflict (${uniqueFields.joinToString()}) do update set ${updateExpr}${whereExpr(where)}"
+    insertExpr(table, first) + " on conflict (${uniqueFields.joinToString()}) " +
+      if (updateExpr.isEmpty()) "do nothing"
+      else "do update set $updateExpr${whereExpr(where)}"
   else """
     merge into ${q(table)} using (${valuesExpr(first)}) as excluded ${columnsExpr(first)}
       on ${uniqueFields.joinToString(" and ") { "${q(table)}.$it = excluded.$it" }}
-      when matched${whereExpr(where).replace("where", "and")} then update set $updateExpr
+      ${if (updateExpr.isEmpty()) "" else "when matched${whereExpr(where).replace("where", "and")} then update set $updateExpr "}
       when not matched then insert ${columnsExpr(first)} values (${first.keys.joinToString { "excluded." + q(name(it)) }});
     """
   return execBatch(expr, valuesToSet)

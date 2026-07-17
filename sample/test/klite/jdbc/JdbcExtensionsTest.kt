@@ -90,6 +90,11 @@ open class JdbcExtensionsTest: TempTableDBTest() {
     expect(loaded).toEqual(data)
   }
 
+  @Test fun upsertWithKeysOnly() {
+    db.exec("create table only_id(id text primary key)")
+    expect(db.upsert("only_id", OnlyId().toDBValues())).toEqual(1)
+  }
+
   @Test fun `update and delete`() {
     val data = SomeData("World", 37)
     db.insert(table, data.toValues())
@@ -123,4 +128,5 @@ open class JdbcExtensionsTest: TempTableDBTest() {
   }
 
   data class SomeData(val hello: String, val world: Int?, val id: UUID = randomUUID())
+  data class OnlyId(val id: UUID = randomUUID())
 }
