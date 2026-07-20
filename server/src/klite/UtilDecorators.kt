@@ -1,5 +1,7 @@
 package klite
 
+import klite.RequestMethod.GET
+import klite.StatusCode.Companion.OK
 import klite.StatusCode.Companion.TooManyRequests
 import java.time.Instant
 import java.time.ZoneOffset
@@ -39,7 +41,7 @@ fun RouterConfig.basicAuth(users: Map<String, Password>, realm: String = "Auth")
 }
 
 fun RouterConfig.useHashCodeAsETag() = decorator { e, handler ->
-  e.handler()?.also { e.checkETagHashCode(it) }
+  e.handler()?.also { if (e.method == GET && e.statusCode == OK && it != Unit) e.checkETagHashCode(it) }
 }
 
 fun HttpExchange.checkETagHashCode(o: Any) {
