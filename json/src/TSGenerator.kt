@@ -51,13 +51,14 @@ open class TSGenerator(
     }
   }
 
-  protected open fun printCustomTypes() {
+  open fun printCustomTypes() {
     if (customTypes.isNotEmpty()) out.println("")
     customTypes.forEach {
       if (it.value == null) printClass(it.key)
       else if (it.key in usedCustomTypes) {
+        val cls = runCatching { Class.forName(it.key).kotlin }.getOrNull()
         out.println("// ${it.key}")
-        out.println("${typePrefix}type ${it.key.substringAfterLast(".")} = ${it.value}")
+        out.println("${typePrefix}type ${cls?.let { tsName(cls) + typeParams(cls, noVariance = true) } ?: it.key.substringAfterLast(".")} = ${it.value}")
       }
     }
   }
