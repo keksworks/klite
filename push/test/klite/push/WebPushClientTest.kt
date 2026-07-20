@@ -10,7 +10,7 @@ import java.security.spec.ECGenParameterSpec
 import java.util.*
 
 class WebPushClientTest {
-  val keyPair = WebPushClient.generateKeyPair()
+  val keyPair = VapidKeyPair.generate()
   val client = WebPushClient(keyPair)
 
   @Test fun `generates valid P-256 key pair`() {
