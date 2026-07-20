@@ -8,6 +8,7 @@ import java.io.OutputStream
 import java.io.Reader
 import java.io.Writer
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.annotation.AnnotationTarget.CLASS
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -15,6 +16,9 @@ import kotlin.reflect.typeOf
 
 @Target(PROPERTY) annotation class JsonIgnore
 @Target(PROPERTY) annotation class JsonProperty(val value: String = "", val readOnly: Boolean = false)
+@Target(PROPERTY, CLASS) annotation class JsonSubTypes(val key: String = "type", val types: Array<Type> = []) {
+  annotation class Type(val value: String, val type: KClass<*>)
+}
 
 data class JsonMapper(
   val trimToNull: Boolean = true,

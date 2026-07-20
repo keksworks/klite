@@ -6,6 +6,7 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
 import klite.*
+import klite.json.JsonSubTypes.Type
 import org.junit.jupiter.api.Test
 import java.io.StringReader
 import java.math.BigDecimal
@@ -136,6 +137,29 @@ class JsonParserTest {
     expect(mapper.parse<Any>("""{"HelloWorld": true}""")).toEqual(mapOf("helloWorld" to true))
   }
 
+  @Test fun `sealed class with default subtype names`() {
+    val json = """{"shape": {"type": "Circle", "radius": 5.0}}"""
+    val result = mapper.parse<Container>(json)
+    expect(result).toEqual(Container(Shape.Circle(5.0)))
+  }
+
+  @Test fun `sealed class array`() {
+    val json = """[{"type": "Circle", "radius": 5.0}, {"type": "Rect", "width": 10, "height": 20}]"""
+    val result = mapper.parse<List<Shape>>(json)
+    expect(result).toEqual(listOf(Shape.Circle(5.0), Shape.Rect(10, 20)))
+  }
+
+  @Test fun `sealed class with explicit subtypes`() {
+    val json = """{"shape": {"kind": "circle", "radius": 5.0}}"""
+    val result = mapper.parse<ContainerWithExplicitSubtypes>(json)
+    expect(result).toEqual(ContainerWithExplicitSubtypes(Shape.Circle(5.0)))
+  }
+
+  @Test fun `sealed class with unknown discriminator`() {
+    val json = """{"type": "Triangle", "sides": 3}"""
+    expect { mapper.parse<Container>(json) }.toThrow<IllegalArgumentException>()
+  }
+
   data class Nullable(val x: String? = null)
 }
 
@@ -149,3 +173,19 @@ data class TypedData<T>(val list: List<T>, val map: Map<String, T> = emptyMap())
 data class FieldRule<T: Comparable<T>>(val field: KProperty1<out Hello, T>, val limits: Ranges<T> = emptyMap())
 typealias Ranges<T> = Map<T, Decimal>
 data class DataResponse<T>(val data: T)
+
+@JsonSubTypes
+sealed class Shape {
+  data class Circle(val radius: Double): Shape()
+  data class Rect(val width: Int, val height: Int): Shape()
+}
+
+data class Container(@JsonSubTypes val shape: Shape)
+
+data class ContainerWithExplicitSubtypes(
+  @JsonSubTypes(key = "kind", types = [
+    Type("circle", Shape.Circle::class),
+    Type("rect", Shape.Rect::class)
+  ])
+  val shape: Shape
+)

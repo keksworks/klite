@@ -7,6 +7,7 @@ import klite.trimToNull
 import java.io.Reader
 import java.text.ParseException
 import kotlin.reflect.*
+import kotlin.reflect.full.createType
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.javaField
@@ -18,9 +19,9 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
   private var pos: Int = 0
   private var nextChar: Char? = null
 
-  fun readValue(type: KType?): Any? = opts.values.from(when (val c = nextNonSpace()) {
+  fun readValue(type: KType?, subTypes: JsonSubTypes? = null): Any? = opts.values.from(when (val c = nextNonSpace()) {
     '"' -> opts.values.from(readString().let { if (opts.trimToNull) it.trimToNull() else it }, type).let { if (it is String) type.from(it) else it }
-    '{' -> readObject(type)
+    '{' -> readObject(type, subTypes)
     '[' -> readArray(type)
     '-', in '0'..'9' -> readNumber(c, type)
     't', 'f' -> readLettersOrDigits(c).toBoolean()
@@ -52,11 +53,13 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
   }
 
   @Suppress("UNCHECKED_CAST")
-  private fun readObject(type: KType?) = mutableMapOf<Any, Any?>().let { map ->
+  private fun readObject(type: KType?, subTypes: JsonSubTypes? = null) = mutableMapOf<Any, Any?>().let { map ->
     val typeClass = type?.classifier as? KClass<*>
     val typeParams = typeClass?.typeParameters?.mapIndexed { i, t -> t.name to type.arguments[i].type }?.toMap() ?: emptyMap()
     val mapTypes = if (typeClass == Map::class) type.arguments.let { it[0].type to it[1].type } else null
     val props = if (mapTypes == null) typeClass?.publicProperties?.values?.associateBy { prop -> prop.jsonName } else null
+    val subTypes = subTypes ?: typeClass?.findAnnotation<JsonSubTypes>()
+    var subTypeValue: String? = null
 
     while (true) {
       var next = nextNonSpace()
@@ -66,14 +69,26 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
       nextNonSpace().expect(':')
 
       val prop = props?.get(key)?.takeIf { it.javaField != null }
-      val value = readValue(substituteArguments(mapTypes?.second ?: prop?.returnType, typeParams))
+      val value = readValue(substituteArguments(mapTypes?.second ?: prop?.returnType, typeParams), prop?.findAnnotation<JsonSubTypes>())
+
       if (prop == null || prop.findAnnotation<JsonProperty>()?.readOnly != true && !prop.hasAnnotation<JsonIgnore>())
         map[prop?.name ?: key] = value
+
+      if (subTypes?.key != null && key == subTypes.key && value is String)
+        subTypeValue = value
 
       next = nextNonSpace()
       if (next == '}') break else next.expect(',')
     }
-    type?.takeIfSpecific()?.createFrom(map as Map<String, Any?>) ?: map
+
+    val resolvedType = if (subTypes != null && subTypeValue != null) {
+      val resolvedClass = subTypes.types.firstOrNull { it.value == subTypeValue }?.type
+        ?: typeClass?.sealedSubclasses?.find { it.simpleName == subTypeValue }
+        ?: throw IllegalArgumentException("Unknown ${typeClass?.simpleName} subtype: $subTypeValue")
+      KTypeWithKnownArguments(resolvedClass.createType(type!!.arguments), typeParams)
+    } else type
+
+    resolvedType?.takeIfSpecific()?.createFrom(map as Map<String, Any?>) ?: map
   }
 
   private fun substituteArguments(type: KType?, typeParams: Map<String, KType?>): KType? = typeParams[type.toString()] ?:
