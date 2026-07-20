@@ -16,12 +16,11 @@ import kotlin.io.path.walk
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KType
-import kotlin.reflect.full.createType
-import kotlin.reflect.full.isSubclassOf
-import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.full.*
 import kotlin.reflect.jvm.jvmErasure
 
 /** Converts project data/enum/inline classes to TypeScript for front-end type-safety */
+// TODO: an option to specify Routes mask and render only classes referenced in routes
 open class TSGenerator(
   customTypes: Map<String, String?> = emptyMap(),
   private val typePrefix: String = "export ",
@@ -79,6 +78,7 @@ open class TSGenerator(
     if (cls.isData || cls.java.isInterface && !cls.java.isAnnotation) renderInterface(cls)
     else if (cls.isValue) renderInline(cls)
     else if (cls.isSubclassOf(Enum::class)) renderEnum(cls)
+    else if (cls.hasAnnotation<JsonSubTypes>() || cls.isSealed) renderSealed(cls)
     else null
 
   protected open fun renderEnum(cls: KClass<*>) = "enum " + tsName(cls) + " {" + cls.java.enumConstants.joinToString { "$it = '$it'" } + "}"
@@ -86,13 +86,18 @@ open class TSGenerator(
   protected open fun renderInline(cls: KClass<*>) = "type " + tsName(cls) + typeParams(cls, noVariance = true) +
     " = " + tsType(cls.primaryConstructor?.parameters?.first()?.type)
 
+  protected open fun renderSealed(cls: KClass<*>): String? =
+    renderInterface(cls, skipEmpty = false) + "\n" +
+    (cls.findAnnotation<JsonSubTypes>()?.types?.takeIf { it.isNotEmpty() }?.map { it.type } ?: cls.sealedSubclasses)
+      .joinToString(separator = "\n") { renderInterface(it).toString() }
+
   protected open fun typeParams(cls: KClass<*>, noVariance: Boolean = false) =
     cls.typeParameters.takeIf { it.isNotEmpty() }?.joinToString(prefix = "<", postfix = ">") { if (noVariance) it.name else it.toString() } ?: ""
 
   @Suppress("UNCHECKED_CAST")
-  protected open fun renderInterface(cls: KClass<*>): String? = StringBuilder().apply {
+  protected open fun renderInterface(cls: KClass<*>, skipEmpty: Boolean = true): String? = StringBuilder().apply {
     val props = (cls.publicProperties.values.asSequence() as Sequence<KProperty1<Any, *>>).notIgnored.iterator()
-    if (!props.hasNext()) return null
+    if (skipEmpty && !props.hasNext()) return null
     append("interface ").append(tsName(cls)).append(typeParams(cls)).append(" {")
     props.iterator().forEach { p ->
       append(p.jsonName)

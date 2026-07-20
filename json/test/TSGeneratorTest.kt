@@ -49,6 +49,14 @@ class TSGeneratorTest {
     expect(ts.render(FieldRule::class)).toEqual( // language=TypeScript
       "interface FieldRule<T> {field: keyof Hello; limits: Record<any, number>}")
   }
+
+  @Test fun `sealed classes`() {
+    expect(ts.render(Shape::class)).toEqual(/* language=TypeScript */ """
+      interface Shape {}
+      interface ShapeCircle {radius: number}
+      interface ShapeRect {height: number; width: number}
+    """.trimIndent())
+  }
 }
 
 @JvmInline value class CountryCode(val value: String) {
