@@ -16,6 +16,7 @@
 * core: klite.nodes.Node introduced as base of JsonNode and XmlNode with common functionality
 * xml: `parseNodes()` now always parses attributes with @ prefix, no matter if the element has children or not, to avoid confusion
 * xml: `parse()` now supports nested data classes annotated with @XmlPath
+* json: TSGenerator will now include referenced types even if they come from external modules, to avoid missing types in generated TS files
 * push: a new module with `WebPushClient` introduced for sending push notifications to browsers
 
 # 1.9.0

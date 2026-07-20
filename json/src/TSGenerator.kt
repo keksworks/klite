@@ -32,11 +32,25 @@ open class TSGenerator(
 ) {
   private val customTypes = defaultCustomTypes + customTypes
   private val usedCustomTypes = mutableSetOf<String>()
+  private val processedClasses = mutableSetOf<String>()
+  private val referencedClasses = mutableSetOf<KClass<*>>()
 
   open fun printFrom(dir: Path) {
     dir.walk(INCLUDE_DIRECTORIES).filter { it.extension == "class" }.sorted().forEach {
       val className = dir.relativize(it).toString().removeSuffix(".class").replace(File.separatorChar, '.')
       printClass(className)
+    }
+    printReferencedClasses()
+  }
+
+  protected open fun printReferencedClasses() {
+    while (referencedClasses.isNotEmpty()) {
+      val toProcess = referencedClasses.toList()
+      referencedClasses.clear()
+      toProcess.forEach { cls ->
+        val className = cls.qualifiedName ?: return@forEach
+        if (className !in processedClasses) printClass(className)
+      }
     }
   }
 
@@ -53,6 +67,7 @@ open class TSGenerator(
 
   protected open fun printClass(className: String) = try {
     val cls = Class.forName(className).kotlin
+    processedClasses += className
     render(cls)?.let {
       out.println("// $cls")
       out.println(typePrefix + it)
@@ -96,8 +111,8 @@ open class TSGenerator(
     val customType = listOf(type?.toString(), type?.jvmErasure?.qualifiedName).find { it in customTypes }
     val ts = customType?.also { usedCustomTypes += it }?.substringAfterLast(".") ?: when {
       cls == null || cls == Any::class -> "any"
-      cls.isValue -> tsName(cls)
-      cls.isSubclassOf(Enum::class) -> tsName(cls)
+      cls.isValue -> tsName(cls).also { trackReferencedClass(cls) }
+      cls.isSubclassOf(Enum::class) -> tsName(cls).also { trackReferencedClass(cls) }
       cls.isSubclassOf(Boolean::class) -> "boolean"
       cls.isSubclassOf(Number::class) -> "number"
       cls.isSubclassOf(Iterable::class) -> "Array"
@@ -105,7 +120,7 @@ open class TSGenerator(
       cls.isSubclassOf(Map::class) -> "Record"
       cls == KProperty1::class -> "keyof " + tsType(args.first().type)
       cls.isSubclassOf(CharSequence::class) || Converter.supports(cls) -> "string"
-      cls.isData || cls.java.isInterface -> tsName(cls)
+      cls.isData || cls.java.isInterface -> tsName(cls).also { trackReferencedClass(cls) }
       else -> "any"
     }
     var fullType =  if (ts[0].isLowerCase()) ts
@@ -116,6 +131,11 @@ open class TSGenerator(
   }
 
   protected open fun tsName(type: KClass<*>) = type.java.name.substringAfterLast(".").replace("$", "")
+
+  private fun trackReferencedClass(cls: KClass<*>) {
+    val className = cls.qualifiedName ?: return
+    if (className !in processedClasses && className !in customTypes) referencedClasses += cls
+  }
 
   open fun printTestData(cls: KClass<Any>, mapper: JsonMapper = JsonMapper()) {
     val values = cls.objectInstance ?: error("$cls is not an object")
