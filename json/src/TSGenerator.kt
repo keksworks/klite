@@ -1,9 +1,6 @@
 package klite.json
 
-import klite.Converter
-import klite.Email
-import klite.Phone
-import klite.publicProperties
+import klite.*
 import org.intellij.lang.annotations.Language
 import java.io.File
 import java.io.PrintStream
@@ -152,6 +149,7 @@ open class TSGenerator(
     internal const val tsUrl = "`\${string}://\${string}`"
 
     val defaultCustomTypes = mapOf(
+      TSID::class to "string & {_of?: T}",
       LocalDate::class to "`${tsDate}`",
       LocalTime::class to "`${tsTimeShort}`|`${tsTime}`",
       LocalDateTime::class to "`${tsDate}T${tsTime}`|`${tsDate}T${tsTimeShort}`",
