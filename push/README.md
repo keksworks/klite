@@ -8,10 +8,6 @@ Web Push notifications using VAPID protocol for Klite.
 
 Run the `VapidKeyPair.main()` method to generate a key pair:
 
-```bash
-java -cp <klite-push-jar> klite.push.VapidKeyPair
-```
-
 This outputs two lines for your `.env` file:
 
 ```
@@ -19,17 +15,7 @@ WEB_PUSH_VAPID_PUBLIC_KEY=<public_key>
 WEB_PUSH_VAPID_PRIVATE_KEY=<private_key>
 ```
 
-### 2. Register WebPushClient
-
-Load keys from config and register the client:
-
-```kotlin
-VapidKeyPair.load()?.let { register(WebPushClient(it)) }
-```
-
-The client is optional - if keys aren't configured, push features are disabled.
-
-### 3. Add service worker push handler
+### 2. Add service worker push handler
 
 ```js
 addEventListener('push', event => {
@@ -48,7 +34,7 @@ addEventListener('push', event => {
 ### Subscribe a browser
 
 ```kotlin
-// POST /push/subscribe
+@POST("/push/subscribe")
 fun subscribe(sub: PushSubscription, user: User) {
   // Store sub.endpoint, sub.keys.p256dh, sub.keys.auth in database
 }
