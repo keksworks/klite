@@ -7,7 +7,7 @@ plugins {
 
 allprojects {
   group = "com.github.keksworks.klite"
-  version = project.findProperty("version") ?: "main-SNAPSHOT" // see tags/releases
+  version = project.findProperty("version")!! // see tags/releases
 }
 
 subprojects {
