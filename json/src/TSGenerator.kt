@@ -86,18 +86,19 @@ open class TSGenerator(
   protected open fun renderInline(cls: KClass<*>) = "type " + tsName(cls) + typeParams(cls, noVariance = true) +
     " = " + tsType(cls.primaryConstructor?.parameters?.first()?.type)
 
-  protected open fun renderSealed(cls: KClass<*>): String? =
-    renderInterface(cls, skipEmpty = false) + "\n" +
-    (cls.findAnnotation<JsonSubTypes>()?.types?.takeIf { it.isNotEmpty() }?.map { it.type } ?: cls.sealedSubclasses)
-      .joinToString(separator = "\n") { renderInterface(it).toString() }
+  protected open fun renderSealed(cls: KClass<*>): String? {
+    val types = cls.findAnnotation<JsonSubTypes>()?.types?.takeIf { it.isNotEmpty() }?.map { it.type } ?: cls.sealedSubclasses
+    return "${typePrefix}type ${tsName(cls)} = ${types.joinToString(" | ") { tsName(it) }}\n" +
+      types.joinToString(separator = "\n") { typePrefix + renderInterface(it).toString() }
+  }
 
   protected open fun typeParams(cls: KClass<*>, noVariance: Boolean = false) =
     cls.typeParameters.takeIf { it.isNotEmpty() }?.joinToString(prefix = "<", postfix = ">") { if (noVariance) it.name else it.toString() } ?: ""
 
   @Suppress("UNCHECKED_CAST")
-  protected open fun renderInterface(cls: KClass<*>, skipEmpty: Boolean = true): String? = StringBuilder().apply {
+  protected open fun renderInterface(cls: KClass<*>): String? = StringBuilder().apply {
     val props = (cls.publicProperties.values.asSequence() as Sequence<KProperty1<Any, *>>).notIgnored.iterator()
-    if (skipEmpty && !props.hasNext()) return null
+    if (!props.hasNext()) return null
     append("interface ").append(tsName(cls)).append(typeParams(cls)).append(" {")
     props.iterator().forEach { p ->
       append(p.jsonName)
