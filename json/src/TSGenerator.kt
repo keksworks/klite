@@ -28,7 +28,7 @@ open class TSGenerator(
 ) {
   private val customTypes = defaultCustomTypes + customTypes
   private val usedCustomTypes = mutableSetOf<String>()
-  private val processedClasses = mutableSetOf<String>()
+  private val printedClasses = mutableSetOf<KClass<*>>()
   private val referencedClasses = mutableSetOf<KClass<*>>()
 
   open fun printFrom(dir: Path) {
@@ -43,10 +43,7 @@ open class TSGenerator(
     while (referencedClasses.isNotEmpty()) {
       val toProcess = referencedClasses.toList()
       referencedClasses.clear()
-      toProcess.forEach { cls ->
-        val className = cls.qualifiedName ?: return@forEach
-        if (className !in processedClasses) printClass(className)
-      }
+      toProcess.forEach { cls -> if (cls !in printedClasses) printClass(cls) }
     }
   }
 
@@ -64,14 +61,18 @@ open class TSGenerator(
 
   protected open fun printClass(className: String) = try {
     val cls = Class.forName(className).kotlin
-    processedClasses += className
+    printClass(cls)
+  } catch (ignore: UnsupportedOperationException) {
+  } catch (e: Exception) {
+    err.println("// $className: $e")
+  }
+
+  protected open fun printClass(cls: KClass<*>) {
+    printedClasses += cls
     render(cls)?.let {
       out.println("// $cls")
       out.println(typePrefix + it)
     }
-  } catch (ignore: UnsupportedOperationException) {
-  } catch (e: Exception) {
-    err.println("// $className: $e")
   }
 
   @Language("TypeScript") open fun render(cls: KClass<*>) =
@@ -138,7 +139,7 @@ open class TSGenerator(
 
   private fun trackReferencedClass(cls: KClass<*>) {
     val className = cls.qualifiedName ?: return
-    if (className !in processedClasses && className !in customTypes) referencedClasses += cls
+    if (cls !in printedClasses && className !in customTypes) referencedClasses += cls
   }
 
   open fun printTestData(cls: KClass<Any>, mapper: JsonMapper = JsonMapper()) {
