@@ -21,7 +21,7 @@ class TSGeneratorTest {
 
   @Test fun `enum with fields`() {
     expect(ts.render(EnumWithFields::class)).toEqual(/* language=TypeScript */
-      "enum EnumWithFields {HELLO = 'HELLO' & {bool: true, num: 1, passCalled: true}, WORLD = 'WORLD' & {bool: false, num: 2, passCalled: false}}")
+      "enum EnumWithFields {HELLO = 'HELLO' & {bool: true, num: 1, other: SomeEnum.HELLO}, WORLD = 'WORLD' & {bool: false, num: 2, other: SomeEnum.WORLD}}")
   }
 
   @Test fun inline() {
@@ -71,7 +71,9 @@ class TSGeneratorTest {
 @JvmInline value class MyId<out T>(val uuid: UUID = UUID.randomUUID())
 
 enum class SomeEnum { HELLO, WORLD }
-enum class EnumWithFields(val bool: Boolean, val num: Int, val passCalled: Boolean) { HELLO(true, 1, true), WORLD(false, 2, false) }
+enum class EnumWithFields(val bool: Boolean, val num: Int, val other: SomeEnum) {
+  HELLO(true, 1, SomeEnum.HELLO), WORLD(false, 2, SomeEnum.WORLD)
+}
 
 interface Person { val name: String; val hello get() = SomeEnum.HELLO; }
 
