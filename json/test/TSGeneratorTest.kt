@@ -19,6 +19,11 @@ class TSGeneratorTest {
     expect(ts.render(SomeData.Status::class)).toEqual(/* language=TypeScript */ "enum SomeDataStatus {ACTIVE = 'ACTIVE'}")
   }
 
+  @Test fun `enum with fields`() {
+    expect(ts.render(EnumWithFields::class)).toEqual(/* language=TypeScript */
+      "enum EnumWithFields {HELLO = 'HELLO' & {bool: true, num: 1, passCalled: true}, WORLD = 'WORLD' & {bool: false, num: 2, passCalled: false}}")
+  }
+
   @Test fun inline() {
     expect(ts.render(MyId::class)).toEqual(/* language=TypeScript */ "type MyId<T> = string")
     expect(ts.render(CountryCode::class)).toEqual(/* language=TypeScript */ "type CountryCode = string")
@@ -66,6 +71,7 @@ class TSGeneratorTest {
 @JvmInline value class MyId<out T>(val uuid: UUID = UUID.randomUUID())
 
 enum class SomeEnum { HELLO, WORLD }
+enum class EnumWithFields(val bool: Boolean, val num: Int, val passCalled: Boolean) { HELLO(true, 1, true), WORLD(false, 2, false) }
 
 interface Person { val name: String; val hello get() = SomeEnum.HELLO; }
 

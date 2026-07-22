@@ -82,7 +82,23 @@ open class TSGenerator(
     else if (cls.hasAnnotation<JsonSubTypes>() || cls.isSealed) renderSealed(cls)
     else null
 
-  protected open fun renderEnum(cls: KClass<*>) = "enum " + tsName(cls) + " {" + cls.java.enumConstants.joinToString { "$it = '$it'" } + "}"
+  protected open fun renderEnum(cls: KClass<*>): String {
+    val fieldNames = cls.primaryConstructor?.parameters?.mapNotNull { it.name }?.toSet() ?: emptySet()
+    val fields = cls.memberProperties.filter { it.name in fieldNames }
+    return "enum " + tsName(cls) + " {" + cls.java.enumConstants.joinToString { const ->
+      "$const = '$const'" + if (fields.isNotEmpty()) {
+        " & {" + fields.joinToString { p ->
+          "${p.jsonName}: ${formatEnumValue((p as KProperty1<Any, Any>).get(const as Any))}"
+        } + "}"
+      } else ""
+    } + "}"
+  }
+
+  private fun formatEnumValue(value: Any?): String = when (value) {
+    is Enum<*> -> tsName(value::class) + "." + value.name
+    null, is Boolean, is Number -> value.toString()
+    else -> "'$value'"
+  }
 
   protected open fun renderInline(cls: KClass<*>) = "type " + tsName(cls) + typeParams(cls, noVariance = true) +
     " = " + tsType(cls.primaryConstructor?.parameters?.first()?.type)
