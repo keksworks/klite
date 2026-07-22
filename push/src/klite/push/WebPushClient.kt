@@ -3,13 +3,12 @@ package klite.push
 import klite.Config
 import klite.base64UrlDecode
 import klite.http.httpClient
+import klite.http.post
 import klite.oauth.JWT
 import klite.oauth.JWT.Header
 import java.math.BigInteger
 import java.net.URI
 import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpRequest.BodyPublishers
 import java.net.http.HttpResponse
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -49,20 +48,17 @@ class WebPushClient(
     internal val RS_BYTES = ByteArray(12).also { it[10] = 16 }
   }
 
-  fun send(subscription: PushSubscription, payload: ByteArray?, ttl: Duration = this.ttl): HttpResponse<String> {
-    val encrypted = if (payload != null) encrypt(payload, subscription.keys) else null
+  fun send(subscription: PushSubscription, payload: ByteArray, ttl: Duration = this.ttl): HttpResponse<String> {
     val jwt = createVapidJwt(subscription.endpoint)
     val key = vapidKeyPair.publicKey
-    val req = HttpRequest.newBuilder()
-      .uri(subscription.endpoint)
-      .header("Content-Type", "webpush; enc=aes128gcm")
-      .header("Content-Encoding", "aes128gcm")
-      .header("TTL", ttl.inWholeSeconds.toString())
-      .header("Urgency", "normal")
-      .header("Authorization", "vapid t=$jwt, k=$key")
-      .POST(if (encrypted != null) BodyPublishers.ofByteArray(encrypted) else BodyPublishers.noBody())
-      .build()
-    return http.send(req, HttpResponse.BodyHandlers.ofString())
+    val body = encrypt(payload, subscription.keys)
+    return http.post(subscription.endpoint, body) {
+      header("Content-Type", "webpush; enc=aes128gcm")
+      header("Content-Encoding", "aes128gcm")
+      header("TTL", ttl.inWholeSeconds.toString())
+      header("Urgency", "normal")
+      header("Authorization", "vapid t=$jwt, k=$key")
+    }
   }
 
   internal fun createVapidJwt(endpoint: URI): JWT {
