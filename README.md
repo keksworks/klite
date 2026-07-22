@@ -68,9 +68,9 @@ fun main() {
 * [jdbc](jdbc) - provides JDBC extensions for database access, transaction handling and migrations (usable *standalone*)
 * [jdbc-test](jdbc-test) - provides a way of testing your DB code using a real DB
 * [jobs](jobs) - provides a simple scheduled JobRunner
+* [openapi](openapi) - generates OpenAPI 3.0 spec for all routes in a context, viewable with [Swagger UI](https://swagger.io/tools/swagger-ui/)
 * [oauth](oauth) - implements OAuth 2.0 login with several providers
 * [smtp](smtp) - for sending email over SMTP
-* [openapi](openapi) - generates OpenAPI 3.0 spec for all routes in a context, viewable with [Swagger UI](https://swagger.io/tools/swagger-ui/)
 * [push](push) - implements Web Push notifications (VAPID) for sending push notifications to browsers
 
 ### Integrations
