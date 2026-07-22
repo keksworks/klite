@@ -96,5 +96,5 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
 internal val <T: Any> Sequence<KProperty1<T, *>>.notIgnored get() = filter { !it.hasAnnotation<JsonIgnore>() }
 internal val KProperty1<*, *>.jsonName get() = findAnnotation<JsonProperty>()?.value?.trimToNull() ?: name
 
-fun <T: Any> T.toJsonValues(vararg provided: PropValue<T, *>, skip: Collection<KProperty1<T, *>> = emptySet()) =
+fun <T: Any> T.toJsonValues(vararg provided: PropValue<T, *>, skip: Set<KProperty1<T, *>> = emptySet()) =
   toValues(publicProperties.notIgnored - skip, provided.toMap())

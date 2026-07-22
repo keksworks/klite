@@ -25,8 +25,8 @@ fun <T: Any> T.toValues(provided: Map<KProperty1<T, *>, Any?> = emptyMap(), skip
 fun <T: Any> T.toValues(props: Sequence<KProperty1<T, *>>, provided: Map<KProperty1<T, *>, Any?> = emptyMap()) =
   props.associateWith { provided[it] ?: it.valueOf(this) }
 
-fun <T: Any> T.toValues(vararg provided: PropValue<T, *>, skip: Collection<KProperty1<T, *>> = emptySet()) =
-  toValues(provided.toMap(), if (skip.isEmpty()) emptySet() else skip.map { it.name }.toSet())
+fun <T: Any> T.toValues(vararg provided: PropValue<T, *>, skip: Collection<KProperty1<T, *>> = emptyList()) =
+  toValues(provided.toMap(), if (skip.isEmpty()) emptySet() else skip.mapTo(mutableSetOf()) { it.name })
 
 fun <T: Any> T.toValuesSkipping(vararg skip: KProperty1<T, *>) =
   toValues(skip = skip.map { it.name }.toSet())
