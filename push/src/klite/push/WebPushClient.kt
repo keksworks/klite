@@ -26,6 +26,8 @@ import javax.crypto.KeyAgreement
 import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 
 data class PushSubscription(val endpoint: URI, val keys: SubscriptionKeys, val expirationTime: Instant? = null)
 data class SubscriptionKeys(val p256dh: String, val auth: String)
@@ -33,7 +35,7 @@ data class SubscriptionKeys(val p256dh: String, val auth: String)
 class WebPushClient(
   private val vapidKeyPair: VapidKeyPair = VapidKeyPair.load() ?: error("WEB_PUSH_VAPID_PUBLIC_KEY not configured"),
   private val http: HttpClient = httpClient(),
-  private val ttl: Int = 86400,
+  private val ttl: Duration = 24.hours,
   private val jwtSub: String = Config.optional("WEB_PUSH_SUB", "mailto:push@klite.dev"),
 ) {
   companion object {
@@ -47,7 +49,7 @@ class WebPushClient(
     internal val RS_BYTES = ByteArray(12).also { it[10] = 16 }
   }
 
-  fun send(subscription: PushSubscription, payload: ByteArray?, ttl: Int = this.ttl): HttpResponse<String> {
+  fun send(subscription: PushSubscription, payload: ByteArray?, ttl: Duration = this.ttl): HttpResponse<String> {
     val encrypted = if (payload != null) encrypt(payload, subscription.keys) else null
     val jwt = createVapidJwt(subscription.endpoint)
     val key = vapidKeyPair.publicKey
@@ -55,7 +57,7 @@ class WebPushClient(
       .uri(subscription.endpoint)
       .header("Content-Type", "webpush; enc=aes128gcm")
       .header("Content-Encoding", "aes128gcm")
-      .header("TTL", ttl.toString())
+      .header("TTL", ttl.inWholeSeconds.toString())
       .header("Urgency", "normal")
       .header("Authorization", "vapid t=$jwt, k=$key")
       .POST(if (encrypted != null) BodyPublishers.ofByteArray(encrypted) else BodyPublishers.noBody())
