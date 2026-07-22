@@ -3,6 +3,7 @@ package klite.oauth
 import klite.*
 import klite.http.authBearer
 import klite.json.*
+import klite.nodes.textOrNull
 import java.net.URI
 import java.net.http.HttpClient
 import java.util.*
@@ -53,7 +54,7 @@ abstract class OAuthClient(provider: String? = null, scope: String? = null, auth
 
   abstract fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile
 
-  protected fun JsonNode.getLocale(key: String = "locale") = getOrNull<String>(key)?.let { Locale.forLanguageTag(it) }
+  protected fun JsonNode.getLocale(key: String = "locale") = textOrNull(key)?.let { Locale.forLanguageTag(it) }
 
   protected var keys: Map<String, JwkKey>? = null
   fun fetchKeys(): Map<String, JwkKey> {
@@ -75,8 +76,8 @@ class GoogleOAuthClient(httpClient: HttpClient): OAuthClient(
     val res = fetchProfileResponse(token)
     val email = Email(res.getString("email"))
     return UserProfile(provider, res.getString("id"), email,
-      res.getOrNull("givenName") ?: email.value.substringBefore("@").capitalize(), res.getOrNull("familyName") ?: "",
-      res.getOrNull<String>("picture")?.let { URI(it) }, res.getLocale())
+      res.textOrNull("givenName") ?: email.value.substringBefore("@").capitalize(), res.textOrNull("familyName") ?: "",
+      res.textOrNull("picture")?.let { URI(it) }, res.getLocale())
   }
 }
 
@@ -91,8 +92,8 @@ class MicrosoftOAuthClient(httpClient: HttpClient): OAuthClient(
 ) {
   override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val res = fetchProfileResponse(token)
-    val email = res.getOrNull("mail") ?: res.getOrNull<String>("userPrincipalName") ?: error("Cannot obtain user's email")
-    return UserProfile(provider, res.getString("id"), Email(email), res.getOrNull("givenName") ?: email.substringBefore("@").capitalize(), res.getOrNull("surname") ?: "",
+    val email = res.textOrNull("mail") ?: res.textOrNull("userPrincipalName") ?: error("Cannot obtain user's email")
+    return UserProfile(provider, res.getString("id"), Email(email), res.textOrNull("givenName") ?: email.substringBefore("@").capitalize(), res.textOrNull("surname") ?: "",
       locale = res.getLocale("preferredLanguage"))
   }
 }
@@ -112,8 +113,8 @@ class FacebookOAuthClient(httpClient: HttpClient): OAuthClient(
     val avatarExists = avatarData?.getOrNull<Boolean>("is_silhouette") != true
     val email = Email(res.getString("email"))
     return UserProfile(provider, res.getString("id"),
-      email, res.getOrNull("firstName") ?: email.value.substringBefore("@").capitalize(), res.getOrNull("lastName") ?: "",
-      avatarData?.getOrNull<String>("url")?.takeIf { avatarExists }?.let { URI(it) },
+      email, res.textOrNull("firstName") ?: email.value.substringBefore("@").capitalize(), res.textOrNull("lastName") ?: "",
+      avatarData?.textOrNull("url")?.takeIf { avatarExists }?.let { URI(it) },
       res.getLocale())
   }
 }

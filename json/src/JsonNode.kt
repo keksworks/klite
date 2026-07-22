@@ -10,7 +10,6 @@ typealias JsonList = List<JsonNode>
 @kotlin.internal.HidesMembers @Deprecated("Use child()", ReplaceWith("child(key)", "klite.nodes"))
 inline fun <T: Any> JsonNode.get(key: String) = child<T>(key)
 
-@Deprecated("Use childOrNull()", ReplaceWith("childOrNull(key)", "klite.nodes"))
 inline fun <T: Any> JsonNode.getOrNull(key: String) = childOrNull<T>(key)
 
 inline fun JsonNode.getString(key: String) = text(key)
