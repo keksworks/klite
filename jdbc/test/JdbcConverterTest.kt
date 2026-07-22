@@ -123,13 +123,13 @@ class JdbcConverterTest {
 
   @Test fun `toString types`() {
     expect(JdbcConverter.to(Currency.getInstance("EUR"))).toEqual("EUR")
-    expect(JdbcConverter.to(Locale("et"))).toEqual("et")
+    expect(JdbcConverter.to(Locale.of("et"))).toEqual("et")
     expect(JdbcConverter.to(Period.ofDays(3))).toEqual("P3D")
   }
 
   @Test fun `from toString types`() {
     expect(JdbcConverter.from("EUR", Currency::class)).toEqual(Currency.getInstance("EUR"))
-    expect(JdbcConverter.from("et", Locale::class)).toEqual(Locale("et"))
+    expect(JdbcConverter.from("et", Locale::class)).toEqual(Locale.of("et"))
     expect(JdbcConverter.from("P3D", Period::class)).toEqual(Period.ofDays(3))
     expect(JdbcConverter.from("13.456".toBigDecimal(), Decimal::class)).toEqual(13.46.d)
   }

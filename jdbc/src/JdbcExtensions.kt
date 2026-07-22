@@ -115,7 +115,6 @@ fun <R> DataSource.withCall(@Language("SQL") sql: String, block: CallableStateme
   prepareCall(sql).use { it.block() }
 }
 
-@Deprecated("Experimental API")
 fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any =
   withCall("{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}") {
     var i = 1
