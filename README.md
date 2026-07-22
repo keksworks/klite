@@ -14,7 +14,8 @@ Please **star the repo** to let us know you are interested.
 ## Key features / differences from other frameworks
 
 * Zero dependencies, Java built-in **jdk.httpserver** under the hood
-* Small, debuggable codebase
+* Optimized for programmer happiness, with minimal boilerplate and clear code
+* Small, simple and debuggable codebase
 * No magic, everything is explicit
 * Provides extreme type-safety, supports all modern Kotlin features and class types, including [TypeScript type generation for frontend](json)
 * Constructor-based [dependency injection](core/src/Registry.kt) for singletons
