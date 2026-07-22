@@ -35,7 +35,7 @@ data class SubscriptionKeys(val p256dh: String, val auth: String)
 class WebPushClient(
   private val vapidKeyPair: VapidKeyPair = VapidKeyPair.fromConfig(),
   private val http: HttpClient = httpClient(),
-  private val jsonMapper: JsonMapper,
+  private val jsonMapper: JsonMapper = JsonMapper(),
   private val ttl: Duration = 24.hours,
   private val jwtSub: String = Config.optional("WEB_PUSH_SUB", "mailto:push@klite.dev"),
 ) {
