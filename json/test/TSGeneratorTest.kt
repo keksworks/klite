@@ -20,8 +20,10 @@ class TSGeneratorTest {
   }
 
   @Test fun `enum with fields`() {
-    expect(ts.render(EnumWithFields::class)).toEqual(/* language=TypeScript */
-      "enum EnumWithFields {HELLO = 'HELLO' & {bool: true, num: 1, other: SomeEnum.HELLO}, WORLD = 'WORLD' & {bool: false, num: 2, other: SomeEnum.WORLD}}")
+    expect(ts.render(EnumWithFields::class)).toEqual(/* language=TypeScript */ """
+      const EnumWithFields = {HELLO: Object.assign('HELLO', {bool: true, num: 1, other: SomeEnum.HELLO}), WORLD: Object.assign('WORLD', {bool: false, num: 2, other: SomeEnum.WORLD})}
+      export type EnumWithFields = typeof EnumWithFields[keyof typeof EnumWithFields]
+    """.trimIndent())
   }
 
   @Test fun inline() {

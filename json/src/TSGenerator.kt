@@ -82,16 +82,18 @@ open class TSGenerator(
     else if (cls.hasAnnotation<JsonSubTypes>() || cls.isSealed) renderSealed(cls)
     else null
 
-  protected open fun renderEnum(cls: KClass<*>): String {
-    val fieldNames = cls.primaryConstructor?.parameters?.mapNotNull { it.name }?.toSet() ?: emptySet()
-    val fields = cls.memberProperties.filter { it.name in fieldNames }
-    return "enum " + tsName(cls) + " {" + cls.java.enumConstants.joinToString { const ->
-      "$const = '$const'" + if (fields.isNotEmpty()) {
-        " & {" + fields.joinToString { p ->
-          "${p.jsonName}: ${formatEnumValue((p as KProperty1<Any, Any>).get(const as Any))}"
-        } + "}"
-      } else ""
-    } + "}"
+  protected open fun <E: Any> renderEnum(cls: KClass<E>): String {
+    val propNames = cls.primaryConstructor?.parameters?.mapNotNull { it.name }?.toSet() ?: emptySet()
+    val props = cls.publicProperties.values.filter { it.name in propNames }
+    val name = tsName(cls)
+    return if (props.isEmpty())
+      "enum $name {" + cls.java.enumConstants.joinToString { "$it = '$it'" } + "}"
+    else
+      "const $name = {" + cls.java.enumConstants.joinToString { const ->
+        "$const: Object.assign('$const', {${props.joinToString { p ->
+          "${p.jsonName}: ${formatEnumValue(p.get(const as E))}"
+        }}})"
+      } + "}\n${typePrefix}type $name = typeof $name[keyof typeof $name]"
   }
 
   private fun formatEnumValue(value: Any?): String = when (value) {

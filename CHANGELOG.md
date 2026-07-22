@@ -17,6 +17,7 @@
 * xml: `parseNodes()` now always parses attributes with @ prefix, no matter if the element has children or not, to avoid confusion
 * xml: `parse()` now supports nested data classes annotated with @XmlPath
 * json: TSGenerator will now include referenced types even if they come from external modules, to avoid missing types in generated TS files
+* json: TSGenerator can now convert enums with additional properties
 * json: `@JsonSubTypes` annotation allows for polymorphic parsing/rendering of sealed classes and interfaces
 * push: a new module with `WebPushClient` introduced for sending push notifications to browsers
 
