@@ -4,6 +4,7 @@ import klite.Config
 import klite.base64UrlDecode
 import klite.http.httpClient
 import klite.http.post
+import klite.json.JsonMapper
 import klite.oauth.JWT
 import klite.oauth.JWT.Header
 import java.math.BigInteger
@@ -32,8 +33,9 @@ data class PushSubscription(val endpoint: URI, val keys: SubscriptionKeys, val e
 data class SubscriptionKeys(val p256dh: String, val auth: String)
 
 class WebPushClient(
-  private val vapidKeyPair: VapidKeyPair = VapidKeyPair.load() ?: error("WEB_PUSH_VAPID_PUBLIC_KEY not configured"),
+  private val vapidKeyPair: VapidKeyPair = VapidKeyPair.fromConfig(),
   private val http: HttpClient = httpClient(),
+  private val jsonMapper: JsonMapper,
   private val ttl: Duration = 24.hours,
   private val jwtSub: String = Config.optional("WEB_PUSH_SUB", "mailto:push@klite.dev"),
 ) {
@@ -48,10 +50,16 @@ class WebPushClient(
     internal val RS_BYTES = ByteArray(12).also { it[10] = 16 }
   }
 
-  fun send(subscription: PushSubscription, payload: ByteArray, ttl: Duration = this.ttl): HttpResponse<String> {
+  @IgnorableReturnValue
+  fun send(subscription: PushSubscription, payload: Any, ttl: Duration = this.ttl): HttpResponse<String> {
     val jwt = createVapidJwt(subscription.endpoint)
     val key = vapidKeyPair.publicKey
-    val body = encrypt(payload, subscription.keys)
+    val data = when (payload) {
+      is ByteArray -> payload
+      is String -> payload.toByteArray()
+      else -> jsonMapper.render(payload).toByteArray()
+    }
+    val body = encrypt(data, subscription.keys)
     return http.post(subscription.endpoint, body) {
       header("Content-Type", "webpush; enc=aes128gcm")
       header("Content-Encoding", "aes128gcm")

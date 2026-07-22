@@ -23,9 +23,9 @@ data class VapidKeyPair(val publicKey: String, val privateKey: ECPrivateKey) {
       return VapidKeyPair(uncompressed.base64UrlEncode(), kp.private as ECPrivateKey)
     }
 
-    /** Load VapidKeyPair from WEB_PUSH_VAPID_PUBLIC_KEY and WEB_PUSH_VAPID_PRIVATE_KEY config/env vars */
-    fun load(): VapidKeyPair? {
-      val pubKey = Config.optional("WEB_PUSH_VAPID_PUBLIC_KEY") ?: return null
+    /** Load VapidKeyPair from config/env vars */
+    fun fromConfig(): VapidKeyPair {
+      val pubKey = Config["WEB_PUSH_VAPID_PUBLIC_KEY"]
       val privKeyBytes = Config["WEB_PUSH_VAPID_PRIVATE_KEY"].base64UrlDecode()
       val privateKey = KeyFactory.getInstance("EC").generatePrivate(PKCS8EncodedKeySpec(privKeyBytes)) as ECPrivateKey
       return VapidKeyPair(pubKey, privateKey)
