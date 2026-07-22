@@ -2,7 +2,7 @@
 
 [![Release](https://jitpack.io/v/keksworks/klite.svg)](https://jitpack.io/#keksworks/klite) [![Build & Test](https://github.com/keksworks/klite/actions/workflows/ci.yml/badge.svg)](https://github.com/keksworks/klite/actions/workflows/ci.yml)
 
-Klite: a very light-weight (lite) non-blocking http framework for Kotlin coroutines on JVM, batteries included.
+Klite: a very light-weight (lite) non-blocking http framework for Kotlin/JVM, batteries included.
 Probably the most sustainable JVM web framework (low resource usage and CO₂ emissions).
 
 Inspired by SparkJava, Jooby, etc, but [smaller, simpler and better](docs/Comparisons.md).
@@ -21,6 +21,8 @@ fun main() {
     assets("/", AssetsHandler(Path.of("public"), useIndexForUnknownPaths = true))
     context("/api") {
       get("/hello") { "Hello, world!" }
+      // or
+      annotated<MyRoutesClass>("/my")
     }
     start()
   }
@@ -39,14 +41,13 @@ fun main() {
   * [Sample docker image](sample/Dockerfile) is about 50–70Mb thanks to jlink, depending on used modules
   * Production applications can run with as low as 50Mb of heap memory, suitable for very cheap plans at Fly.io or Heroku
 * 12-factor apps by default
-* Most behaviour can be overridden if necessary
+* Most behavior can be overridden if necessary
+* Constructor-based dependency injection
 * Both route builder and annotated classes
-* Very easy to do simple things, e.g. `@GET fun route() = provider.fetchData()`
 * Proper Kotlin coroutine support with working before/after filters for e.g. transactions and logging
-* Shared [type-safe value classes](core/src/Types.kt) across http parameters, database columns and json fields
+* Shared [type-safe value classes](core/src/Types.kt) across http parameters, database columns, json and xml fields, e.g. `Id<User>`, `Phone`, `Email`, etc.
 * Most app code will not depend on the framework, easy to switch
 * Not much need for documentation — the source code is short and readable.
-* Easy custom types instead of String, like Id, Phone, Email across web requests, json and DB
 
 [llms.txt](llms.txt) version
 
