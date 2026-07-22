@@ -11,9 +11,16 @@ Includes very light [json](json) and [jdbc & migrations](jdbc) submodules for Ko
 
 Please **star the repo** to let us know you are interested.
 
-See the [Tutorial](TUTORIAL.md) to grasp the basics quickly.
+## Key features / differences from other frameworks
 
-## Code sample
+* Zero dependencies, Java built-in **jdk.httpserver** under the hood
+* Small, debuggable codebase
+* No magic, everything is explicit
+* Provides extreme type-safety, supports all modern Kotlin features and class types
+* Constructor-based [dependency injection](core/src/Registry.kt) for singletons
+* Batteries included: logging, json, xml, csv, jdbc, migrations, jobs, i18n, openapi, oauth, smtp, push, etc
+
+## Quick code sample
 
 ```kotlin
 fun main() {
@@ -29,7 +36,9 @@ fun main() {
 }
 ```
 
-## Goals
+See the [Tutorial](TUTORIAL.md) to grasp the basics quickly.
+
+## Design goals
 
 * Follows [The Pure Code Manifesto](https://github.com/keksworks/manifesto)
 * Minimal amount of code
@@ -42,7 +51,6 @@ fun main() {
   * Production applications can run with as low as 50Mb of heap memory, suitable for very cheap plans at Fly.io or Heroku
 * 12-factor apps by default
 * Most behavior can be overridden if necessary
-* Constructor-based dependency injection
 * Both route builder and annotated classes
 * Proper Kotlin coroutine support with working before/after filters for e.g. transactions and logging
 * Shared [type-safe value classes](core/src/Types.kt) across http parameters, database columns, json and xml fields, e.g. `Id<User>`, `Phone`, `Email`, etc.
@@ -77,7 +85,7 @@ fun main() {
 
 These integrate with external libraries. All of this functionality is available in Klite's own modules.
 
-* [slf4j](slf4j) - redirects server logs to slf4j and configures it
+* [slf4j](slf4j) - redirects server logs to slf4j and configures it (recommended for production)
 * [jackson](jackson) - json parsing/rendering using Jackson
 * [serialization](serialization) - json parsing/rendering using kotlinx-serialization
 * [liquibase](liquibase) - allows to use Liquibase for DB migration
