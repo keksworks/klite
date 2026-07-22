@@ -123,7 +123,7 @@ Klite builds are available from [jitpack](https://jitpack.io/#keksworks/klite), 
   }
 
   dependencies {
-    val kliteVersion = "main-SNAPSHOT" // you can put a released tag or commit hash here
+    val kliteVersion = "main-SNAPSHOT" // use a released tag or commit hash here
     fun klite(module: String) = "com.github.keksworks.klite:klite-$module:$kliteVersion"
     implementation(klite("server"))
     // Plus any optional components with their own external dependencies, see above for list
