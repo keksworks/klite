@@ -86,14 +86,13 @@ open class TSGenerator(
     val propNames = cls.primaryConstructor?.parameters?.mapNotNull { it.name }?.toSet() ?: emptySet()
     val props = cls.publicProperties.values.filter { it.name in propNames }
     val name = tsName(cls)
-    return if (props.isEmpty())
-      "enum $name {" + cls.java.enumConstants.joinToString { "$it = '$it'" } + "}"
-    else
-      "const $name = {" + cls.java.enumConstants.joinToString { const ->
-        "$const: Object.assign('$const', {${props.joinToString { p ->
-          "${p.jsonName}: ${formatEnumValue(p.get(const as E))}"
-        }}})"
-      } + "}\n${typePrefix}type $name = typeof $name[keyof typeof $name]"
+    val enumStr = "enum $name {" + cls.java.enumConstants.joinToString { "$it = '$it'" } + "}"
+    return if (props.isEmpty()) enumStr
+    else enumStr + "\n${typePrefix}const ${name}Data = {" + cls.java.enumConstants.joinToString { const ->
+      "$const: {${props.joinToString { p ->
+        "${p.jsonName}: ${formatEnumValue(p.get(const as E))}"
+      }}}"
+    } + "}"
   }
 
   private fun formatEnumValue(value: Any?): String = when (value) {

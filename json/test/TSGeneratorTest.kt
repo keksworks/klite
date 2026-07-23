@@ -21,8 +21,8 @@ class TSGeneratorTest {
 
   @Test fun `enum with fields`() {
     expect(ts.render(EnumWithFields::class)).toEqual(/* language=TypeScript */ """
-      const EnumWithFields = {HELLO: Object.assign('HELLO', {bool: true, num: 1, other: SomeEnum.HELLO}), WORLD: Object.assign('WORLD', {bool: false, num: 2, other: SomeEnum.WORLD})}
-      export type EnumWithFields = typeof EnumWithFields[keyof typeof EnumWithFields]
+      enum EnumWithFields {HELLO = 'HELLO', WORLD = 'WORLD'}
+      export const EnumWithFieldsData = {HELLO: {bool: true, num: 1, other: SomeEnum.HELLO}, WORLD: {bool: false, num: 2, other: SomeEnum.WORLD}}
     """.trimIndent())
   }
 
