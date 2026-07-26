@@ -1,4 +1,4 @@
-# Unreleased 2.0.0
+# 2.0.0
 * server: workerPool now uses JVM Virtual Threads, Java 21+ is now required, NUM_WORKERS config option is deprecated
   * Most `suspend` modifiers were removed from klite itself
   * Annotated suspend routes are still supported
