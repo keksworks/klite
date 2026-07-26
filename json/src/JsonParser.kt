@@ -58,7 +58,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     val typeParams = typeClass?.typeParameters?.mapIndexed { i, t -> t.name to type.arguments[i].type }?.toMap() ?: emptyMap()
     val mapTypes = if (typeClass == Map::class) type.arguments.let { it[0].type to it[1].type } else null
     val props = if (mapTypes == null) typeClass?.publicProperties?.values?.associateBy { prop -> prop.jsonName } else null
-    val subTypes = subTypes ?: typeClass?.findAnnotation<JsonSubTypes>()
+    val subTypes = subTypes ?: typeClass?.findAnnotation<JsonSubTypes>() ?: typeClass?.takeIf { it.isSealed }?.let { JsonSubTypes() }
     var subTypeValue: String? = null
 
     while (true) {

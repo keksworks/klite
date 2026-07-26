@@ -99,6 +99,11 @@ class JsonRendererTest {
     expect(out.toByteArray().decodeToString()).toEqual("""{"x":"ascii","y":"☕","z":"🎁"}""")
   }
 
+  @Test fun `sealed class rendering`() {
+    val shape: Shape = Shape.Circle(5.0)
+    expect(mapper.render(shape)).toEqual("""{"type":"Circle","radius":5.0}""")
+  }
+
   @Test fun `sealed class rendering in container`() {
     val container = Container(Shape.Circle(5.0))
     expect(mapper.render(container)).toEqual("""{"shape":{"type":"Circle","radius":5.0}}""")
@@ -107,6 +112,11 @@ class JsonRendererTest {
   @Test fun `sealed class rendering with custom type property`() {
     val container = ContainerWithExplicitSubtypes(Shape.Circle(5.0))
     expect(mapper.render(container)).toEqual("""{"shape":{"kind":"circle","radius":5.0}}""")
+  }
+
+  @Test fun `sealed class array rendering`() {
+    val shapes: List<Shape> = listOf(Shape.Circle(5.0), Shape.Rect(10, 20))
+    expect(mapper.render(shapes)).toEqual("""[{"type":"Circle","radius":5.0},{"type":"Rect","height":20,"width":10}]""")
   }
 
   @JvmInline value class NumCode<T: Any>(val value: Long) {

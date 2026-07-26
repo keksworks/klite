@@ -174,7 +174,6 @@ data class FieldRule<T: Comparable<T>>(val field: KProperty1<out Hello, T>, val 
 typealias Ranges<T> = Map<T, Decimal>
 data class DataResponse<T>(val data: T)
 
-@JsonSubTypes
 sealed class Shape {
   data class Circle(val radius: Double): Shape()
   data class Rect(val width: Int, val height: Int): Shape()

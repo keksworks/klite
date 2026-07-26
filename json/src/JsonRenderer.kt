@@ -59,20 +59,12 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
   }
 
   private fun writeObject(o: Any, prop: KProperty1<*, *>? = null) {
-    val subTypes = prop?.findAnnotation<JsonSubTypes>() ?: findSubTypesAnnotation(o::class)
     var entries = o.publicProperties.notIgnored.map { SimpleImmutableEntry(it, it.valueOf(o)) } as Sequence<Map.Entry<Any, Any?>>
+    var subTypes = prop?.findAnnotation<JsonSubTypes>()
+    if (subTypes == null && (o::class.isSealed || o::class.superclasses.any { it.isSealed })) subTypes = JsonSubTypes()
     if (subTypes != null)
       entries = sequenceOf(SimpleImmutableEntry(subTypes.key, findDiscriminatorValue(o::class, subTypes))) + entries
     writeObjectEntries(entries)
-  }
-
-  private fun findSubTypesAnnotation(cls: KClass<*>): JsonSubTypes? {
-    var current: KClass<*>? = cls
-    while (current != null && current != Any::class) {
-      current.findAnnotation<JsonSubTypes>()?.let { return it }
-      current = current.superclasses.firstOrNull()
-    }
-    return null
   }
 
   private fun findDiscriminatorValue(cls: KClass<*>, subTypes: JsonSubTypes): String? {
