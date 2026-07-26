@@ -23,9 +23,13 @@ inline operator fun <reified T> ResultSet.get(column: String): T = get(column, t
 fun <T> ResultSet.getOptional(column: String, type: KType): Result<T> = runCatching { get(column, type) }
 inline fun <reified T> ResultSet.getOptional(column: String): Result<T> = getOptional(column, typeOf<T>())
 
+private val pgObjectGetValue: java.lang.reflect.Method? = runCatching {
+  Class.forName("org.postgresql.util.PGobject").getMethod("getValue")
+}.getOrNull()
+
 fun ResultSet.getObjectUnwrapped(column: String): Any? {
   val o = getObject(column)
-  return if (o != null && o.javaClass.simpleName == "PGobject") o.javaClass.getMethod("getValue").invoke(o)
+  return if (o != null && pgObjectGetValue != null && pgObjectGetValue.declaringClass.isInstance(o)) pgObjectGetValue.invoke(o)
          else o
 }
 

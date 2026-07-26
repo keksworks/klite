@@ -2,10 +2,17 @@ package klite.jdbc
 
 import klite.*
 import java.sql.ResultSet
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.hasAnnotation
+
+private data class AnnotationMeta(val isJson: Boolean, val isFlatten: Boolean)
+private val annotationMetaCache = ConcurrentHashMap<KClass<*>, Map<String, AnnotationMeta>>()
+
+private fun KClass<*>.annotationMeta() = annotationMetaCache[this] ?: publicProperties.mapValues { (_, p) ->
+  AnnotationMeta(p.findAnnotation<JsonColumn>() != null, p.findAnnotation<FlattenColumns>() != null)
+}.also { annotationMetaCache[this] = it }
 
 inline fun <reified T: Any> ResultSet.create(vararg provided: PropValue<T, *>) = create(T::class, *provided)
 
@@ -14,12 +21,13 @@ inline fun <reified T: Any> ResultSet.create(columnPrefix: String, vararg provid
 
 fun <T: Any> ResultSet.create(type: KClass<T>, vararg provided: PropValue<T, *>, columnPrefix: String = ""): T {
   val extraArgs = provided.associate { it.first.name to it.second }
+  val meta = type.annotationMeta()
   return type.create {
     val prop = type.publicProperties[it.name]
     val column = columnPrefix + (prop?.colName ?: it.name)
     if (extraArgs.containsKey(it.name)) extraArgs[it.name!!]
-    else if (prop?.findAnnotation<JsonColumn>() != null) getJsonOrNull(column, it.type)
-    else if (prop?.findAnnotation<FlattenColumns>() != null) create(it.type.classifier as KClass<T>, *provided, columnPrefix = columnPrefix)
+    else if (prop != null && meta[it.name]!!.isJson) getJsonOrNull(column, it.type)
+    else if (prop != null && meta[it.name]!!.isFlatten) create(it.type.classifier as KClass<T>, *provided, columnPrefix = columnPrefix)
     else if (it.isOptional) getOptional<T>(column, it.type).getOrDefault(AbsentValue)
     else get(column, it.type)
   }
@@ -27,9 +35,10 @@ fun <T: Any> ResultSet.create(type: KClass<T>, vararg provided: PropValue<T, *>,
 
 fun <T: Any> T.toDBValues(vararg provided: PropValue<T, *>, skip: Collection<KProperty1<T, *>> = emptyList()): Map<KProperty1<T, *>, Any?> {
   val values = toValues(*provided, skip = skip) as MutableMap
-  values.entries.toList().forEach { (prop, v) ->
-    if (prop.hasAnnotation<JsonColumn>()) values[prop] = jsonb(v)
-    else if (v != null && prop.hasAnnotation<FlattenColumns>()) {
+  val meta = this::class.annotationMeta()
+  values.entries.forEach { (prop, v) ->
+    if (meta[prop.name]!!.isJson) values[prop] = jsonb(v)
+    else if (v != null && meta[prop.name]!!.isFlatten) {
       values.remove(prop)
       values += v.toDBValues() as Map<KProperty1<T, *>, Any?>
     }

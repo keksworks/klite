@@ -9,6 +9,7 @@ import java.io.InputStream
 import java.sql.*
 import java.sql.Statement.NO_GENERATED_KEYS
 import java.sql.Statement.RETURN_GENERATED_KEYS
+import java.util.concurrent.ConcurrentHashMap
 import javax.sql.DataSource
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
@@ -221,7 +222,8 @@ internal fun name(key: ColName) = when(key) {
   else -> throw UnsupportedOperationException("$key should be a KProperty1 or String")
 }
 
-val KProperty1<*, *>.colName get() = findAnnotation<Column>()?.name ?: name
+private val colNameCache = ConcurrentHashMap<KProperty1<*, *>, String>()
+val KProperty1<*, *>.colName get() = colNameCache[this] ?: (findAnnotation<Column>()?.name ?: name).also { colNameCache[this] = it }
 
 internal fun q(name: String) = if (name in namesToQuote) "\"$name\"" else name
 
