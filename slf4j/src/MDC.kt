@@ -4,11 +4,9 @@ import klite.Extension
 import klite.Handler
 import klite.HttpExchange
 import klite.RouterConfig
-import kotlinx.coroutines.ThreadContextElement
 import org.slf4j.MDC
 import org.slf4j.spi.MDCAdapter
-import kotlin.coroutines.AbstractCoroutineContextElement
-import kotlin.coroutines.CoroutineContext
+import java.util.concurrent.Callable
 
 class KliteMDCAdapter: MDCAdapter {
   private val threadLocal = ThreadLocal<MutableMap<String, String?>>()
@@ -46,27 +44,14 @@ class RequestMDCContext(val initial: MutableMap<String, String?> = HashMap()): E
     decorator { exchange, handler -> decorate(exchange, handler) }
   }
 
-  fun decorate(e: HttpExchange, handler: Handler): Any? {
+  fun <T> run(callable: Callable<T>): T {
     adapter.init(initial)
     return try {
-      handler(e)
+      callable.call()
     } finally {
       adapter.clear()
     }
   }
-}
 
-class MDCContext(private val map: Map<String, String?>): ThreadContextElement<Map<String, String?>?>, AbstractCoroutineContextElement(Key) {
-  constructor(vararg pairs: Pair<String, String?>) : this(mutableMapOf(*pairs))
-  companion object Key: CoroutineContext.Key<MDCContext>
-
-  override fun updateThreadContext(context: CoroutineContext): Map<String, String?>? {
-    val oldState = MDC.getCopyOfContextMap()
-    MDC.setContextMap(map)
-    return oldState
-  }
-
-  override fun restoreThreadContext(context: CoroutineContext, oldState: Map<String, String?>?) {
-    if (oldState == null) MDC.clear() else MDC.setContextMap(oldState)
-  }
+  fun decorate(e: HttpExchange, handler: Handler): Any? = run { handler(e) }
 }

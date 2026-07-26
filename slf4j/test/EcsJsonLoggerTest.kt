@@ -5,8 +5,8 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEndWith
 import ch.tutteli.atrium.api.fluent.en_GB.toStartWith
 import ch.tutteli.atrium.api.verbs.expect
 import klite.json.JsonMapper
+import klite.json.JsonNode
 import klite.json.parse
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.slf4j.MDC
@@ -28,24 +28,24 @@ class EcsJsonLoggerTest {
     val json = out.toString()
     expect(json).toStartWith("{\"@timestamp\":\"" + Year.now())
       .toEndWith(""","trace.id":"Test worker","log.level":"warn","log.logger":"hello.MyLogger","message":"Hello\nWorld!","host.hostname":"${InetAddress.getLocalHost().hostName}"}""" + "\n")
-    JsonMapper().parse<Any>(json)
+    JsonMapper().parse<JsonNode>(json)
   }
 
   @Test fun exception() {
     logger.print(ERROR, "Failed something", IOException("Kaboom"))
     val json = out.toString()
     expect(json).toContain(""""message":"Failed something","error.type":"java.io.IOException","error.message":"Kaboom","error.stack_trace":"klite.slf4j.EcsJsonLoggerTest.exception(""")
-    JsonMapper().parse<Any>(json)
+    JsonMapper().parse<JsonNode>(json)
   }
 
   @Test fun mdc() {
-    runBlocking(MDCContext()) {
+    RequestMDCContext().run {
       MDC.put("mdc.1", "value")
       MDC.put("mdc.2", "Hello\nWorld")
       logger.print(ERROR, null, null)
       val json = out.toString()
       expect(json).toContain(""""mdc.1":"value","mdc.2":"Hello\nWorld",""")
-      JsonMapper().parse<Any>(json)
+      JsonMapper().parse<JsonNode>(json)
     }
   }
 }
