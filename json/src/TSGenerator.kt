@@ -3,6 +3,7 @@ package klite.json
 import klite.*
 import org.intellij.lang.annotations.Language
 import java.io.File
+import java.io.InputStream
 import java.io.PrintStream
 import java.lang.System.err
 import java.net.URI
@@ -14,13 +15,13 @@ import kotlin.io.path.PathWalkOption.INCLUDE_DIRECTORIES
 import kotlin.io.path.extension
 import kotlin.io.path.walk
 import kotlin.reflect.KClass
+import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KType
 import kotlin.reflect.full.*
 import kotlin.reflect.jvm.jvmErasure
 
 /** Converts project data/enum/inline classes to TypeScript for front-end type-safety */
-// TODO: an option to specify Routes mask and render only classes referenced in routes
 open class TSGenerator(
   customTypes: Map<String, String?> = emptyMap(),
   private val typePrefix: String = "export ",
@@ -31,12 +32,33 @@ open class TSGenerator(
   private val printedClasses = mutableSetOf<KClass<*>>()
   private val referencedClasses = mutableSetOf<KClass<*>>()
 
-  open fun printFrom(dir: Path) {
+  open fun printFrom(dir: Path, routesRegex: Regex? = null) {
     dir.walk(INCLUDE_DIRECTORIES).filter { it.extension == "class" }.sorted().forEach {
       val className = dir.relativize(it).toString().removeSuffix(".class").replace(File.separatorChar, '.')
-      printClass(className)
+      if (routesRegex?.containsMatchIn(className) == true) extractRouteTypes(className)
+      else printClass(className)
     }
     printReferencedClasses()
+  }
+
+  private fun extractRouteTypes(className: String) = try {
+    extractRouteTypes(Class.forName(className).kotlin)
+  } catch (e: Exception) {
+    err.println("// $className: $e")
+  }
+
+  private fun extractRouteTypes(cls: KClass<*>) {
+    val kliteAnnotations = "klite.annotations"
+    val frameworkTypes = setOf(HttpExchange::class, Session::class, InputStream::class)
+    cls.functions.forEach { f ->
+      if (f.annotations.none { it.annotationClass.java.packageName == kliteAnnotations }) return@forEach
+      f.parameters.filter { it.kind != KParameter.Kind.INSTANCE }.forEach { param ->
+        if (param.annotations.any { it.annotationClass.java.packageName == kliteAnnotations }) return@forEach
+        val paramCls = param.type.classifier as? KClass<*> ?: return@forEach
+        if (paramCls !in frameworkTypes) tsType(param.type)
+      }
+      if (f.returnType.classifier != Unit::class) tsType(f.returnType)
+    }
   }
 
   protected open fun printReferencedClasses() {
@@ -189,17 +211,18 @@ open class TSGenerator(
     @JvmStatic fun main(args: Array<String>) {
       if (args.isEmpty())
         return err.println("Usage: <classes-dir> ...custom.Type=tsType ...package.IncludeThisType " +
-          "[-o <output-file>] [-p <prepend-text>] [-t package.TestData]")
+          "[-o <output-file>] [-p <prepend-text>] [-t package.TestData] [-r <routes-regex>]")
 
       val argsLeft = args.toMutableList().apply { removeAt(0) }
       val dirs = (listOf(args[0]) + argsLeft.args("-i")).map { Path.of(it) }
       val out = argsLeft.args("-o").firstOrNull()?.let { PrintStream(it, UTF_8) } ?: System.out
       val testDataClass = argsLeft.args("-t")
+      val routesRegex = argsLeft.args("-r").firstOrNull()?.toRegex()
       out.use {
         argsLeft.args("-p").forEach { out.println(it) }
         val customTypes = argsLeft.associate { it.split("=").let { it[0] to it.getOrNull(1) } }
         TSGenerator(customTypes, out = out).apply {
-          dirs.forEach { printFrom(it) }
+          dirs.forEach { printFrom(it, routesRegex) }
           printCustomTypes()
           testDataClass.forEach { printTestData(Class.forName(it).kotlin as KClass<Any>) }
         }

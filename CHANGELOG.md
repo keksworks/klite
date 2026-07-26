@@ -1,3 +1,6 @@
+# Unreleased
+* json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project
+
 # 2.0.0
 * server: workerPool now uses JVM Virtual Threads, Java 21+ is now required, NUM_WORKERS config option is deprecated
   * Most `suspend` modifiers were removed from klite itself
