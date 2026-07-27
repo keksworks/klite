@@ -1,5 +1,6 @@
 # Unreleased
 * json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project
+* xml: XmlParser.keys affects only how properties without @XmlPath are handled, @XmlPath uses original paths
 * push: fixes in payload encryption
 
 # 2.0.0

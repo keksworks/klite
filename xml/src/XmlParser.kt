@@ -174,9 +174,10 @@ class XmlParser(
     factory.newSAXParser().parse(xml, object : DefaultHandler() {
       override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
         stack += OpenElement(
-          keys.from(localName?.takeIf(String::isNotEmpty) ?: qName),
+          localName?.takeIf(String::isNotEmpty) ?: qName,
           (0 until attributes.length).associate { index ->
-            attributeKey(attributes.getLocalName(index).takeIf(String::isNotEmpty) ?: attributes.getQName(index)) to attributes.getValue(index)
+            val attrName = attributes.getLocalName(index).takeIf(String::isNotEmpty) ?: attributes.getQName(index)
+            "@${attrName.removePrefix("@")}" to attributes.getValue(index)
           }
         )
       }
@@ -196,16 +197,15 @@ class XmlParser(
   private fun XmlElement.values(path: String): List<Any> {
     if (path.isEmpty()) return listOf(text)
     val parts = path.trim('/').split('/').filter(String::isNotEmpty)
-    if (parts.size == 1 && parts.first().startsWith("@")) return attributes[attributeKey(parts.first())].let(::listOfNotNull)
+    if (parts.size == 1 && parts.first().startsWith("@")) return attributes[parts.first()].let(::listOfNotNull)
 
     fun follow(element: XmlElement, remaining: List<String>): List<Any> {
       if (remaining.isEmpty()) return listOf(element)
       val rawPart = remaining.first()
-      if (rawPart.startsWith("@")) return element.attributes[attributeKey(rawPart)].let(::listOfNotNull)
-      val part = keys.from(rawPart)
-      return element.children.filter { it.name == part }.flatMap { follow(it, remaining.drop(1)) }
+      if (rawPart.startsWith("@")) return element.attributes[rawPart].let(::listOfNotNull)
+      return element.children.filter { it.name == rawPart }.flatMap { follow(it, remaining.drop(1)) }
     }
-    val first = keys.from(parts.first())
+    val first = parts.first()
     val elements = if (name == first) listOf(this) else descendantsByName[first].orEmpty()
     return elements.flatMap { follow(it, parts.drop(1)) }
   }
@@ -213,7 +213,7 @@ class XmlParser(
   private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>): T {
     val constructorArgs = mutableMapOf<String, Any?>()
     for (prop in type.publicProperties.values) {
-      val info = PropInfo(prop.findAnnotation<XmlPath>()?.path ?: prop.name, prop)
+      val info = PropInfo(prop.findAnnotation<XmlPath>()?.path ?: keys.to(prop.name), prop)
       val rawValues = element.values(info.path)
       if (rawValues.isEmpty()) continue
       val kType = info.prop.returnType
