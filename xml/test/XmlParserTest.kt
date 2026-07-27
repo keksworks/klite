@@ -361,24 +361,13 @@ class XmlParserTest {
     )
     @Language("XML") val xml = """
       <root>
-        <item>
-          <item_name>The Hobbit</item_name>
-          <description>A classic</description>
-        </item>
+        <item_name>The Hobbit</item_name>
+        <description>A classic</description>
       </root>
     """.trimIndent()
     val result = customParser.parse<CombinedChild>(xml)
     expect(result.itemName).toEqual("tibboH ehT")
     expect(result.description).toEqual("cissalc A")
-  }
-
-  data class PathMapChild(val itemName: String)
-
-  @Test fun `key converter with nested elements`() {
-    val snakeParser = XmlParser(keys = SnakeCase)
-    @Language("XML") val xml = """<root><item><item_name>value</item_name></item></root>"""
-    val result = snakeParser.parse<PathMapChild>(xml)
-    expect(result.itemName).toEqual("value")
   }
 
   data class Color(val r: Int, val g: Int, val b: Int)
@@ -401,7 +390,7 @@ class XmlParserTest {
   }
 
   @Test fun `compound path matches inner element with attributes`() {
-    data class City(@XmlPath("country/name") val country: String, @XmlPath("country/@code") val countryCode: String?)
+    data class City(@XmlPath("city/country/name") val country: String, @XmlPath("city/country/@code") val countryCode: String?)
     @Language("XML") val xml = """<root><city><country code="EE"><name>Estonia</name></country></city></root>"""
     val result = parser.parse<City>(xml)
     expect(result.country).toEqual("Estonia")

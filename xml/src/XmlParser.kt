@@ -13,10 +13,11 @@ import kotlin.annotation.AnnotationRetention.RUNTIME
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
+import kotlin.reflect.KType
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
 
-/** Supports absolute and relative paths (resolved from matching descendants), empty path means current element, attributes start with @ */
+/** Supports absolute (from root /) and relative paths (resolved from current element), empty path means current element, attributes start with @ */
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
@@ -26,23 +27,13 @@ private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
   val elemType = if (isCollection) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
 }
 
-/** Intermediate XML representation with a lazy index of named descendants; text excludes child element text. */
+/** Intermediate XML representation; text excludes child element text */
 private class XmlElement(
   val name: String,
   val attributes: Map<String, String>,
   val text: String,
   val children: List<XmlElement>
-) {
-  val descendantsByName by lazy {
-    val result = mutableMapOf<String, MutableList<XmlElement>>()
-    fun index(element: XmlElement) {
-      result.getOrPut(element.name) { mutableListOf() }.add(element)
-      element.children.forEach(::index)
-    }
-    children.forEach(::index)
-    result
-  }
-}
+)
 
 @Deprecated("Use XmlParser instead", ReplaceWith("XmlParser"))
 typealias XMLParser = XmlParser
@@ -83,7 +74,8 @@ class XmlParser(
   inline fun <reified T: Any> parse(@Language("xml") xml: String): T = parse(StringReader(xml))
 
   fun <T : Any> parse(@Language("xml") xml: InputSource, type: KClass<T>): T {
-    return buildObject(readElement(xml), type)
+    val root = readElement(xml)
+    return buildObject(root, type, root)
   }
 
   fun parseNodes(xml: InputStream) = parseNodes(InputSource(xml))
@@ -162,44 +154,41 @@ class XmlParser(
     return requireNotNull(root) { "XML document has no root element" }
   }
 
-  private fun XmlElement.values(path: String): List<Any> {
+  private fun XmlElement.values(path: String, root: XmlElement = this): List<Any> {
     if (path.isEmpty()) return listOf(text)
     val parts = path.trim('/').split('/').filter(String::isNotEmpty)
     if (parts.size == 1 && parts.first().startsWith("@")) return attributes[parts.first()].let(::listOfNotNull)
 
-    fun follow(element: XmlElement, remaining: List<String>): List<Any> {
-      if (remaining.isEmpty()) return listOf(element)
-      val rawPart = remaining.first()
-      if (rawPart.startsWith("@")) return element.attributes[rawPart].let(::listOfNotNull)
-      return element.children.filter { it.name == rawPart }.flatMap { follow(it, remaining.drop(1)) }
+    var current = listOf(if (path.startsWith("/")) root else this)
+    for (part in parts) {
+      if (current.isEmpty()) return emptyList()
+      if (part.startsWith("@")) return current.flatMap { it.attributes[part].let(::listOfNotNull) }
+      current = current.flatMap { e -> if (e.name == part) listOf(e) else e.children.filter { it.name == part } }
     }
-    val first = parts.first()
-    val elements = if (name == first) listOf(this) else descendantsByName[first].orEmpty()
-    return elements.flatMap { follow(it, parts.drop(1)) }
+    return current
   }
 
-  private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>): T {
+  private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>, root: XmlElement): T {
     val constructorArgs = mutableMapOf<String, Any?>()
     for (prop in type.publicProperties.values) {
       val info = PropInfo(prop.findAnnotation<XmlPath>()?.path ?: keys.to(prop.name), prop)
-      val rawValues = element.values(info.path)
+      val rawValues = element.values(info.path, root)
       if (rawValues.isEmpty()) continue
       val kType = info.prop.returnType
       if (info.isCollection) {
-        constructorArgs[info.prop.name] = rawValues.map { value(it, kType.arguments.firstOrNull()?.type, info.elemType) }
+        constructorArgs[info.prop.name] = rawValues.map { value(it, kType.arguments.firstOrNull()?.type, info.elemType, root) }
       } else {
-        rawValues.lastOrNull()?.let { constructorArgs[info.prop.name] = value(it, kType, info.type) }
+        rawValues.lastOrNull()?.let { constructorArgs[info.prop.name] = value(it, kType, info.type, root) }
       }
     }
     return type.createFrom(constructorArgs)
   }
 
-  private fun value(raw: Any, type: kotlin.reflect.KType?, classifier: KClass<*>?): Any {
+  private fun value(raw: Any, type: KType?, classifier: KClass<*>?, root: XmlElement): Any {
     val text = (raw as? XmlElement)?.text ?: raw
     val converted = values.from(text, type)
     if (converted !== text) return converted ?: text
-    if (raw is XmlElement && classifier != null && !Converter.supports(classifier)) return buildObject(raw, classifier)
-    // Conversion precedence is custom converter, typed standard converter, then the raw value.
+    if (raw is XmlElement && classifier != null && !Converter.supports(classifier)) return buildObject(raw, classifier, root)
     return type?.let { Converter.from(text.toString(), it) } ?: text
   }
 }
