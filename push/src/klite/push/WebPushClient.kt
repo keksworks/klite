@@ -87,17 +87,15 @@ class WebPushClient(
     val browserPub = decodeEcPublicKey(browserPubRaw)
     val sharedSecret = ecdh(vapidKeyPair.privateKey, browserPub)
     val authSecret = keys.auth.base64UrlDecode()
-    val ikm = hkdfExtract(salt, sharedSecret)
-    val prk = hkdfExtract(authSecret, ikm)
-    var key = hkdfExpand(prk, "Content-Encoding: auth\u0000".toByteArray(), 32)
-    key = hkdfExtract(salt, key)
-    key = hkdfExpand(key, "Content-Encoding: aes128gcm\u0000".toByteArray(), 16)
-    val nonce = ByteArray(12) { i -> (salt[i].toInt() xor RS_BYTES[i].toInt()).toByte() }
+    val prk = hkdfExtract(authSecret, sharedSecret)
+    val key = hkdfExpand(prk, "Content-Encoding: aes128gcm\u0000".toByteArray(), 16)
+    val nonce = hkdfExpand(prk, "Content-Encoding: nonce\u0000".toByteArray(), 12)
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
-    cipher.updateAAD(byteArrayOf(0x02))
+    cipher.updateAAD(RS_BYTES.copyOfRange(8, 12) + 0x01.toByte())
     val encrypted = cipher.doFinal(plaintext)
-    return salt + RS_BYTES.copyOfRange(8, 12) + 0x02.toByte() + browserPubRaw + encrypted
+    val senderPubRaw = vapidKeyPair.publicKey.base64UrlDecode()
+    return salt + RS_BYTES.copyOfRange(8, 12) + 65.toByte() + senderPubRaw + encrypted
   }
 
   private fun decodeEcPublicKey(encoded: ByteArray): ECPublicKey {

@@ -55,13 +55,26 @@ class WebPushClientTest {
     expect(encrypted.size).toEqual(expectedSize)
   }
 
-  @Test fun `nonce is salt xor record size in 12-byte big-endian`() {
-    val salt = ByteArray(16) { it.toByte() }
-    val rsBytes = ByteArray(12).also { it[10] = 16 }
-    val nonce = ByteArray(12) { i -> (salt[i].toInt() xor rsBytes[i].toInt()).toByte() }
-    expect(nonce.size).toEqual(12)
-    expect(nonce[10].toInt()).toEqual(0x10 xor 10)
-    expect(nonce[11].toInt()).toEqual(0x00 xor 11)
+  @Test fun `encrypted message header has correct aes128gcm format`() {
+    val subKeyPair = generateTestKeyPair()
+    val subPub = subKeyPair.public as ECPublicKey
+    val x = subPub.w.affineX.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
+    val y = subPub.w.affineY.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
+    val p256dh = Base64.getUrlEncoder().withoutPadding().encodeToString(byteArrayOf(0x04) + x + y)
+    val auth = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(16) { it.toByte() })
+    val sub = PushSubscription(URI.create("https://example.com/push"), SubscriptionKeys(p256dh, auth))
+    val encrypted = client.encrypt("test".toByteArray(), sub.keys)
+
+    // salt(16) + rs(4) + idlen(1) + keyid(65) + ciphertext + tag(16)
+    expect(encrypted.size > 16 + 4 + 1 + 65).toEqual(true)
+
+    // idlen must be 65 (uncompressed P-256 point)
+    expect(encrypted[20].toInt()).toEqual(65)
+
+    // keyid must be sender's uncompressed public key (starts with 0x04)
+    expect(encrypted[21].toInt()).toEqual(0x04)
+    val senderPubRaw = Base64.getUrlDecoder().decode(keyPair.publicKey)
+    expect(encrypted.copyOfRange(21, 86).contentEquals(senderPubRaw)).toEqual(true)
   }
 
   private fun generateTestKeyPair(): java.security.KeyPair {
