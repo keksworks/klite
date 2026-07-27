@@ -3,14 +3,12 @@ package klite.xml
 import klite.*
 import klite.nodes.Node
 import org.intellij.lang.annotations.Language
-import org.xml.sax.Attributes
 import org.xml.sax.InputSource
-import org.xml.sax.helpers.DefaultHandler
 import java.io.InputStream
 import java.io.Reader
 import java.io.StringReader
-import javax.xml.XMLConstants
-import javax.xml.parsers.SAXParserFactory
+import javax.xml.stream.XMLInputFactory
+import javax.xml.stream.XMLStreamConstants
 import kotlin.annotation.AnnotationRetention.RUNTIME
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
@@ -51,69 +49,32 @@ typealias XMLParser = XmlParser
 
 @Suppress("UNCHECKED_CAST")
 class XmlParser(
-  private val factory: SAXParserFactory = SAXParserFactory.newInstance().apply {
-    isNamespaceAware = true
-    setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-    setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+  private val factory: XMLInputFactory = XMLInputFactory.newFactory().apply {
+    setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false)
+    setProperty(XMLInputFactory.SUPPORT_DTD, false)
   },
   private val keys: KeyConverter = KeyConverter(),
   private val values: ValueConverter<Any?> = ValueConverter()
 ) {
-  private fun attributeKey(name: String) = keys.from(if (name.startsWith("@")) name else "@$name")
-
-  private fun parseSax(@Language("xml") xml: InputSource,
-                       callback: (current: MutableMap<String, Any>, parent: MutableMap<String, Any>?, path: String, text: String) -> Unit) {
-    val text = StringBuilder()
-    val paths = mutableListOf<String>()
-    val stack = mutableListOf<MutableMap<String, Any>>()
-
-    factory.newSAXParser().parse(xml, object : DefaultHandler() {
-      override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
-        val tag = keys.from(localName?.takeIf(String::isNotEmpty) ?: qName)
-        paths.add(tag)
-        text.setLength(0)
-        val current = mutableMapOf<String, Any>()
-        for (i in 0 until attributes.length) {
-          val attrName = attributes.getLocalName(i).takeIf(String::isNotEmpty) ?: attributes.getQName(i)
-          current[attributeKey(attrName)] = attributes.getValue(i)
-        }
-        stack.add(current)
-      }
-
-      override fun characters(ch: CharArray, start: Int, length: Int) {
-        text.append(ch, start, length)
-      }
-
-      override fun endElement(uri: String?, localName: String?, qName: String) {
-        val trimmed = text.toString().trim()
-        val current = stack.removeLast()
-        val parent = stack.lastOrNull()
-        val path = "/${paths.joinToString("/")}"
-        current.entries.toList().forEach { (name, value) -> if (name.startsWith("@") && value is String) callback(current, parent, "$path/$name", value) }
-        callback(current, parent, path, trimmed)
-        paths.removeLast()
-        text.setLength(0)
-      }
-    })
-  }
-
-  internal fun parse(@Language("xml") xml: InputSource, callback: (parentPath: String, name: String, text: Any?) -> Unit) {
-    parseSax(xml) { current, _, path, text ->
-      if (text.isNotEmpty()) callback(path.substringBeforeLast("/", ""), path.substringAfterLast("/"), this@XmlParser.values.from(text))
-      current.forEach { (name, value) -> if (!name.startsWith("@") && value is String) callback(path, name, value) }
-    }
-  }
-
   fun parsePathMap(@Language("xml") xml: InputStream, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
   fun parsePathMap(@Language("xml") xml: Reader, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
   fun parsePathMap(@Language("xml") xml: String, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(StringReader(xml)), filter)
 
   internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((String) -> Boolean)? = null): XmlNode {
     val result = mutableMapOf<String, Any?>()
-    parse(xml) { parentPath, name, text ->
-      val key = "$parentPath/$name"
-      if (filter == null || filter(key)) result[key] = text
+    fun collect(element: XmlElement, parentPath: String) {
+      val name = keys.from(element.name)
+      val path = "$parentPath/$name"
+      if (element.text.isNotEmpty() && (filter == null || filter(path)))
+        result[path] = values.from(element.text)
+      element.attributes.forEach { (k, v) ->
+        val attrKey = keys.from(k)
+        val attrPath = "$path/$attrKey"
+        if (filter == null || filter(attrPath)) result[attrPath] = v
+      }
+      element.children.forEach { collect(it, path) }
     }
+    collect(readElement(xml), "")
     return result
   }
 
@@ -130,38 +91,46 @@ class XmlParser(
   fun parseNodes(xml: String) = parseNodes(StringReader(xml))
 
   internal fun parseNodes(xml: InputSource): XmlNode {
-    var root: MutableMap<String, Any>? = null
-
-    parseSax(xml) { current, parent, path, text ->
-      if (path.substringAfterLast("/").startsWith("@")) return@parseSax
-      if (text.isNotEmpty()) current[""] = text
-
-      if (parent != null) {
-        val name = path.substringAfterLast("/")
-        val textNode = current.remove("")
-        if (textNode != null) {
-          val existing = parent[name]
-          if (existing == null) parent[name] = textNode
-          else parent[name] = when (existing) {
-            is MutableCollection<*> -> (existing as MutableCollection<Any>).apply { add(textNode) }
-            is String -> mutableListOf(existing, textNode)
-            else -> existing
+    fun toNode(element: XmlElement): MutableMap<String, Any?> {
+      val node = mutableMapOf<String, Any?>()
+      if (element.text.isNotEmpty()) node[""] = element.text
+      element.attributes.forEach { e -> node[keys.from(e.key)] = e.value }
+      for (child in element.children) {
+        val childName = keys.from(child.name)
+        if (child.children.isEmpty() && child.text.isNotEmpty()) {
+          // text-only element: merge text as value and attributes as name@attr
+          val existing = node[childName]
+          node[childName] = when (existing) {
+            null -> child.text
+            is MutableList<*> -> (existing as MutableList<Any?>).apply { add(child.text) }
+            else -> mutableListOf(existing, child.text)
           }
-          current.forEach { (k, v) -> parent["$name$k"] = v }
-        } else when (val existing = parent[name]) {
-          null -> parent[name] = current
-          is MutableList<*> -> (existing as MutableList<Any>).add(current)
-          else -> parent[name] = mutableListOf(existing, current)
+          child.attributes.forEach { (k, v) -> node["$childName${keys.from(k)}"] = v }
+        } else {
+          val childNode = toNode(child)
+          val existing = node[childName]
+          node[childName] = when (existing) {
+            null -> childNode
+            is MutableList<*> -> (existing as MutableList<Any?>).apply { add(childNode) }
+            else -> mutableListOf(existing, childNode)
+          }
         }
-      } else {
-        root = mutableMapOf(path.substringAfterLast("/") to current)
       }
+      return node
     }
 
-    return root?.toMap() ?: emptyMap()
+    val root = readElement(xml)
+    val rootNode = toNode(root)
+    if (rootNode.size > 1) rootNode.remove("")
+    return mapOf(keys.from(root.name) to if (rootNode.size == 1) rootNode[""] ?: rootNode else rootNode)
   }
 
+  private fun reader(xml: InputSource) =
+    xml.characterStream?.let { factory.createXMLStreamReader(it) } ?: factory.createXMLStreamReader(xml.byteStream)
+
   private fun readElement(xml: InputSource): XmlElement {
+    val reader = reader(xml)
+
     data class OpenElement(
       val name: String,
       val attributes: Map<String, String>,
@@ -171,26 +140,25 @@ class XmlParser(
 
     var root: XmlElement? = null
     val stack = mutableListOf<OpenElement>()
-    factory.newSAXParser().parse(xml, object : DefaultHandler() {
-      override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
+
+    while (reader.hasNext()) {
+      val event = reader.next()
+      if (event == XMLStreamConstants.START_ELEMENT) {
         stack += OpenElement(
-          localName?.takeIf(String::isNotEmpty) ?: qName,
-          (0 until attributes.length).associate { index ->
-            val attrName = attributes.getLocalName(index).takeIf(String::isNotEmpty) ?: attributes.getQName(index)
-            "@${attrName.removePrefix("@")}" to attributes.getValue(index)
+          reader.localName.takeIf(String::isNotEmpty) ?: reader.name.toString(),
+          (0 until reader.attributeCount).associate { i ->
+            val attrName = reader.getAttributeLocalName(i).takeIf(String::isNotEmpty) ?: reader.getAttributeName(i).toString()
+            "@${attrName.removePrefix("@")}" to reader.getAttributeValue(i)
           }
         )
-      }
-
-      override fun characters(ch: CharArray, start: Int, length: Int) {
-        stack.lastOrNull()?.text?.append(ch, start, length)
-      }
-
-      override fun endElement(uri: String?, localName: String?, qName: String) {
+      } else if (event == XMLStreamConstants.CHARACTERS || event == XMLStreamConstants.CDATA) {
+        stack.lastOrNull()?.text?.append(reader.text)
+      } else if (event == XMLStreamConstants.END_ELEMENT) {
         val element = stack.removeLast().let { XmlElement(it.name, it.attributes, it.text.toString().trim(), it.children) }
         stack.lastOrNull()?.children?.add(element) ?: run { root = element }
       }
-    })
+    }
+    reader.close()
     return requireNotNull(root) { "XML document has no root element" }
   }
 
