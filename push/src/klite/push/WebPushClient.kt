@@ -1,6 +1,7 @@
 package klite.push
 
 import klite.Config
+import klite.MimeTypes
 import klite.base64UrlDecode
 import klite.http.httpClient
 import klite.http.post
@@ -61,7 +62,7 @@ class WebPushClient(
     }
     val body = encrypt(data, subscription.keys)
     return http.post(subscription.endpoint, body) {
-      header("Content-Type", "webpush; enc=aes128gcm")
+      header("Content-Type", MimeTypes.binary)
       header("Content-Encoding", "aes128gcm")
       header("TTL", ttl.inWholeSeconds.toString())
       header("Urgency", "normal")
@@ -85,16 +86,23 @@ class WebPushClient(
     val salt = ByteArray(16).also { Random().nextBytes(it) }
     val browserPubRaw = keys.p256dh.base64UrlDecode()
     val browserPub = decodeEcPublicKey(browserPubRaw)
+    val senderPubRaw = vapidKeyPair.publicKey.base64UrlDecode()
     val sharedSecret = ecdh(vapidKeyPair.privateKey, browserPub)
     val authSecret = keys.auth.base64UrlDecode()
-    val prk = hkdfExtract(authSecret, sharedSecret)
+
+    // Phase 1: Combine ECDH shared secret with auth secret per RFC 8291 Section 3.3
+    val prkKey = hkdfExtract(authSecret, sharedSecret)
+    val keyInfo = "WebPush: info\u0000".toByteArray() + browserPubRaw + senderPubRaw
+    val ikm = hkdfExpand(prkKey, keyInfo, 32)
+
+    // Phase 2: Derive content encryption key and nonce per RFC 8188 Section 2.2/2.3
+    val prk = hkdfExtract(salt, ikm)
     val key = hkdfExpand(prk, "Content-Encoding: aes128gcm\u0000".toByteArray(), 16)
     val nonce = hkdfExpand(prk, "Content-Encoding: nonce\u0000".toByteArray(), 12)
+
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
-    cipher.updateAAD(RS_BYTES.copyOfRange(8, 12) + 0x01.toByte())
-    val encrypted = cipher.doFinal(plaintext)
-    val senderPubRaw = vapidKeyPair.publicKey.base64UrlDecode()
+    val encrypted = cipher.doFinal(plaintext + 0x02.toByte())
     return salt + RS_BYTES.copyOfRange(8, 12) + 65.toByte() + senderPubRaw + encrypted
   }
 
@@ -106,20 +114,20 @@ class WebPushClient(
     return kf.generatePublic(ECPublicKeySpec(ECPoint(x, y), P256_PARAMS)) as ECPublicKey
   }
 
-  private fun ecdh(priv: ECPrivateKey, pub: ECPublicKey): ByteArray {
+  internal fun ecdh(priv: ECPrivateKey, pub: ECPublicKey): ByteArray {
     val ka = KeyAgreement.getInstance("ECDH")
     ka.init(priv)
     ka.doPhase(pub, true)
     return ka.generateSecret()
   }
 
-  private fun hkdfExtract(salt: ByteArray, ikm: ByteArray): ByteArray {
+  internal fun hkdfExtract(salt: ByteArray, ikm: ByteArray): ByteArray {
     val mac = Mac.getInstance("HmacSHA256")
     mac.init(SecretKeySpec(salt, "HmacSHA256"))
     return mac.doFinal(ikm)
   }
 
-  private fun hkdfExpand(prk: ByteArray, info: ByteArray, length: Int): ByteArray {
+  internal fun hkdfExpand(prk: ByteArray, info: ByteArray, length: Int): ByteArray {
     val mac = Mac.getInstance("HmacSHA256")
     mac.init(SecretKeySpec(prk, "HmacSHA256"))
     val result = ByteArray(length)

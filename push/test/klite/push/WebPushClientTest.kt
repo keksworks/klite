@@ -4,9 +4,13 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import org.junit.jupiter.api.Test
 import java.net.URI
+import java.security.KeyFactory
 import java.security.KeyPairGenerator
+import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
+import java.security.spec.ECPoint
+import java.security.spec.ECPublicKeySpec
 import java.util.*
 
 class WebPushClientTest {
@@ -50,8 +54,8 @@ class WebPushClientTest {
     val sub = PushSubscription(URI.create("https://example.com/push"), SubscriptionKeys(p256dh, auth))
     val plaintext = "Hello, World!".toByteArray()
     val encrypted = client.encrypt(plaintext, sub.keys)
-    // salt(16) + rs(4) + delimiter(1) + pubKey(65) + ciphertext(plaintext.size) + tag(16)
-    val expectedSize = 16 + 4 + 1 + 65 + plaintext.size + 16
+    // salt(16) + rs(4) + idlen(1) + pubKey(65) + (plaintext + 0x02 delimiter) + gcm_tag(16)
+    val expectedSize = 16 + 4 + 1 + 65 + plaintext.size + 1 + 16
     expect(encrypted.size).toEqual(expectedSize)
   }
 
@@ -81,5 +85,59 @@ class WebPushClientTest {
     val kpg = KeyPairGenerator.getInstance("EC")
     kpg.initialize(ECGenParameterSpec("secp256r1"))
     return kpg.generateKeyPair()
+  }
+
+  private fun decodeUncompressedPoint(base64: String, params: java.security.spec.ECParameterSpec): ECPublicKey {
+    val raw = Base64.getUrlDecoder().decode(base64)
+    val x = java.math.BigInteger(1, raw.copyOfRange(1, 33))
+    val y = java.math.BigInteger(1, raw.copyOfRange(33, 65))
+    return KeyFactory.getInstance("EC").generatePublic(ECPublicKeySpec(ECPoint(x, y), params)) as ECPublicKey
+  }
+
+  @Test fun `RFC 8291 Appendix A test vector`() {
+    val asPublicB64 = "BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8"
+    val uaPublicB64 = "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4"
+    val authSecretB64 = "BTBZMqHH6r4Tts7J_aSIgg"
+    val saltB64 = "DGv6ra1nlYgDCS1FRnbzlw"
+    val expectedEcdhSecret = "kyrL1jIIOHEzg3sM2ZWRHDRB62YACZhhSlknJ672kSs"
+    val expectedPrkKey = "Snr3JMxaHVDXHWJn5wdC52WjpCtd2EIEGBykDcZW32k"
+    val expectedIkm = "S4lYMb_L0FxCeq0WhDx813KgSYqU26kOyzWUdsXYyrg"
+    val expectedPrk = "09_eUZGrsvxChDCGRCdkLiDXrReGOEVeSCdCcPBSJSc"
+    val expectedCek = "oIhVW04MRdy2XN9CiKLxTg"
+    val expectedNonce = "4h_95klXJ5E_qnoN"
+
+    val p256Params = (generateTestKeyPair().public as ECPublicKey).params
+    val senderPrivScalar = java.math.BigInteger(1, Base64.getUrlDecoder().decode("yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw"))
+    val senderPriv = KeyFactory.getInstance("EC").generatePrivate(
+      java.security.spec.ECPrivateKeySpec(senderPrivScalar, p256Params)
+    ) as ECPrivateKey
+    val uaPub = decodeUncompressedPoint(uaPublicB64, p256Params)
+    val testClient = WebPushClient(VapidKeyPair(asPublicB64, senderPriv))
+
+    // Verify ECDH shared secret
+    val ecdhSecret = testClient.ecdh(senderPriv, uaPub)
+    expect(Base64.getUrlEncoder().withoutPadding().encodeToString(ecdhSecret)).toEqual(expectedEcdhSecret)
+
+    // Phase 1: Combine ECDH + auth secrets
+    val authBytes = Base64.getUrlDecoder().decode(authSecretB64)
+    val prkKey = testClient.hkdfExtract(authBytes, ecdhSecret)
+    expect(Base64.getUrlEncoder().withoutPadding().encodeToString(prkKey)).toEqual(expectedPrkKey)
+
+    val uaPubRaw = Base64.getUrlDecoder().decode(uaPublicB64)
+    val senderPubRaw = Base64.getUrlDecoder().decode(asPublicB64)
+    val keyInfo = "WebPush: info\u0000".toByteArray() + uaPubRaw + senderPubRaw
+    val ikm = testClient.hkdfExpand(prkKey, keyInfo, 32)
+    expect(Base64.getUrlEncoder().withoutPadding().encodeToString(ikm)).toEqual(expectedIkm)
+
+    // Phase 2: Derive CEK and nonce using salt
+    val salt = Base64.getUrlDecoder().decode(saltB64)
+    val prk = testClient.hkdfExtract(salt, ikm)
+    expect(Base64.getUrlEncoder().withoutPadding().encodeToString(prk)).toEqual(expectedPrk)
+
+    val cek = testClient.hkdfExpand(prk, "Content-Encoding: aes128gcm\u0000".toByteArray(), 16)
+    expect(Base64.getUrlEncoder().withoutPadding().encodeToString(cek)).toEqual(expectedCek)
+
+    val nonce = testClient.hkdfExpand(prk, "Content-Encoding: nonce\u0000".toByteArray(), 12)
+    expect(Base64.getUrlEncoder().withoutPadding().encodeToString(nonce)).toEqual(expectedNonce)
   }
 }
