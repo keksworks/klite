@@ -32,13 +32,13 @@ interface AIClient {
 open class OpenAIClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper): AIClient {
   private val defaultModel = Config["OPENAI_MODEL"]
   private val auth = "Bearer " + Config["OPENAI_API_KEY"]
-  private val http = JsonHttpClient("https://api.openai.com", http = httpClient, json = json,
+  private val http = JsonHttpClient(Config.optional("OPENAI_URL", "https://api.openai.com/v1"), http = httpClient, json = json,
     reqModifier = { header("Authorization", auth).timeout(30.seconds) })
 
   override fun query(input: String): String = query(input, defaultModel)
 
   open fun query(input: String, model: String, temperature: Double = 1.0): String =
-    http.post<Map<String, Any>>("/v1/responses", mapOf(
+    http.post<Map<String, Any>>("/responses", mapOf(
       "model" to model,
       "input" to input,
       "temperature" to temperature
@@ -49,13 +49,13 @@ open class OpenAIClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeM
 open class GeminiClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper): AIClient {
   private val defaultModel = Config["GEMINI_MODEL"]
   private val key = Config["GEMINI_API_KEY"]
-  private val http = JsonHttpClient("https://generativelanguage.googleapis.com", http = httpClient, json = json,
+  private val http = JsonHttpClient(Config.optional("GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta"), http = httpClient, json = json,
     reqModifier = { timeout(30.seconds) })
 
   override fun query(input: String): String = query(input, defaultModel)
 
   open fun query(input: String, model: String): String =
-    http.post<Map<String, Any>>("/v1beta/interactions?key=$key", mapOf(
+    http.post<Map<String, Any>>("/interactions?key=$key", mapOf(
       "model" to model,
       "input" to input,
       "generation_config" to mapOf(
