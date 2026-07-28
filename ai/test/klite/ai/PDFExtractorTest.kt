@@ -70,7 +70,7 @@ class PDFExtractorTest {
       override fun query(input: String) = "```json\n{\"key\": \"value\"}\n```"
     })
     val pdfBytes = createPdf("test")
-    val data = extractor.extractData<TestData>(ByteArrayInputStream(pdfBytes))
+    val data = extractor.extractData<TestClass>(ByteArrayInputStream(pdfBytes))
     expect(data.key).toEqual("value")
   }
 
@@ -84,7 +84,7 @@ class PDFExtractorTest {
       }
     })
     val pdfBytes = createPdf("test")
-    val data = extractor.extractData<TestData>(ByteArrayInputStream(pdfBytes))
+    val data = extractor.extractData<TestClass>(ByteArrayInputStream(pdfBytes))
     expect(data.key).toEqual("recovered")
     expect(attempts).toEqual(3)
   }
@@ -107,6 +107,6 @@ class PDFExtractorTest {
     doc.close()
     return out.toByteArray()
   }
-}
 
-private data class TestData(val key: String)
+  data class TestClass(val key: String)
+}
