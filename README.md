@@ -81,6 +81,7 @@ See the [Tutorial](TUTORIAL.md) to grasp the basics quickly.
 * [oauth](oauth) - implements OAuth 2.0 login with several providers
 * [smtp](smtp) - for sending email over SMTP
 * [push](push) - implements Web Push notifications (VAPID) for sending push notifications to browsers
+* [ai](ai) - new module for calling AI clients and extracting data from PDF
 
 ### Integrations
 

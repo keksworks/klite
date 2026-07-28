@@ -3,6 +3,7 @@
 * xml: XmlPath annotations should build precise element paths now for performance
 * xml: XmlParser.keys affects only how properties without @XmlPath are handled, @XmlPath uses original paths
 * push: fixes in payload encryption
+* ai: new module for calling AI clients and extracting data from PDF
 
 # 2.0.0
 * server: workerPool now uses JVM Virtual Threads, Java 21+ is now required, NUM_WORKERS config option is deprecated

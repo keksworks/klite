@@ -52,5 +52,6 @@ include(
   "liquibase",
   "slf4j",
   "openapi",
+  "ai",
   "sample"
 )
