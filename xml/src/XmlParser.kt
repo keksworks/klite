@@ -50,33 +50,33 @@ class XmlParser(
 ) {
   private val propInfoCache = ConcurrentHashMap<KClass<*>, Collection<PropInfo>>()
 
-  fun parsePathMap(@Language("xml") xml: InputStream, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
-  fun parsePathMap(@Language("xml") xml: Reader, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
-  fun parsePathMap(@Language("xml") xml: String, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(StringReader(xml)), filter)
+  fun parsePathMap(@Language("xml") xml: InputStream, filter: ((Path) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
+  fun parsePathMap(@Language("xml") xml: Reader, filter: ((Path) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
+  fun parsePathMap(@Language("xml") xml: String, filter: ((Path) -> Boolean)? = null) = parsePathMap(InputSource(StringReader(xml)), filter)
 
-  internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((String) -> Boolean)? = null): XmlNode {
-    val result = mutableMapOf<String, Any?>()
-    val occurrences = mutableMapOf<String, Int>()
+  internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((Path) -> Boolean)? = null): Map<Path, Any?> {
+    val result = mutableMapOf<Path, Any?>()
+    val occurrences = mutableMapOf<Path, Int>()
 
-    fun indexedPath(path: String): String {
+    fun indexedPath(path: Path): Path {
       val count = (occurrences[path] ?: 0) + 1
       occurrences[path] = count
-      return if (count == 1) path else "$path#$count"
+      return if (count == 1) path else Path(path.tags.map { if (it == path.tags.last()) it.copy(index = count) else it })
     }
 
     val r = reader(xml)
-    data class Frame(val indexedPath: String, val text: StringBuilder = StringBuilder())
+    data class Frame(val path: Path, val text: StringBuilder = StringBuilder())
     val stack = mutableListOf<Frame>()
     while (r.hasNext()) {
       when (r.next()) {
         START_ELEMENT -> {
           val name = r.localName.takeIf(String::isNotEmpty) ?: r.name.toString()
-          val basePath = if (stack.isEmpty()) "/${keys.from(name)}" else "${stack.last().indexedPath}/${keys.from(name)}"
+          val basePath = if (stack.isEmpty()) Path(listOf(Path.Tag(keys.from(name)))) else stack.last().path + Path.Tag(keys.from(name))
           val indexed = indexedPath(basePath)
           stack += Frame(indexed)
           for (i in 0 until r.attributeCount) {
             val attrName = r.getAttributeLocalName(i).takeIf(String::isNotEmpty) ?: r.getAttributeName(i).toString()
-            val attrPath = "$indexed/${keys.from("@${attrName.removePrefix("@")}")}"
+            val attrPath = indexed + Path.Tag(keys.from("@${attrName.removePrefix("@")}"))
             if (filter == null || filter(attrPath)) result[attrPath] = r.getAttributeValue(i)
           }
         }
@@ -85,7 +85,7 @@ class XmlParser(
         END_ELEMENT -> {
           val frame = stack.removeLast()
           val text = frame.text.toString().trim()
-          if (text.isNotEmpty() && (filter == null || filter(frame.indexedPath))) result[frame.indexedPath] = values.from(text)
+          if (text.isNotEmpty() && (filter == null || filter(frame.path))) result[frame.path] = values.from(text)
         }
       }
     }
@@ -241,6 +241,21 @@ class XmlParser(
     if (raw is XmlElement && classifier != null) return buildObject(raw, classifier, rawPath ?: raw.name, root)
     return text
   }
+}
+
+data class Path(val tags: List<Tag>) {
+  data class Tag(val name: String, val index: Int = 0) {
+    override fun toString() = if (index > 0) "${name}#${index}" else name
+  }
+
+  constructor(path: String): this(path.trim('/').split('/').map { part ->
+    val hashIdx = part.indexOf('#')
+    if (hashIdx >= 0) Tag(part.substring(0, hashIdx), part.substring(hashIdx + 1).toInt()) else Tag(part)
+  })
+
+  operator fun plus(tag: Tag) = Path(tags + tag)
+  fun endsWith(tag: String) = tags.lastOrNull()?.name == tag
+  override fun toString() = tags.joinToString("/", prefix = "/")
 }
 
 typealias XmlNode = Node

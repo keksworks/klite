@@ -63,13 +63,13 @@ class XmlParserTest {
   }
 
   @Test fun parsePathMap() {
-    expect(parser.parsePathMap(xmlWithNamespaces)).toEqual(
-      mapOf(
-        "/transportMovement/id" to "123",
-        "/transportMovement/id/@schemeAgencyId" to "AGENCY1",
-        "/transportMovement/modeCode" to "SEA",
-        "/transportMovement/dangerousGoodsIndicator" to "true",
-      ))
+    val result = parser.parsePathMap(xmlWithNamespaces)
+    expect(result).toEqual(mapOf(
+      Path("/transportMovement/id") to "123",
+      Path("/transportMovement/id/@schemeAgencyId") to "AGENCY1",
+      Path("/transportMovement/modeCode") to "SEA",
+      Path("/transportMovement/dangerousGoodsIndicator") to "true",
+    ))
   }
 
   @Test fun parseNodes() {
@@ -408,12 +408,12 @@ class XmlParserTest {
 
   @Test fun `parsePathMap with filter`() {
     @Language("XML") val xml = """<root><name>Estonia</name><code>EE</code><population>1300000</population></root>"""
-    val filtered = parser.parsePathMap(xml) { it.endsWith("/name") || it.endsWith("/code") }
-    expect(filtered).toEqual(mapOf("/root/name" to "Estonia", "/root/code" to "EE"))
-    expect(filtered.containsKey("/root/population")).toEqual(false)
+    val filtered = parser.parsePathMap(xml) { it.endsWith("name") || it.endsWith("code") }
+    expect(filtered).toEqual(mapOf(Path("/root/name") to "Estonia", Path("/root/code") to "EE"))
+    expect(filtered.containsKey(Path("/root/population"))).toEqual(false)
 
     val all = parser.parsePathMap(xml)
-    expect(all.containsKey("/root/population")).toEqual(true)
+    expect(all.containsKey(Path("/root/population"))).toEqual(true)
   }
 
   @Test fun `parsePathMap with repeating elements and attributes`() {
@@ -428,11 +428,11 @@ class XmlParserTest {
     """.trimIndent()
     val result = parser.parsePathMap(xml)
     expect(result).toEqual(mapOf(
-      "/root/header" to "Title",
-      "/root/items/item/@id" to "1",
-      "/root/items/item/name" to "A",
-      "/root/items/item#2/@id" to "2",
-      "/root/items/item#2/name" to "B"
+      Path("/root/header") to "Title",
+      Path("/root/items/item/@id") to "1",
+      Path("/root/items/item/name") to "A",
+      Path("/root/items/item#2/@id") to "2",
+      Path("/root/items/item#2/name") to "B"
     ))
   }
 }
