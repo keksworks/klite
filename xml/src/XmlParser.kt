@@ -56,18 +56,27 @@ class XmlParser(
 
   internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((String) -> Boolean)? = null): XmlNode {
     val result = mutableMapOf<String, Any?>()
+    val occurrences = mutableMapOf<String, Int>()
+
+    fun indexedPath(path: String): String {
+      val count = (occurrences[path] ?: 0) + 1
+      occurrences[path] = count
+      return if (count == 1) path else "$path#$count"
+    }
+
     val r = reader(xml)
-    data class Frame(val path: String, val text: StringBuilder = StringBuilder())
+    data class Frame(val indexedPath: String, val text: StringBuilder = StringBuilder())
     val stack = mutableListOf<Frame>()
     while (r.hasNext()) {
       when (r.next()) {
         START_ELEMENT -> {
           val name = r.localName.takeIf(String::isNotEmpty) ?: r.name.toString()
-          val path = if (stack.isEmpty()) "/${keys.from(name)}" else "${stack.last().path}/${keys.from(name)}"
-          stack += Frame(path)
+          val basePath = if (stack.isEmpty()) "/${keys.from(name)}" else "${stack.last().indexedPath}/${keys.from(name)}"
+          val indexed = indexedPath(basePath)
+          stack += Frame(indexed)
           for (i in 0 until r.attributeCount) {
             val attrName = r.getAttributeLocalName(i).takeIf(String::isNotEmpty) ?: r.getAttributeName(i).toString()
-            val attrPath = "$path/${keys.from("@${attrName.removePrefix("@")}")}"
+            val attrPath = "$indexed/${keys.from("@${attrName.removePrefix("@")}")}"
             if (filter == null || filter(attrPath)) result[attrPath] = r.getAttributeValue(i)
           }
         }
@@ -76,7 +85,7 @@ class XmlParser(
         END_ELEMENT -> {
           val frame = stack.removeLast()
           val text = frame.text.toString().trim()
-          if (text.isNotEmpty() && (filter == null || filter(frame.path))) result[frame.path] = values.from(text)
+          if (text.isNotEmpty() && (filter == null || filter(frame.indexedPath))) result[frame.indexedPath] = values.from(text)
         }
       }
     }

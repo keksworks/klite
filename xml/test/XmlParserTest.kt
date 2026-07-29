@@ -415,4 +415,24 @@ class XmlParserTest {
     val all = parser.parsePathMap(xml)
     expect(all.containsKey("/root/population")).toEqual(true)
   }
+
+  @Test fun `parsePathMap with repeating elements and attributes`() {
+    @Language("XML") val xml = """
+      <root>
+        <header>Title</header>
+        <items>
+          <item id="1"><name>A</name></item>
+          <item id="2"><name>B</name></item>
+        </items>
+      </root>
+    """.trimIndent()
+    val result = parser.parsePathMap(xml)
+    expect(result).toEqual(mapOf(
+      "/root/header" to "Title",
+      "/root/items/item/@id" to "1",
+      "/root/items/item/name" to "A",
+      "/root/items/item#2/@id" to "2",
+      "/root/items/item#2/name" to "B"
+    ))
+  }
 }
