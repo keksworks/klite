@@ -29,6 +29,11 @@ val client: AIClient = OpenAIClient(httpClient)
 val answer = client.query("What is 2 + 2?")
 ```
 
+Register the client you want to use:
+```kotlin
+register<AIClient>(OpenAIClient::class) // or GeminiClient::class
+```
+
 ### PDFExtractor
 
 Extracts text from PDFs and uses an AI client to parse structured data:
