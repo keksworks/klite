@@ -9,6 +9,7 @@ import java.io.Reader
 import java.io.StringReader
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.XMLStreamConstants
+import javax.xml.stream.XMLStreamConstants.*
 import kotlin.annotation.AnnotationRetention.RUNTIME
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
@@ -28,11 +29,11 @@ private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
 }
 
 /** Intermediate XML representation; text excludes child element text */
-private class XmlElement(
+internal class XmlElement(
   val name: String,
   val attributes: Map<String, String>,
-  val text: String,
-  val children: List<XmlElement>
+  @JvmField var text: String = "",
+  @JvmField var children: MutableList<XmlElement> = mutableListOf()
 )
 
 @Deprecated("Use XmlParser instead", ReplaceWith("XmlParser"))
@@ -53,19 +54,31 @@ class XmlParser(
 
   internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((String) -> Boolean)? = null): XmlNode {
     val result = mutableMapOf<String, Any?>()
-    fun collect(element: XmlElement, parentPath: String) {
-      val name = keys.from(element.name)
-      val path = "$parentPath/$name"
-      if (element.text.isNotEmpty() && (filter == null || filter(path)))
-        result[path] = values.from(element.text)
-      element.attributes.forEach { (k, v) ->
-        val attrKey = keys.from(k)
-        val attrPath = "$path/$attrKey"
-        if (filter == null || filter(attrPath)) result[attrPath] = v
+    val r = reader(xml)
+    data class Frame(val path: String, val text: StringBuilder = StringBuilder())
+    val stack = mutableListOf<Frame>()
+    while (r.hasNext()) {
+      when (r.next()) {
+        START_ELEMENT -> {
+          val name = r.localName.takeIf(String::isNotEmpty) ?: r.name.toString()
+          val path = if (stack.isEmpty()) "/${keys.from(name)}" else "${stack.last().path}/${keys.from(name)}"
+          stack += Frame(path)
+          for (i in 0 until r.attributeCount) {
+            val attrName = r.getAttributeLocalName(i).takeIf(String::isNotEmpty) ?: r.getAttributeName(i).toString()
+            val attrPath = "$path/${keys.from("@${attrName.removePrefix("@")}")}"
+            if (filter == null || filter(attrPath)) result[attrPath] = r.getAttributeValue(i)
+          }
+        }
+        CHARACTERS, CDATA ->
+          stack.lastOrNull()?.text?.append(r.text)
+        XMLStreamConstants.END_ELEMENT -> {
+          val frame = stack.removeLast()
+          val text = frame.text.toString().trim()
+          if (text.isNotEmpty() && (filter == null || filter(frame.path))) result[frame.path] = values.from(text)
+        }
       }
-      element.children.forEach { collect(it, path) }
     }
-    collect(readElement(xml), "")
+    r.close()
     return result
   }
 
@@ -90,7 +103,6 @@ class XmlParser(
       for (child in element.children) {
         val childName = keys.from(child.name)
         if (child.children.isEmpty() && child.text.isNotEmpty()) {
-          // text-only element: merge text as value and attributes as name@attr
           val existing = node[childName]
           node[childName] = when (existing) {
             null -> child.text
@@ -120,33 +132,28 @@ class XmlParser(
   private fun reader(xml: InputSource) =
     xml.characterStream?.let { factory.createXMLStreamReader(it) } ?: factory.createXMLStreamReader(xml.byteStream)
 
-  private fun readElement(xml: InputSource): XmlElement {
+  internal fun readElement(xml: InputSource): XmlElement {
     val reader = reader(xml)
-
-    data class OpenElement(
-      val name: String,
-      val attributes: Map<String, String>,
-      val text: StringBuilder = StringBuilder(),
-      val children: MutableList<XmlElement> = mutableListOf()
-    )
-
+    val textBuf = StringBuilder()
     var root: XmlElement? = null
-    val stack = mutableListOf<OpenElement>()
+    val stack = mutableListOf<XmlElement>()
 
     while (reader.hasNext()) {
       val event = reader.next()
-      if (event == XMLStreamConstants.START_ELEMENT) {
-        stack += OpenElement(
+      if (event == START_ELEMENT) {
+        stack += XmlElement(
           reader.localName.takeIf(String::isNotEmpty) ?: reader.name.toString(),
           (0 until reader.attributeCount).associate { i ->
             val attrName = reader.getAttributeLocalName(i).takeIf(String::isNotEmpty) ?: reader.getAttributeName(i).toString()
             "@${attrName.removePrefix("@")}" to reader.getAttributeValue(i)
           }
         )
-      } else if (event == XMLStreamConstants.CHARACTERS || event == XMLStreamConstants.CDATA) {
-        stack.lastOrNull()?.text?.append(reader.text)
-      } else if (event == XMLStreamConstants.END_ELEMENT) {
-        val element = stack.removeLast().let { XmlElement(it.name, it.attributes, it.text.toString().trim(), it.children) }
+      } else if (event == CHARACTERS || event == CDATA) {
+        textBuf.append(reader.text)
+      } else if (event == END_ELEMENT) {
+        val element = stack.removeLast()
+        element.text = textBuf.toString().trim()
+        textBuf.setLength(0)
         stack.lastOrNull()?.children?.add(element) ?: run { root = element }
       }
     }
