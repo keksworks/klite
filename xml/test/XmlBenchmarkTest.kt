@@ -32,49 +32,25 @@ class XmlBenchmarkTest {
   }
   private val domBuilder = domFactory.newDocumentBuilder()
 
-  @Test fun `benchmark parseNodes vs DOM`() {
+  @Test fun benchmark() {
     val warmup = 1_000
     val rounds = 10_000
 
-    repeat(warmup) { parser.parseNodes(xml) }
     repeat(warmup) { domParse(xmlBytes) }
-
-    val staxNs = measureNanoTime { repeat(rounds) { parser.parseNodes(xml) } }
     val domNs = measureNanoTime { repeat(rounds) { domParse(xmlBytes) } }
-
-    println("parseNodes: ${staxNs / 1_000_000} ms  (${staxNs / rounds} ns/op)")
     println("DOM:        ${domNs / 1_000_000} ms  (${domNs / rounds} ns/op)")
-    println("Ratio: parseNodes is ${"%.2f".format(domNs.toDouble() / staxNs)}x vs DOM")
-  }
-
-  @Test fun `benchmark parsePathMap vs DOM`() {
-    val warmup = 1_000
-    val rounds = 10_000
 
     repeat(warmup) { parser.parsePathMap(xml) }
-    repeat(warmup) { domParse(xmlBytes) }
+    val pathsNs = measureNanoTime { repeat(rounds) { parser.parsePathMap(xml) } }
+    println("parsePathMap: ${pathsNs / 1_000_000} ms  (${pathsNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / pathsNs)}x vs DOM")
 
-    val staxNs = measureNanoTime { repeat(rounds) { parser.parsePathMap(xml) } }
-    val domNs = measureNanoTime { repeat(rounds) { domParse(xmlBytes) } }
-
-    println("parsePathMap: ${staxNs / 1_000_000} ms  (${staxNs / rounds} ns/op)")
-    println("DOM:          ${domNs / 1_000_000} ms  (${domNs / rounds} ns/op)")
-    println("Ratio: parsePathMap is ${"%.2f".format(domNs.toDouble() / staxNs)}x vs DOM")
-  }
-
-  @Test fun `benchmark parse typed vs DOM`() {
-    val warmup = 1_000
-    val rounds = 10_000
+    repeat(warmup) { parser.parseNodes(xml) }
+    val nodesNs = measureNanoTime { repeat(rounds) { parser.parseNodes(xml) } }
+    println("parseNodes: ${nodesNs / 1_000_000} ms  (${nodesNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / nodesNs)}x vs DOM")
 
     repeat(warmup) { parser.parse<BenchCatalog>(xml) }
-    repeat(warmup) { domParse(xmlBytes) }
-
     val typedNs = measureNanoTime { repeat(rounds) { parser.parse<BenchCatalog>(xml) } }
-    val domNs = measureNanoTime { repeat(rounds) { domParse(xmlBytes) } }
-
-    println("parse<Typed>: ${typedNs / 1_000_000} ms  (${typedNs / rounds} ns/op)")
-    println("DOM:          ${domNs / 1_000_000} ms  (${domNs / rounds} ns/op)")
-    println("Ratio: parse<Typed> is ${"%.2f".format(domNs.toDouble() / typedNs)}x vs DOM")
+    println("parse<Typed>: ${typedNs / 1_000_000} ms  (${typedNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / typedNs)}x vs DOM")
   }
 
   private fun domParse(xml: ByteArray): Document {
