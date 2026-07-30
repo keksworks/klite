@@ -17,6 +17,7 @@ Please **star the repo** to let us know you are interested.
 * Optimized for programmer happiness, with minimal boilerplate and clear code (validation, exception handling mostly automatic)
 * Small, simple and debuggable codebase
 * No magic, everything is explicit
+* All components are tightly integrated with consistent behavior (unlike separate libraries for everything)
 * Provides extreme type-safety, supports all modern Kotlin features and class types, including [TypeScript type generation for frontend](json)
 * Constructor-based [dependency injection](core/src/Registry.kt) for singletons
 * Batteries included: logging, json, xml, csv, jdbc, migrations, jobs, i18n, openapi, oauth, smtp, push, etc
