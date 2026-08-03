@@ -61,6 +61,7 @@ open class TSGenerator(
   }
 
   internal open fun printReferencedClasses() {
+    if (referencedClasses.isNotEmpty()) out.println("")
     while (referencedClasses.isNotEmpty()) {
       val toProcess = referencedClasses.toList()
       referencedClasses.clear()
@@ -68,11 +69,14 @@ open class TSGenerator(
     }
   }
 
+  open fun printRequestedTypes() {
+    customTypes.forEach { if (it.value == null) printClass(it.key) }
+  }
+
   open fun printCustomTypes() {
     if (customTypes.isNotEmpty()) out.println("")
     customTypes.forEach {
-      if (it.value == null) printClass(it.key)
-      else if (it.key in usedCustomTypes) {
+      if (it.value != null && it.key in usedCustomTypes) {
         val cls = runCatching { Class.forName(it.key).kotlin }.getOrNull()
         out.println("// ${it.key}")
         out.println("${typePrefix}type ${cls?.let { tsName(cls) + typeParams(cls, noVariance = true) } ?: it.key.substringAfterLast(".")} = ${it.value}")
@@ -222,8 +226,9 @@ open class TSGenerator(
         val customTypes = argsLeft.associate { it.split("=").let { it[0] to it.getOrNull(1) } }
         TSGenerator(customTypes, out = out).apply {
           dirs.forEach { printFrom(it, routesRegex) }
-          printCustomTypes()
+          printRequestedTypes()
           printReferencedClasses()
+          printCustomTypes()
           testDataClass.forEach { printTestData(Class.forName(it).kotlin as KClass<Any>) }
         }
       }
