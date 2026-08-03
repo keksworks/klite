@@ -33,11 +33,8 @@ class TSGeneratorTest {
 
   @Test fun `custom types with type parameter`() {
     expect(ts.render(CustomTypes::class)).toEqual(/* language=TypeScript */ "interface CustomTypes {date: LocalDate; id: TSID<CustomTypes>}")
-    ts.printReferencedClasses()
     ts.printCustomTypes()
     expect(out.toString()).toEqual(/* language=TypeScript */ $$"""
-      // class klite.json.CustomTypes
-      export interface CustomTypes {date: LocalDate; id: TSID<CustomTypes>}
 
       // klite.TSID
       export type TSID<T> = string & {_of?: T}

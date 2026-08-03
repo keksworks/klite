@@ -152,7 +152,7 @@ open class TSGenerator(
     val cls = type?.classifier as? KClass<*>
     val args = type?.arguments ?: emptyList()
     val customType = listOf(type?.toString(), type?.jvmErasure?.qualifiedName).find { it in customTypes }
-    val ts = customType?.also { usedCustomTypes += it; args.forEach { a -> tsType(a.type) } }?.substringAfterLast(".") ?: when {
+    val ts = customType?.also { usedCustomTypes += it }?.substringAfterLast(".") ?: when {
       cls == null || cls == Any::class -> "any"
       cls.isValue -> tsName(cls).also { trackReferencedClass(cls) }
       cls.isSubclassOf(Enum::class) -> tsName(cls).also { trackReferencedClass(cls) }
