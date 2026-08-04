@@ -33,13 +33,15 @@ class XmlBenchmarkTest {
   private val domBuilder = domFactory.newDocumentBuilder()
 
   @Test fun benchmark() {
-    val warmup = 1_000
-    val rounds = 50_000
+    val warmup = 10_000
+    val rounds = 100_000
 
     repeat(warmup) { domParse(xml) }
     repeat(warmup) { parser.parsePathMap(xml) }
     repeat(warmup) { parser.parseNodes(xml) }
     repeat(warmup) { parser.parse<BenchCatalog>(xml) }
+
+    Thread.sleep(3000)
 
     val domNs = measureNanoTime { repeat(rounds) { domParse(xml) } }
     println("DOM: ${domNs / 1_000_000} ms  (${domNs / rounds} ns/op)")
