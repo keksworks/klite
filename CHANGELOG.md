@@ -4,6 +4,7 @@
 * xml: XmlParser.keys affects only how properties without @XmlPath are handled, @XmlPath uses original paths
 * push: fixes in payload encryption
 * ai: new module for calling AI clients and extracting data from PDF
+* smtp: can now specify BCC addresses
 
 # 2.0.0
 * server: workerPool now uses JVM Virtual Threads, Java 21+ is now required, NUM_WORKERS config option is deprecated

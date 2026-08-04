@@ -30,9 +30,11 @@ open class SmtpEmailSender(
   val bccTo = Config.optional("MAIL_BCC_TO")?.let { InternetAddress(it) }
   private val log = logger()
 
-  override fun send(to: Email, subject: String, body: String, bodyMimeType: String, attachments: Map<String, ByteArray>, cc: List<Email>, from: InternetAddress?) {
+  override fun send(to: Email, subject: String, body: String, bodyMimeType: String, attachments: Map<String, ByteArray>,
+                    cc: List<Email>, bcc: List<Email>, from: InternetAddress?) {
     send(to, subject, from ?: defaultFrom) {
       cc.forEach { setRecipient(CC, InternetAddress(it.value)) }
+      bcc.forEach { setRecipient(BCC, InternetAddress(it.value)) }
       if (attachments.isEmpty())
         setBody(body, bodyMimeType)
       else
