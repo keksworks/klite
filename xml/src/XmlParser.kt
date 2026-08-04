@@ -66,26 +66,24 @@ class XmlParser(
     }
 
     val r = reader(xml)
-    data class Frame(val indexedPath: String, val text: StringBuilder = StringBuilder())
-    val stack = mutableListOf<Frame>()
+    var path = ""
+    val text = StringBuilder()
     while (r.hasNext()) {
       when (r.next()) {
         START_ELEMENT -> {
-          val basePath = if (stack.isEmpty()) "/${keys.from(r.tagName)}"
-                    else "${stack.last().indexedPath}/${keys.from(r.tagName)}"
-          val indexed = indexedPath(basePath)
-          stack += Frame(indexed)
+          path = indexedPath("$path/${keys.from(r.tagName)}")
           for (i in 0 until r.attributeCount) {
-            val attrPath = "$indexed/${keys.from("@${r.attrName(i)}")}"
+            val attrPath = "$path/${keys.from("@${r.attrName(i)}")}"
             if (filter == null || filter(attrPath)) result[attrPath] = r.getAttributeValue(i)
           }
         }
         CHARACTERS, CDATA ->
-          stack.lastOrNull()?.text?.append(r.text)
+          text.append(r.text)
         END_ELEMENT -> {
-          val frame = stack.removeLast()
-          val text = frame.text.toString().trim()
-          if (text.isNotEmpty() && (filter == null || filter(frame.indexedPath))) result[frame.indexedPath] = values.from(text)
+          val trimmed = text.trim()
+          if (trimmed.isNotEmpty() && (filter == null || filter(path))) result[path] = values.from(trimmed.toString())
+          path = path.substringBeforeLast("/")
+          text.setLength(0)
         }
       }
     }
