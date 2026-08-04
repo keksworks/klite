@@ -3,7 +3,8 @@ package klite.xml
 import org.junit.jupiter.api.Test
 import org.w3c.dom.Document
 import org.w3c.dom.Element
-import java.io.ByteArrayInputStream
+import org.xml.sax.InputSource
+import java.io.StringReader
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.system.measureNanoTime
 
@@ -22,7 +23,6 @@ class XmlBenchmarkTest {
     }
     append("</catalog>")
   }
-  private val xmlBytes = xml.toByteArray()
 
   private val parser = XmlParser()
   private val domFactory = DocumentBuilderFactory.newInstance().apply {
@@ -34,27 +34,28 @@ class XmlBenchmarkTest {
 
   @Test fun benchmark() {
     val warmup = 1_000
-    val rounds = 10_000
+    val rounds = 50_000
 
-    repeat(warmup) { domParse(xmlBytes) }
-    val domNs = measureNanoTime { repeat(rounds) { domParse(xmlBytes) } }
-    println("DOM:        ${domNs / 1_000_000} ms  (${domNs / rounds} ns/op)")
-
+    repeat(warmup) { domParse(xml) }
     repeat(warmup) { parser.parsePathMap(xml) }
+    repeat(warmup) { parser.parseNodes(xml) }
+    repeat(warmup) { parser.parse<BenchCatalog>(xml) }
+
+    val domNs = measureNanoTime { repeat(rounds) { domParse(xml) } }
+    println("DOM: ${domNs / 1_000_000} ms  (${domNs / rounds} ns/op)")
+
     val pathsNs = measureNanoTime { repeat(rounds) { parser.parsePathMap(xml) } }
     println("parsePathMap: ${pathsNs / 1_000_000} ms  (${pathsNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / pathsNs)}x vs DOM")
 
-    repeat(warmup) { parser.parseNodes(xml) }
     val nodesNs = measureNanoTime { repeat(rounds) { parser.parseNodes(xml) } }
     println("parseNodes: ${nodesNs / 1_000_000} ms  (${nodesNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / nodesNs)}x vs DOM")
 
-    repeat(warmup) { parser.parse<BenchCatalog>(xml) }
     val typedNs = measureNanoTime { repeat(rounds) { parser.parse<BenchCatalog>(xml) } }
     println("parse<Typed>: ${typedNs / 1_000_000} ms  (${typedNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / typedNs)}x vs DOM")
   }
 
-  private fun domParse(xml: ByteArray): Document {
-    val doc = domBuilder.parse(ByteArrayInputStream(xml))
+  private fun domParse(xml: String): Document {
+    val doc = domBuilder.parse(InputSource(StringReader(xml)))
     val items = doc.getElementsByTagName("item")
     for (i in 0 until items.length) {
       val el = items.item(i) as Element

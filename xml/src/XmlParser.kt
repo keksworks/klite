@@ -22,24 +22,10 @@ import kotlin.reflect.full.isSubclassOf
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
-private class PropInfo(rawPath: String, val prop: KProperty1<*, *>) {
+private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
   val type = prop.returnType.classifier as? KClass<*>
   val isCollection = type?.isSubclassOf(Collection::class) == true
   val elemType = if (isCollection) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
-  val isEmptyPath = rawPath.isEmpty()
-  val attrName: String?
-  val path: Path
-  init {
-    val parts = rawPath.trim('/').split('/').filter(String::isNotEmpty)
-    val tags = mutableListOf<Path.Tag>()
-    var attr: String? = null
-    for (part in parts) {
-      if (part.startsWith("@")) { attr = part; break }
-      tags += Path.Tag(part)
-    }
-    path = Path(tags)
-    attrName = attr
-  }
 }
 
 /** Intermediate XML representation; text excludes child element text */
@@ -64,33 +50,33 @@ class XmlParser(
 ) {
   private val propInfoCache = ConcurrentHashMap<KClass<*>, Collection<PropInfo>>()
 
-  fun parsePathMap(@Language("xml") xml: InputStream, filter: ((Path) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
-  fun parsePathMap(@Language("xml") xml: Reader, filter: ((Path) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
-  fun parsePathMap(@Language("xml") xml: String, filter: ((Path) -> Boolean)? = null) = parsePathMap(InputSource(StringReader(xml)), filter)
+  fun parsePathMap(@Language("xml") xml: InputStream, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
+  fun parsePathMap(@Language("xml") xml: Reader, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
+  fun parsePathMap(@Language("xml") xml: String, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(StringReader(xml)), filter)
 
-  internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((Path) -> Boolean)? = null): Map<Path, Any?> {
-    val result = mutableMapOf<Path, Any?>()
-    val occurrences = mutableMapOf<Path, Int>()
+  internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((String) -> Boolean)? = null): XmlNode {
+    val result = mutableMapOf<String, Any?>()
+    val occurrences = mutableMapOf<String, Int>()
 
-    fun indexedPath(path: Path): Path {
+    fun indexedPath(path: String): String {
       val count = (occurrences[path] ?: 0) + 1
       occurrences[path] = count
-      return if (count == 1) path else Path(path.tags.map { if (it == path.tags.last()) it.copy(index = count) else it })
+      return if (count == 1) path else "$path#$count"
     }
 
     val r = reader(xml)
-    data class Frame(val path: Path, val text: StringBuilder = StringBuilder())
+    data class Frame(val indexedPath: String, val text: StringBuilder = StringBuilder())
     val stack = mutableListOf<Frame>()
     while (r.hasNext()) {
       when (r.next()) {
         START_ELEMENT -> {
           val name = r.localName.takeIf(String::isNotEmpty) ?: r.name.toString()
-          val basePath = if (stack.isEmpty()) Path(listOf(Path.Tag(keys.from(name)))) else stack.last().path + Path.Tag(keys.from(name))
+          val basePath = if (stack.isEmpty()) "/${keys.from(name)}" else "${stack.last().indexedPath}/${keys.from(name)}"
           val indexed = indexedPath(basePath)
           stack += Frame(indexed)
           for (i in 0 until r.attributeCount) {
             val attrName = r.getAttributeLocalName(i).takeIf(String::isNotEmpty) ?: r.getAttributeName(i).toString()
-            val attrPath = indexed + Path.Tag(keys.from("@${attrName.removePrefix("@")}"))
+            val attrPath = "$indexed/${keys.from("@${attrName.removePrefix("@")}")}"
             if (filter == null || filter(attrPath)) result[attrPath] = r.getAttributeValue(i)
           }
         }
@@ -99,7 +85,7 @@ class XmlParser(
         END_ELEMENT -> {
           val frame = stack.removeLast()
           val text = frame.text.toString().trim()
-          if (text.isNotEmpty() && (filter == null || filter(frame.path))) result[frame.path] = values.from(text)
+          if (text.isNotEmpty() && (filter == null || filter(frame.indexedPath))) result[frame.indexedPath] = values.from(text)
         }
       }
     }
@@ -113,7 +99,7 @@ class XmlParser(
 
   fun <T : Any> parse(@Language("xml") xml: InputSource, type: KClass<T>): T {
     val root = readElement(xml)
-    return buildObject(root, type, Path(listOf(Path.Tag(root.name))))
+    return buildObject(root, type, root.name, root)
   }
 
   fun parseNodes(xml: InputStream) = parseNodes(InputSource(xml))
@@ -186,89 +172,75 @@ class XmlParser(
     return requireNotNull(root) { "XML document has no root element" }
   }
 
-  private fun findElements(path: Path, element: XmlElement): List<Pair<XmlElement, Path>> {
-    val result = mutableListOf<Pair<XmlElement, Path>>()
-    fun collect(el: XmlElement, tagIdx: Int, fullPath: List<Path.Tag>) {
-      if (tagIdx == path.tags.size) { result.add(el to Path(fullPath)); return }
-      for (child in el.children) {
-        if (child.name == path.tags[tagIdx].name) collect(child, tagIdx + 1, fullPath + path.tags[tagIdx])
-      }
+  private fun values(path: String, currentPath: String, element: XmlElement, root: XmlElement): Pair<List<Any>, List<String>> {
+    if (path.isEmpty()) return listOf(element) to listOf(currentPath)
+    val parts = path.trim('/').split('/').filter(String::isNotEmpty)
+    if (parts.size == 1 && parts.first().startsWith("@")) return element.attributes[parts.first()].let(::listOfNotNull) to emptyList()
+
+    // Determine start: absolute paths start from root, relative from current element
+    val startElement: XmlElement
+    val startPath: String
+    val startIdx: Int
+    if (path.startsWith("/")) {
+      startElement = root; startPath = root.name; startIdx = 1
+    } else if (parts.first() == currentPath) {
+      startElement = element; startPath = currentPath; startIdx = 1
+    } else {
+      startElement = element; startPath = currentPath; startIdx = 0
     }
-    val initTags = if (element.name == path.tags.firstOrNull()?.name && path.tags.size > 1)
-      listOf(path.tags[0]) else emptyList()
-    val startIdx = if (initTags.isNotEmpty()) 1 else 0
-    collect(element, startIdx, initTags)
-    return result
+
+    // Tree-walk from start, tracking full paths
+    var current: List<XmlElement> = listOf(startElement)
+    var currentPaths: List<String> = listOf(startPath)
+    for (i in startIdx until parts.size) {
+      if (current.isEmpty()) return emptyList<Any>() to emptyList()
+      val part = parts[i]
+      if (part.startsWith("@")) return current.flatMap { it.attributes[part].let(::listOfNotNull) } to emptyList()
+      val next = mutableListOf<XmlElement>()
+      val nextPaths = mutableListOf<String>()
+      for (j in current.indices) {
+        for (child in current[j].children) {
+          if (child.name == part) {
+            next.add(child)
+            nextPaths.add("${currentPaths[j]}/${child.name}")
+          }
+        }
+      }
+      current = next
+      currentPaths = nextPaths
+    }
+    return current as List<Any> to currentPaths
   }
 
-  private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>, currentPath: Path): T {
+  private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>, currentPath: String, root: XmlElement): T {
     val props = propInfoCache.getOrPut(type) {
       type.publicProperties.values.map { PropInfo(it.findAnnotation<XmlPath>()?.path ?: keys.to(it.name), it) }
     }
     val constructorArgs = mutableMapOf<String, Any?>()
-
     for (info in props) {
-      if (info.isEmptyPath) {
-        constructorArgs[info.prop.name] = convertText(element.text, info.prop.returnType, info.type)
-        continue
-      }
-      val resolved = info.path
-
-      if (info.attrName != null) {
-        val matches = findElements(resolved, element)
-        val attrValue = if (matches.isNotEmpty()) matches.last().first.attributes[info.attrName] else element.attributes[info.attrName]
-        if (attrValue != null) constructorArgs[info.prop.name] = convertText(attrValue, info.prop.returnType, info.type)
-        continue
-      }
       val kType = info.prop.returnType
+      val (rawValues, paths) = values(info.path, currentPath, element, root)
+      if (rawValues.isEmpty()) continue
       if (info.isCollection) {
-        val matches = findElements(resolved, element)
-        if (matches.isEmpty()) continue
-        val elemType = info.elemType
-        constructorArgs[info.prop.name] = matches.map { (el, fullPath) ->
-          if (elemType != null && !Converter.supports(elemType)) buildObject(el, elemType, fullPath)
-          else convertText(el.text, kType.arguments.firstOrNull()?.type, elemType)
-        }
+        constructorArgs[info.prop.name] = rawValues.indices.map { i -> value(rawValues[i], paths.getOrNull(i), kType.arguments.firstOrNull()?.type, info.elemType, root) }
       } else {
-        val matches = findElements(resolved, element)
-        if (matches.isEmpty()) continue
-        val (matchEl, matchPath) = matches.last()
-        val classifier = info.type
-        val converted = values.from(matchEl.text, kType)
-        if (converted !== matchEl.text) {
-          constructorArgs[info.prop.name] = converted ?: matchEl.text
-        } else if (classifier != null && !Converter.supports(classifier)) {
-          constructorArgs[info.prop.name] = buildObject(matchEl, classifier, matchPath)
-        } else {
-          constructorArgs[info.prop.name] = convertText(matchEl.text, kType, classifier)
-        }
+        val last = rawValues.lastIndex
+        constructorArgs[info.prop.name] = value(rawValues[last], paths.getOrNull(last), kType, info.type, root)
       }
     }
     return type.createFrom(constructorArgs)
   }
 
-  private fun convertText(text: String, type: KType?, classifier: KClass<*>?): Any? {
-    if (text.isEmpty()) return null
-    val converted = values.from(text, type)
-    if (converted !== text) return converted
-    if (classifier != null && Converter.supports(classifier)) return Converter.from(text, type!!) ?: text
+  private fun value(raw: Any, rawPath: String?, type: KType?, classifier: KClass<*>?, root: XmlElement): Any {
+    val text = (raw as? XmlElement)?.text ?: raw
+    if (text is String) {
+      val converted = values.from(text, type)
+      if (converted !== text) return converted ?: text
+    }
+    if (classifier != null && Converter.supports(classifier)) return Converter.from(text.toString(), type!!) ?: text
+    if (raw is XmlElement && classifier != null) return buildObject(raw, classifier, rawPath ?: raw.name, root)
     return text
   }
-}
-
-data class Path(val tags: List<Tag>) {
-  data class Tag(val name: String, val index: Int = 0) {
-    override fun toString() = if (index > 0) "${name}#${index}" else name
-  }
-
-  constructor(path: String): this(path.trim('/').split('/').map { part ->
-    val hashIdx = part.indexOf('#')
-    if (hashIdx >= 0) Tag(part.substring(0, hashIdx), part.substring(hashIdx + 1).toInt()) else Tag(part)
-  })
-
-  operator fun plus(tag: Tag) = Path(tags + tag)
-  fun endsWith(tag: String) = tags.lastOrNull()?.name == tag
-  override fun toString() = tags.joinToString("/", prefix = "/")
 }
 
 typealias XmlNode = Node
