@@ -10,6 +10,7 @@ import java.io.StringReader
 import java.util.concurrent.ConcurrentHashMap
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.XMLStreamConstants.*
+import javax.xml.stream.XMLStreamReader
 import kotlin.annotation.AnnotationRetention.RUNTIME
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
@@ -70,13 +71,12 @@ class XmlParser(
     while (r.hasNext()) {
       when (r.next()) {
         START_ELEMENT -> {
-          val name = r.localName.takeIf(String::isNotEmpty) ?: r.name.toString()
-          val basePath = if (stack.isEmpty()) "/${keys.from(name)}" else "${stack.last().indexedPath}/${keys.from(name)}"
+          val basePath = if (stack.isEmpty()) "/${keys.from(r.tagName)}"
+                    else "${stack.last().indexedPath}/${keys.from(r.tagName)}"
           val indexed = indexedPath(basePath)
           stack += Frame(indexed)
           for (i in 0 until r.attributeCount) {
-            val attrName = r.getAttributeLocalName(i).takeIf(String::isNotEmpty) ?: r.getAttributeName(i).toString()
-            val attrPath = "$indexed/${keys.from("@${attrName.removePrefix("@")}")}"
+            val attrPath = "$indexed/${keys.from("@${r.attrName(i)}")}"
             if (filter == null || filter(attrPath)) result[attrPath] = r.getAttributeValue(i)
           }
         }
@@ -153,10 +153,9 @@ class XmlParser(
       val event = reader.next()
       if (event == START_ELEMENT) {
         stack += XmlElement(
-          reader.localName.takeIf(String::isNotEmpty) ?: reader.name.toString(),
+          reader.tagName,
           (0 until reader.attributeCount).associate { i ->
-            val attrName = reader.getAttributeLocalName(i).takeIf(String::isNotEmpty) ?: reader.getAttributeName(i).toString()
-            "@${attrName.removePrefix("@")}" to reader.getAttributeValue(i)
+            "@${reader.attrName(i)}" to reader.getAttributeValue(i)
           }
         )
       } else if (event == CHARACTERS || event == CDATA) {
@@ -241,6 +240,12 @@ class XmlParser(
     if (raw is XmlElement && classifier != null) return buildObject(raw, classifier, rawPath ?: raw.name, root)
     return text
   }
+
+  private val XMLStreamReader.tagName: String
+    get() = localName.takeIf(String::isNotEmpty) ?: name.toString()
+
+  private fun XMLStreamReader.attrName(i: Int): String =
+    getAttributeLocalName(i)?.takeIf(String::isNotEmpty) ?: getAttributeName(i).toString()
 }
 
 typealias XmlNode = Node
