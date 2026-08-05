@@ -5,6 +5,7 @@ import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.xml.sax.InputSource
 import java.io.StringReader
+import java.util.function.Consumer
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.system.measureNanoTime
 
@@ -12,6 +13,7 @@ data class BenchItem(@XmlPath("@id") val id: Int, val name: String, val descript
 data class BenchCatalog(@XmlPath("catalog/item") val items: List<BenchItem>)
 
 class XmlBenchmarkTest {
+  private val blackhole = Consumer<Any> { }
   private val xml = buildString {
     append("<catalog>")
     repeat(50) { i ->
@@ -34,7 +36,7 @@ class XmlBenchmarkTest {
 
   @Test fun benchmark() {
     val warmup = 10_000
-    val rounds = 100_000
+    val rounds = 50_000
 
     repeat(warmup) { domParse(xml) }
     repeat(warmup) { parser.parsePathMap(xml) }
@@ -65,10 +67,10 @@ class XmlBenchmarkTest {
     val items = doc.getElementsByTagName("item")
     for (i in 0 until items.length) {
       val el = items.item(i) as Element
-      el.getAttribute("id")
-      el.getElementsByTagName("name").item(0).textContent
-      el.getElementsByTagName("description").item(0).textContent
-      el.getElementsByTagName("active").item(0).textContent
+      blackhole.accept(el.getAttribute("id"))
+      blackhole.accept(el.getElementsByTagName("name").item(0).textContent)
+      blackhole.accept(el.getElementsByTagName("description").item(0).textContent)
+      blackhole.accept(el.getElementsByTagName("active").item(0).textContent)
     }
     return doc
   }
