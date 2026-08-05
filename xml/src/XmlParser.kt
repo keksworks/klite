@@ -23,22 +23,10 @@ import kotlin.reflect.full.isSubclassOf
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
-private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
-  val type = prop.returnType.classifier as? KClass<*>
-  val isCollection = type?.isSubclassOf(Collection::class) == true
-  val elemType = if (isCollection) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
-}
-
-/** Intermediate XML representation; text excludes child element text */
-internal class XmlElement(
-  val name: String,
-  val attributes: Map<String, String>,
-  @JvmField var text: String = "",
-  @JvmField var children: MutableList<XmlElement> = mutableListOf()
-)
-
 @Deprecated("Use XmlParser instead", ReplaceWith("XmlParser"))
 typealias XMLParser = XmlParser
+
+typealias XmlNode = Node
 
 @Suppress("UNCHECKED_CAST")
 class XmlParser(
@@ -90,15 +78,6 @@ class XmlParser(
     return result
   }
 
-  inline fun <reified T: Any> parse(@Language("xml") xml: InputStream): T = parse(InputSource(xml), T::class)
-  inline fun <reified T: Any> parse(@Language("xml") xml: Reader): T = parse(InputSource(xml), T::class)
-  inline fun <reified T: Any> parse(@Language("xml") xml: String): T = parse(StringReader(xml))
-
-  fun <T : Any> parse(@Language("xml") xml: InputSource, type: KClass<T>): T {
-    val root = readElement(xml)
-    return buildObject(root, type, root.name, root)
-  }
-
   fun parseNodes(xml: InputStream) = parseNodes(InputSource(xml))
   fun parseNodes(xml: Reader) = parseNodes(InputSource(xml))
   fun parseNodes(xml: String) = parseNodes(StringReader(xml))
@@ -113,7 +92,7 @@ class XmlParser(
   private fun toNode(element: XmlElement): MutableMap<String, Any?> {
     val node = mutableMapOf<String, Any?>()
     if (element.text.isNotEmpty()) node[""] = element.text
-    element.attributes.forEach { e -> node[keys.from(e.key)] = e.value }
+    element.attributes?.forEach { (k, v) -> node[keys.from(k)] = v }
     for (child in element.children) {
       val childName = keys.from(child.name)
       if (child.children.isEmpty() && child.text.isNotEmpty()) {
@@ -123,7 +102,7 @@ class XmlParser(
           is MutableList<*> -> (existing as MutableList<Any?>).apply { add(child.text) }
           else -> mutableListOf(existing, child.text)
         }
-        child.attributes.forEach { (k, v) -> node["$childName${keys.from(k)}"] = v }
+        child.attributes?.forEach { (k, v) -> node["$childName${keys.from(k)}"] = v }
       } else {
         val childNode = toNode(child)
         val existing = node[childName]
@@ -140,6 +119,15 @@ class XmlParser(
   private fun reader(xml: InputSource) =
     xml.characterStream?.let { factory.createXMLStreamReader(it) } ?: factory.createXMLStreamReader(xml.byteStream)
 
+  inline fun <reified T: Any> parse(@Language("xml") xml: InputStream): T = parse(InputSource(xml), T::class)
+  inline fun <reified T: Any> parse(@Language("xml") xml: Reader): T = parse(InputSource(xml), T::class)
+  inline fun <reified T: Any> parse(@Language("xml") xml: String): T = parse(StringReader(xml))
+
+  fun <T : Any> parse(@Language("xml") xml: InputSource, type: KClass<T>): T {
+    val root = readElement(xml)
+    return buildObject(root, type, root.name, root)
+  }
+
   internal fun readElement(xml: InputSource): XmlElement {
     val reader = reader(xml)
     val text = StringBuilder()
@@ -147,12 +135,11 @@ class XmlParser(
     val stack = mutableListOf<XmlElement>()
 
     while (reader.hasNext()) {
-      val event = reader.next()
-      when (event) {
+      when (reader.next()) {
         START_ELEMENT -> {
           stack += XmlElement(
             reader.tagName,
-            (0 until reader.attributeCount).associate { i ->
+            if (reader.attributeCount == 0) null else (0 until reader.attributeCount).associate { i ->
               "@${reader.attrName(i)}" to reader.getAttributeValue(i)
             }
           )
@@ -170,10 +157,29 @@ class XmlParser(
     return root!!
   }
 
+  private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>, currentPath: String, root: XmlElement): T {
+    val props = propInfoCache.getOrPut(type) {
+      type.publicProperties.values.map { PropInfo(it.findAnnotation<XmlPath>()?.path ?: keys.to(it.name), it) }
+    }
+    val args = mutableMapOf<String, Any?>()
+    for (p in props) {
+      val (rawValues, paths) = values(p.path, currentPath, element, root)
+      if (rawValues.isEmpty()) continue
+      val kType = p.prop.returnType
+      if (p.isCollection) {
+        args[p.prop.name] = rawValues.indices.map { i -> value(rawValues[i], paths.getOrNull(i), kType.arguments.firstOrNull()?.type, p.elemType, root) }
+      } else {
+        val last = rawValues.lastIndex
+        args[p.prop.name] = value(rawValues[last], paths.getOrNull(last), kType, p.type, root)
+      }
+    }
+    return type.createFrom(args)
+  }
+
   private fun values(path: String, currentPath: String, element: XmlElement, root: XmlElement): Pair<List<Any>, List<String>> {
     if (path.isEmpty()) return listOf(element) to listOf(currentPath)
-    val parts = path.trim('/').split('/').filter(String::isNotEmpty)
-    if (parts.size == 1 && parts.first().startsWith("@")) return element.attributes[parts.first()].let(::listOfNotNull) to emptyList()
+    val parts = path.trim('/').split('/')
+    if (parts.size == 1 && parts.first().startsWith("@")) return listOfNotNull(element.attributes?.get(parts.first())) to emptyList()
 
     // Determine start: absolute paths start from root, relative from current element
     val startElement: XmlElement
@@ -193,7 +199,7 @@ class XmlParser(
     for (i in startIdx until parts.size) {
       if (current.isEmpty()) return emptyList<Any>() to emptyList()
       val part = parts[i]
-      if (part.startsWith("@")) return current.flatMap { it.attributes[part].let(::listOfNotNull) } to emptyList()
+      if (part.startsWith("@")) return current.flatMap { listOfNotNull(it.attributes?.get(part)) } to emptyList()
       val next = mutableListOf<XmlElement>()
       val nextPaths = mutableListOf<String>()
       for (j in current.indices) {
@@ -208,25 +214,6 @@ class XmlParser(
       currentPaths = nextPaths
     }
     return current as List<Any> to currentPaths
-  }
-
-  private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>, currentPath: String, root: XmlElement): T {
-    val props = propInfoCache.getOrPut(type) {
-      type.publicProperties.values.map { PropInfo(it.findAnnotation<XmlPath>()?.path ?: keys.to(it.name), it) }
-    }
-    val constructorArgs = mutableMapOf<String, Any?>()
-    for (info in props) {
-      val kType = info.prop.returnType
-      val (rawValues, paths) = values(info.path, currentPath, element, root)
-      if (rawValues.isEmpty()) continue
-      if (info.isCollection) {
-        constructorArgs[info.prop.name] = rawValues.indices.map { i -> value(rawValues[i], paths.getOrNull(i), kType.arguments.firstOrNull()?.type, info.elemType, root) }
-      } else {
-        val last = rawValues.lastIndex
-        constructorArgs[info.prop.name] = value(rawValues[last], paths.getOrNull(last), kType, info.type, root)
-      }
-    }
-    return type.createFrom(constructorArgs)
   }
 
   private fun value(raw: Any, rawPath: String?, type: KType?, classifier: KClass<*>?, root: XmlElement): Any {
@@ -250,4 +237,15 @@ class XmlParser(
     getAttributeLocalName(i)?.takeIf(String::isNotEmpty) ?: getAttributeName(i).toString()
 }
 
-typealias XmlNode = Node
+private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
+  val type = prop.returnType.classifier as? KClass<*>
+  val isCollection = type?.isSubclassOf(Collection::class) == true
+  val elemType = if (isCollection) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
+}
+
+internal class XmlElement(
+  val name: String,
+  val attributes: Map<String, String>?,
+  @JvmField var text: String = "",
+  @JvmField var children: MutableList<XmlElement> = mutableListOf()
+)
