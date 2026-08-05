@@ -104,37 +104,37 @@ class XmlParser(
   fun parseNodes(xml: String) = parseNodes(StringReader(xml))
 
   internal fun parseNodes(xml: InputSource): XmlNode {
-    fun toNode(element: XmlElement): MutableMap<String, Any?> {
-      val node = mutableMapOf<String, Any?>()
-      if (element.text.isNotEmpty()) node[""] = element.text
-      element.attributes.forEach { e -> node[keys.from(e.key)] = e.value }
-      for (child in element.children) {
-        val childName = keys.from(child.name)
-        if (child.children.isEmpty() && child.text.isNotEmpty()) {
-          val existing = node[childName]
-          node[childName] = when (existing) {
-            null -> child.text
-            is MutableList<*> -> (existing as MutableList<Any?>).apply { add(child.text) }
-            else -> mutableListOf(existing, child.text)
-          }
-          child.attributes.forEach { (k, v) -> node["$childName${keys.from(k)}"] = v }
-        } else {
-          val childNode = toNode(child)
-          val existing = node[childName]
-          node[childName] = when (existing) {
-            null -> childNode
-            is MutableList<*> -> (existing as MutableList<Any?>).apply { add(childNode) }
-            else -> mutableListOf(existing, childNode)
-          }
-        }
-      }
-      return node
-    }
-
     val root = readElement(xml)
     val rootNode = toNode(root)
     if (rootNode.size > 1) rootNode.remove("")
     return mapOf(keys.from(root.name) to if (rootNode.size == 1) rootNode[""] ?: rootNode else rootNode)
+  }
+
+  private fun toNode(element: XmlElement): MutableMap<String, Any?> {
+    val node = mutableMapOf<String, Any?>()
+    if (element.text.isNotEmpty()) node[""] = element.text
+    element.attributes.forEach { e -> node[keys.from(e.key)] = e.value }
+    for (child in element.children) {
+      val childName = keys.from(child.name)
+      if (child.children.isEmpty() && child.text.isNotEmpty()) {
+        val existing = node[childName]
+        node[childName] = when (existing) {
+          null -> child.text
+          is MutableList<*> -> (existing as MutableList<Any?>).apply { add(child.text) }
+          else -> mutableListOf(existing, child.text)
+        }
+        child.attributes.forEach { (k, v) -> node["$childName${keys.from(k)}"] = v }
+      } else {
+        val childNode = toNode(child)
+        val existing = node[childName]
+        node[childName] = when (existing) {
+          null -> childNode
+          is MutableList<*> -> (existing as MutableList<Any?>).apply { add(childNode) }
+          else -> mutableListOf(existing, childNode)
+        }
+      }
+    }
+    return node
   }
 
   private fun reader(xml: InputSource) =
@@ -236,7 +236,10 @@ class XmlParser(
       if (converted !== text) return converted ?: text
     }
     if (classifier != null && Converter.supports(classifier)) return Converter.from(text.toString(), type!!) ?: text
-    if (raw is XmlElement && classifier != null) return buildObject(raw, classifier, rawPath ?: raw.name, root)
+    if (raw is XmlElement && classifier != null) {
+      if (classifier.isSubclassOf(Map::class)) return toNode(raw)
+      return buildObject(raw, classifier, rawPath ?: raw.name, root)
+    }
     return text
   }
 
