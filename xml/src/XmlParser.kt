@@ -56,8 +56,8 @@ class XmlParser(
   fun parsePathMap(@Language("xml") xml: String, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(StringReader(xml)), filter)
 
   internal fun parsePathMap(@Language("xml") xml: InputSource, filter: ((String) -> Boolean)? = null): XmlNode {
-    val result = mutableMapOf<String, Any?>()
-    val occurrences = mutableMapOf<String, Int>()
+    val result = LinkedHashMap<String, Any?>(256)
+    val occurrences = HashMap<String, Int>(256)
 
     fun indexedPath(path: String): String {
       val count = (occurrences[path] ?: 0) + 1
@@ -77,8 +77,7 @@ class XmlParser(
             if (filter == null || filter(attrPath)) result[attrPath] = r.getAttributeValue(i)
           }
         }
-        CHARACTERS, CDATA ->
-          text.append(r.text)
+        CHARACTERS, CDATA -> text.append(r.text)
         END_ELEMENT -> {
           val trimmed = text.trim()
           if (trimmed.isNotEmpty() && (filter == null || filter(path))) result[path] = values.from(trimmed.toString())
@@ -143,30 +142,32 @@ class XmlParser(
 
   internal fun readElement(xml: InputSource): XmlElement {
     val reader = reader(xml)
-    val textBuf = StringBuilder()
+    val text = StringBuilder()
     var root: XmlElement? = null
     val stack = mutableListOf<XmlElement>()
 
     while (reader.hasNext()) {
       val event = reader.next()
-      if (event == START_ELEMENT) {
-        stack += XmlElement(
-          reader.tagName,
-          (0 until reader.attributeCount).associate { i ->
-            "@${reader.attrName(i)}" to reader.getAttributeValue(i)
-          }
-        )
-      } else if (event == CHARACTERS || event == CDATA) {
-        textBuf.append(reader.text)
-      } else if (event == END_ELEMENT) {
-        val element = stack.removeLast()
-        element.text = textBuf.toString().trim()
-        textBuf.setLength(0)
-        stack.lastOrNull()?.children?.add(element) ?: run { root = element }
+      when (event) {
+        START_ELEMENT -> {
+          stack += XmlElement(
+            reader.tagName,
+            (0 until reader.attributeCount).associate { i ->
+              "@${reader.attrName(i)}" to reader.getAttributeValue(i)
+            }
+          )
+        }
+        CHARACTERS, CDATA -> text.append(reader.text)
+        END_ELEMENT -> {
+          val element = stack.removeLast()
+          element.text = text.trim().toString()
+          text.setLength(0)
+          stack.lastOrNull()?.children?.add(element) ?: run { root = element }
+        }
       }
     }
     reader.close()
-    return requireNotNull(root) { "XML document has no root element" }
+    return root!!
   }
 
   private fun values(path: String, currentPath: String, element: XmlElement, root: XmlElement): Pair<List<Any>, List<String>> {

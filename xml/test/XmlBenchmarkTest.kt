@@ -39,6 +39,7 @@ class XmlBenchmarkTest {
     repeat(warmup) { domParse(xml) }
     repeat(warmup) { parser.parsePathMap(xml) }
     repeat(warmup) { parser.parseNodes(xml) }
+    repeat(warmup) { parser.readElement(InputSource(StringReader(xml))) }
     repeat(warmup) { parser.parse<BenchCatalog>(xml) }
 
     Thread.sleep(3000)
@@ -51,6 +52,9 @@ class XmlBenchmarkTest {
 
     val nodesNs = measureNanoTime { repeat(rounds) { parser.parseNodes(xml) } }
     println("parseNodes: ${nodesNs / 1_000_000} ms  (${nodesNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / nodesNs)}x vs DOM")
+
+    val readElementNs = measureNanoTime { repeat(rounds) { parser.readElement(InputSource(StringReader(xml))) } }
+    println("readElement: ${readElementNs / 1_000_000} ms  (${readElementNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / readElementNs)}x vs DOM")
 
     val typedNs = measureNanoTime { repeat(rounds) { parser.parse<BenchCatalog>(xml) } }
     println("parse<Typed>: ${typedNs / 1_000_000} ms  (${typedNs / rounds} ns/op), ${"%.2f".format(domNs.toDouble() / typedNs)}x vs DOM")
