@@ -15,7 +15,7 @@ import kotlin.annotation.AnnotationRetention.RUNTIME
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
-import kotlin.reflect.KType
+import kotlin.reflect.full.createType
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
 
@@ -91,11 +91,11 @@ class XmlParser(
 
   private fun toNode(element: XmlElement): MutableMap<String, Any?> {
     val node = mutableMapOf<String, Any?>()
-    if (element.text.isNotEmpty()) node[""] = element.text
+    if (element.text!!.isNotEmpty()) node[""] = element.text
     element.attributes?.forEach { (k, v) -> node[keys.from(k)] = v }
     for (child in element.children) {
       val childName = keys.from(child.name)
-      if (child.children.isEmpty() && child.text.isNotEmpty()) {
+      if (child.children.isEmpty() && child.text!!.isNotEmpty()) {
         val existing = node[childName]
         node[childName] = when (existing) {
           null -> child.text
@@ -123,14 +123,14 @@ class XmlParser(
   inline fun <reified T: Any> parse(@Language("xml") xml: Reader): T = parse(InputSource(xml), T::class)
   inline fun <reified T: Any> parse(@Language("xml") xml: String): T = parse(StringReader(xml))
 
-  fun <T : Any> parse(@Language("xml") xml: InputSource, type: KClass<T>): T {
+  fun <T : Any> parse(@Language("xml") xml: InputSource, cls: KClass<T>): T {
     val root = readElement(xml)
-    return buildObject(root, type, root.name, root)
+    return buildObject(root, cls)!!
   }
 
   internal fun readElement(xml: InputSource): XmlElement {
     val reader = reader(xml)
-    val text = StringBuilder()
+    val text = StringBuilder(256)
     var root: XmlElement? = null
     val stack = mutableListOf<XmlElement>()
 
@@ -149,7 +149,8 @@ class XmlParser(
           val element = stack.removeLast()
           element.text = text.trim().toString()
           text.setLength(0)
-          stack.lastOrNull()?.children?.add(element) ?: run { root = element }
+          val parent = stack.lastOrNull()
+          parent?.children?.add(element) ?: run { root = element }
         }
       }
     }
@@ -157,77 +158,29 @@ class XmlParser(
     return root!!
   }
 
-  private fun <T: Any> buildObject(element: XmlElement, type: KClass<T>, currentPath: String, root: XmlElement): T {
-    val props = propInfoCache.getOrPut(type) {
-      type.publicProperties.values.map { PropInfo(it.findAnnotation<XmlPath>()?.path ?: keys.to(it.name), it) }
+  private fun <T: Any> buildObject(element: XmlElement, cls: KClass<T>): T? {
+    // TODO: better null handling and optimize createType()
+    if (cls == String::class) return values.from(element.text) as T?
+    else if (Converter.supports(cls)) return values.from(Converter.from(element.text!!, cls)) as T
+    val converted = values.from(element.text, cls.createType())
+    if (converted != element.text) return converted as T?
+
+    val props = propInfoCache.getOrPut(cls) {
+      cls.publicProperties.values.map {
+        val path = it.findAnnotation<XmlPath>()?.path?.trim('/')?.split('/') ?: listOf(keys.to(it.name))
+        PropInfo(path, it)
+      }
     }
-    val args = mutableMapOf<String, Any?>()
+    val args = HashMap<String, Any?>()
     for (p in props) {
-      val (rawValues, paths) = values(p.path, currentPath, element, root)
-      if (rawValues.isEmpty()) continue
-      val kType = p.prop.returnType
-      if (p.isCollection) {
-        args[p.prop.name] = rawValues.indices.map { i -> value(rawValues[i], paths.getOrNull(i), kType.arguments.firstOrNull()?.type, p.elemType, root) }
-      } else {
-        val last = rawValues.lastIndex
-        args[p.prop.name] = value(rawValues[last], paths.getOrNull(last), kType, p.type, root)
+      val els = element.find(p.path)
+      args[p.name] = when {
+        els.isEmpty() -> null
+        p.elemType != null -> els.map { buildObject(it, p.elemType) }
+        else -> buildObject(els.first(), p.cls)
       }
     }
-    return type.createFrom(args)
-  }
-
-  private fun values(path: String, currentPath: String, element: XmlElement, root: XmlElement): Pair<List<Any>, List<String>> {
-    if (path.isEmpty()) return listOf(element) to listOf(currentPath)
-    val parts = path.trim('/').split('/')
-    if (parts.size == 1 && parts.first().startsWith("@")) return listOfNotNull(element.attributes?.get(parts.first())) to emptyList()
-
-    // Determine start: absolute paths start from root, relative from current element
-    val startElement: XmlElement
-    val startPath: String
-    val startIdx: Int
-    if (path.startsWith("/")) {
-      startElement = root; startPath = root.name; startIdx = 1
-    } else if (parts.first() == currentPath) {
-      startElement = element; startPath = currentPath; startIdx = 1
-    } else {
-      startElement = element; startPath = currentPath; startIdx = 0
-    }
-
-    // Tree-walk from start, tracking full paths
-    var current: List<XmlElement> = listOf(startElement)
-    var currentPaths: List<String> = listOf(startPath)
-    for (i in startIdx until parts.size) {
-      if (current.isEmpty()) return emptyList<Any>() to emptyList()
-      val part = parts[i]
-      if (part.startsWith("@")) return current.flatMap { listOfNotNull(it.attributes?.get(part)) } to emptyList()
-      val next = mutableListOf<XmlElement>()
-      val nextPaths = mutableListOf<String>()
-      for (j in current.indices) {
-        for (child in current[j].children) {
-          if (child.name == part) {
-            next.add(child)
-            nextPaths.add("${currentPaths[j]}/${child.name}")
-          }
-        }
-      }
-      current = next
-      currentPaths = nextPaths
-    }
-    return current as List<Any> to currentPaths
-  }
-
-  private fun value(raw: Any, rawPath: String?, type: KType?, classifier: KClass<*>?, root: XmlElement): Any {
-    val text = (raw as? XmlElement)?.text ?: raw
-    if (text is String) {
-      val converted = values.from(text, type)
-      if (converted !== text) return converted ?: text
-    }
-    if (classifier != null && Converter.supports(classifier)) return Converter.from(text.toString(), type!!) ?: text
-    if (raw is XmlElement && classifier != null) {
-      if (classifier.isSubclassOf(Map::class)) return toNode(raw)
-      return buildObject(raw, classifier, rawPath ?: raw.name, root)
-    }
-    return text
+    return cls.createFrom(args)
   }
 
   private val XMLStreamReader.tagName: String
@@ -237,15 +190,30 @@ class XmlParser(
     getAttributeLocalName(i)?.takeIf(String::isNotEmpty) ?: getAttributeName(i).toString()
 }
 
-private data class PropInfo(val path: String, val prop: KProperty1<*, *>) {
-  val type = prop.returnType.classifier as? KClass<*>
-  val isCollection = type?.isSubclassOf(Collection::class) == true
-  val elemType = if (isCollection) prop.returnType.arguments.first().type?.classifier as? KClass<*> else null
-}
+private class PropInfo(val path: List<String>, prop: KProperty1<*, *>? = null,
+                       val name: String = prop!!.name,
+                       val cls: KClass<*> = prop!!.returnType.classifier as KClass<*>,
+                       val isCollection: Boolean = cls.isSubclassOf(Collection::class),
+                       val elemType: KClass<*>? = if (isCollection) prop!!.returnType.arguments.first().type?.classifier as? KClass<*> else null
+)
 
 internal class XmlElement(
-  val name: String,
-  val attributes: Map<String, String>?,
-  @JvmField var text: String = "",
+  @JvmField val name: String,
+  @JvmField val attributes: Map<String, String>? = null,
+  @JvmField var text: String? = null,
   @JvmField var children: MutableList<XmlElement> = mutableListOf()
-)
+) {
+  fun find(path: List<String>): List<XmlElement> {
+    var e: XmlElement = this
+    for (i in path.indices) {
+      val n = path[i]
+      if (n == e.name) continue
+      else if (n == "") return listOf(e)
+      else if (n.startsWith("@")) return listOf(XmlElement(n, text = e.attributes?.get(n)))
+      val els = e.children.filter { it.name == n }
+      if (i == path.lastIndex) return els
+      else e = els.firstOrNull() ?: return emptyList()
+    }
+    error("No way")
+  }
+}
