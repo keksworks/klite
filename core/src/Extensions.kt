@@ -4,6 +4,7 @@ import java.io.OutputStream
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.time.Duration
 
 fun String?.trimToNull() = this?.trim()?.takeIf { it.isNotEmpty() }
 
@@ -22,3 +23,5 @@ val String.uuid: UUID get() = UUID.fromString(this)
 
 fun <T: Comparable<T>> T.min(o: T) = if (this <= o) this else o
 fun <T: Comparable<T>> T.max(o: T) = if (this >= o) this else o
+
+fun sleep(duration: Duration) = Thread.sleep(duration.inWholeMilliseconds)

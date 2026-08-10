@@ -5,6 +5,7 @@ import ch.tutteli.atrium.api.verbs.expect
 import klite.d
 import klite.jdbc.*
 import klite.sample.TempTableDBTest
+import klite.sleep
 import klite.toValues
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
@@ -117,7 +118,7 @@ open class JdbcExtensionsTest: TempTableDBTest() {
         channel.trySend(it.parameter)
       }
     }
-    Thread.sleep(100)
+    sleep(100.milliseconds)
     db.notify("hello")
     db.notify("hello", "world")
     Transaction.current()!!.commit()

@@ -3,6 +3,7 @@ package klite.http
 import klite.error
 import klite.info
 import klite.logger
+import klite.sleep
 import java.io.IOException
 import java.lang.StackWalker.Option.RETAIN_CLASS_REFERENCE
 import java.lang.reflect.Modifier.ABSTRACT
@@ -64,7 +65,7 @@ open class TypedHttpClient(
       } catch (e: IOException) {
         if (i < retryCount) {
           logger.error("Failed $urlSuffix, retry ${i + 1} after $retryAfter", e)
-          Thread.sleep(retryAfter.inWholeMilliseconds)
+          sleep(retryAfter)
         } else {
           logger.error("Failed $urlSuffix: ${payload?.trimToLog()}", e)
           throw e

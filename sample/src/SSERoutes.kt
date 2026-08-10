@@ -3,12 +3,14 @@ import klite.annotations.GET
 import klite.annotations.POST
 import klite.info
 import klite.logger
+import klite.sleep
 import klite.sse.Event
 import klite.sse.send
 import klite.sse.startEventStream
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.ArrayBlockingQueue
+import kotlin.time.Duration.Companion.seconds
 
 class SSERoutes {
   private val queue = ArrayBlockingQueue<Message>(100)
@@ -34,7 +36,7 @@ class SSERoutes {
         val data = mapOf("message" to "Hello $i")
         e.send(Event(data = data, id = UUID.randomUUID()))
         log.info("Sent $data")
-        Thread.sleep(2000)
+        sleep(2.seconds)
       }
       e.send(Event(name = "end"))
     } catch (e: IOException) {

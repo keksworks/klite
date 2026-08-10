@@ -10,6 +10,7 @@ import klite.openapi.openApi
 import users.UserRepository
 import java.net.InetSocketAddress
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.seconds
 
 fun main() {
   sampleServer().start()
@@ -37,7 +38,7 @@ fun sampleServer(port: Int = Config.port): Server {
       get { "Hello World" }
 
       get("/delay") {
-        Thread.sleep(1000)
+        sleep(1.seconds)
         "Waited for 1 sec"
       }
 

@@ -1,17 +1,18 @@
 package klite
 
 import java.lang.System.currentTimeMillis
+import java.lang.Thread.sleep
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 import kotlin.time.Duration
 
 /** Simple in-memory cache with automatic expiration */
-class Cache<K: Any, V>(expiration: Duration, autoRemoveExpired: Boolean = true, val prolongOnAccess: Boolean = false, val keepAlive: (Map.Entry<K, Cache<K, V>.Entry<V>>) -> Unit = {}): AutoCloseable {
+class Cache<K: Any, V>(val expiration: Duration, autoRemoveExpired: Boolean = true, val prolongOnAccess: Boolean = false, val keepAlive: (Map.Entry<K, Cache<K, V>.Entry<V>>) -> Unit = {}): AutoCloseable {
   private val expirationMs = expiration.inWholeMilliseconds
   val entries = ConcurrentHashMap<K, Entry<V>>()
   private val expirationTimer = if (autoRemoveExpired) thread(name = "${this}ExpirationTimer", isDaemon = true) {
     while (!Thread.interrupted()) {
-      try { Thread.sleep(expirationMs) } catch (e: InterruptedException) { break }
+      try { sleep(expirationMs) } catch (e: InterruptedException) { break }
       removeExpired()
     }
   } else null

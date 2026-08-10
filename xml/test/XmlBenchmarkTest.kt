@@ -1,5 +1,6 @@
 package klite.xml
 
+import klite.sleep
 import org.junit.jupiter.api.Test
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -8,6 +9,7 @@ import java.io.StringReader
 import java.util.function.Consumer
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.system.measureNanoTime
+import kotlin.time.Duration.Companion.seconds
 
 data class BenchItem(@XmlPath("@id") val id: Int, val name: String, val description: String, val active: Boolean)
 data class BenchCatalog(@XmlPath("catalog/item") val items: List<BenchItem>)
@@ -44,7 +46,7 @@ class XmlBenchmarkTest {
     repeat(warmup) { parser.readElement(InputSource(StringReader(xml))) }
     repeat(warmup) { parser.parse<BenchCatalog>(xml) }
 
-    Thread.sleep(3000)
+    sleep(3.seconds)
 
     val domNs = measureNanoTime { repeat(rounds) { domParse(xml) } }
     println("DOM: ${domNs / 1_000_000} ms  (${domNs / rounds} ns/op)")

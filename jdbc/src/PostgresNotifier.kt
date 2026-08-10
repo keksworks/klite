@@ -2,6 +2,7 @@ package klite.jdbc
 
 import klite.info
 import klite.logger
+import klite.sleep
 import klite.warn
 import org.postgresql.PGConnection
 import org.postgresql.PGNotification
@@ -10,6 +11,7 @@ import java.sql.SQLException
 import javax.sql.DataSource
 import kotlin.concurrent.thread
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -49,7 +51,7 @@ fun DataSource.consumeNotifications(channels: Iterable<String>, timeout: Duratio
         }
       } catch (ex: SQLException) {
         log.warn("$channels listener interrupted due to: ${ex.message} using $conn. Retrying...")
-        Thread.sleep(100)
+        sleep(100.milliseconds)
       }
     }
   }
