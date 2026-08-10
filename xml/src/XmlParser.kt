@@ -216,6 +216,6 @@ internal class XmlElement(
       if (i == path.lastIndex) return els
       else e = els.firstOrNull() ?: return emptyList()
     }
-    error("No way")
+    error("$path not found in $name")
   }
 }
