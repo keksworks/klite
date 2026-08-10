@@ -20,7 +20,10 @@ import kotlin.reflect.full.createType
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
 
-/** Supports absolute (from root /) and relative paths (resolved from current element), empty path means current element, attributes start with @ */
+/**
+ * Supports absolute (from root /) and relative paths (resolved from current element),
+ * empty path means current element, attributes start with @, namespace prefixes are ignored
+ */
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
 
@@ -164,6 +167,7 @@ class XmlParser(
     val cls = type.classifier as KClass<*>
     if (cls == String::class) return values.from(element.text)
     else if (Converter.supports(cls)) return values.from(Converter.from(element.text!!, cls))
+    if (cls == Map::class) return toNode(element)
     val converted = values.from(element.text, type)
     if (converted != element.text) return converted
 

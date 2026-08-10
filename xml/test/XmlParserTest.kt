@@ -416,6 +416,15 @@ class XmlParserTest {
     expect(all.containsKey("/root/population")).toEqual(true)
   }
 
+  data class WithNode(@XmlPath("name") val name: String, @XmlPath("data") val data: XmlNode?)
+
+  @Test fun `node property parses as map`() {
+    @Language("XML") val xml = """<root><name>test</name><data attr="a"><x>1</x><y>2</y></data></root>"""
+    val result = parser.parse<WithNode>(xml)
+    expect(result.name).toEqual("test")
+    expect(result.data).toEqual(mapOf("@attr" to "a", "x" to "1", "y" to "2"))
+  }
+
   @Test fun `parsePathMap with repeating elements and attributes`() {
     @Language("XML") val xml = """
       <root>
