@@ -92,11 +92,11 @@ class XmlParser(
 
   private fun toNode(element: XmlElement): MutableMap<String, Any?> {
     val node = mutableMapOf<String, Any?>()
-    if (element.text!!.isNotEmpty()) node[""] = element.text
+    if (element.text != null) node[""] = element.text
     element.attributes?.forEach { (k, v) -> node[keys.from(k)] = v }
     for (child in element.children) {
       val childName = keys.from(child.name)
-      if (child.children.isEmpty() && child.text!!.isNotEmpty()) {
+      if (child.children.isEmpty() && child.text != null) {
         val existing = node[childName]
         node[childName] = when (existing) {
           null -> child.text
@@ -148,7 +148,7 @@ class XmlParser(
         CHARACTERS, CDATA -> text.append(reader.text)
         END_ELEMENT -> {
           val element = stack.removeLast()
-          element.text = text.trim().toString()
+          element.text = text.trim().takeIf { it.isNotEmpty() }?.toString()
           text.setLength(0)
           val parent = stack.lastOrNull()
           parent?.children?.add(element) ?: run { root = element }
