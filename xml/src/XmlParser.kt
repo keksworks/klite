@@ -15,6 +15,7 @@ import kotlin.annotation.AnnotationRetention.RUNTIME
 import kotlin.annotation.AnnotationTarget.PROPERTY
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
+import kotlin.reflect.KType
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
@@ -37,7 +38,7 @@ class XmlParser(
   private val keys: KeyConverter = KeyConverter(),
   private val values: ValueConverter<Any?> = ValueConverter()
 ) {
-  private val propInfoCache = ConcurrentHashMap<KClass<*>, Collection<PropInfo>>()
+  private val propInfoCache = ConcurrentHashMap<KClass<*>, List<PropInfo>>()
 
   fun parsePathMap(@Language("xml") xml: InputStream, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
   fun parsePathMap(@Language("xml") xml: Reader, filter: ((String) -> Boolean)? = null) = parsePathMap(InputSource(xml), filter)
@@ -125,7 +126,7 @@ class XmlParser(
 
   fun <T : Any> parse(@Language("xml") xml: InputSource, cls: KClass<T>): T {
     val root = readElement(xml)
-    return buildObject(root, cls)!!
+    return buildObject(root, cls.createType()) as T
   }
 
   internal fun readElement(xml: InputSource): XmlElement {
@@ -158,12 +159,13 @@ class XmlParser(
     return root!!
   }
 
-  private fun <T: Any> buildObject(element: XmlElement, cls: KClass<T>): T? {
-    // TODO: better null handling and optimize createType()
-    if (cls == String::class) return values.from(element.text) as T?
-    else if (Converter.supports(cls)) return values.from(Converter.from(element.text!!, cls)) as T
-    val converted = values.from(element.text, cls.createType())
-    if (converted != element.text) return converted as T?
+  private fun buildObject(element: XmlElement, type: KType): Any? {
+    // TODO: better null handling
+    val cls = type.classifier as KClass<*>
+    if (cls == String::class) return values.from(element.text)
+    else if (Converter.supports(cls)) return values.from(Converter.from(element.text!!, cls))
+    val converted = values.from(element.text, type)
+    if (converted != element.text) return converted
 
     val props = propInfoCache.getOrPut(cls) {
       cls.publicProperties.values.map {
@@ -177,7 +179,7 @@ class XmlParser(
       args[p.name] = when {
         els.isEmpty() -> null
         p.elemType != null -> els.map { buildObject(it, p.elemType) }
-        else -> buildObject(els.first(), p.cls)
+        else -> buildObject(els.first(), p.type)
       }
     }
     return cls.createFrom(args)
@@ -190,12 +192,12 @@ class XmlParser(
     getAttributeLocalName(i)?.takeIf(String::isNotEmpty) ?: getAttributeName(i).toString()
 }
 
-private class PropInfo(val path: List<String>, prop: KProperty1<*, *>? = null,
-                       val name: String = prop!!.name,
-                       val cls: KClass<*> = prop!!.returnType.classifier as KClass<*>,
-                       val isCollection: Boolean = cls.isSubclassOf(Collection::class),
-                       val elemType: KClass<*>? = if (isCollection) prop!!.returnType.arguments.first().type?.classifier as? KClass<*> else null
-)
+private class PropInfo(val path: List<String>, val prop: KProperty1<*, *>) {
+  val name get() = prop.name
+  val type get() = prop.returnType
+  val isCollection get() = (type.classifier as? KClass<*>)?.isSubclassOf(Collection::class) == true
+  val elemType = if (isCollection) prop.returnType.arguments.first().type else null
+}
 
 internal class XmlElement(
   @JvmField val name: String,
