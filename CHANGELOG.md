@@ -1,11 +1,11 @@
-# Unreleased
+# 2.0.1
 * json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project
 * xml: XmlPath annotations should build precise element paths now for performance
 * xml: XmlParser.keys affects only how properties without @XmlPath are handled, @XmlPath uses original paths
 * push: fixes in payload encryption
-* ai: new module for calling AI clients and extracting data from PDF
 * smtp: can now specify BCC addresses
-* core/json/ai: `TypedHttpClient` and `JsonHttpClient` will not auto-retry 429 (Too Many Requests) responses
+* ai: new module for calling AI clients and extracting data from PDF
+* core/json: `TypedHttpClient` and `JsonHttpClient` will not auto-retry 429 (Too Many Requests) responses
 
 # 2.0.0
 * server: workerPool now uses JVM Virtual Threads, Java 21+ is now required, NUM_WORKERS config option is deprecated
