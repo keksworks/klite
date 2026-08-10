@@ -1,9 +1,7 @@
 package klite.http
 
-import klite.error
-import klite.info
-import klite.logger
-import klite.sleep
+import klite.*
+import klite.StatusCode.Companion.TooManyRequests
 import java.io.IOException
 import java.lang.StackWalker.Option.RETAIN_CLASS_REFERENCE
 import java.lang.reflect.Modifier.ABSTRACT
@@ -23,7 +21,7 @@ import kotlin.time.Duration.Companion.seconds
 open class TypedHttpClient(
   protected val urlPrefix: String = "",
   val reqModifier: RequestModifier = { this },
-  val errorHandler: (HttpResponse<*>, String) -> Nothing = { res, body -> throw IOException("Failed with ${res.statusCode()}: $body") },
+  val errorHandler: (HttpResponse<*>, String) -> Nothing = { res, body -> throw HttpException(StatusCode(res.statusCode()), body) },
   val retryCount: Int = 0,
   val retryAfter: Duration = 1.seconds,
   private val maxLoggedLen: Int = 1000,
@@ -63,7 +61,7 @@ open class TypedHttpClient(
       try {
         return request(urlSuffix, type, payload, builder)
       } catch (e: IOException) {
-        if (i < retryCount) {
+        if (i < retryCount && (e as? HttpException)?.statusCode != TooManyRequests) {
           logger.error("Failed $urlSuffix, retry ${i + 1} after $retryAfter", e)
           sleep(retryAfter)
         } else {
@@ -108,3 +106,5 @@ open class TypedHttpClient(
     else -> body as T
   }
 }
+
+class HttpException(val statusCode: StatusCode, val body: String): IOException("Failed with $statusCode: $body")

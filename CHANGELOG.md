@@ -5,6 +5,7 @@
 * push: fixes in payload encryption
 * ai: new module for calling AI clients and extracting data from PDF
 * smtp: can now specify BCC addresses
+* core/json/ai: `TypedHttpClient` and `JsonHttpClient` will not auto-retry 429 (Too Many Requests) responses
 
 # 2.0.0
 * server: workerPool now uses JVM Virtual Threads, Java 21+ is now required, NUM_WORKERS config option is deprecated

@@ -1,6 +1,8 @@
 package klite.ai
 
+import klite.StatusCode.Companion.TooManyRequests
 import klite.createFrom
+import klite.http.HttpException
 import klite.json.JsonMapper
 import klite.json.parse
 import klite.logger
@@ -39,7 +41,7 @@ class PDFExtractor(private val aiClient: AIClient, private val json: JsonMapper 
         if (provided.isEmpty()) return json.parse(jsonStr, type.createType())
         return type.createFrom(json.parse<Node>(jsonStr) + provided.mapKeys { it.key.name })
       } catch (e: Exception) {
-        if (e.message?.startsWith("429:") == true || it == numAttempts - 1) throw e
+        if ((e as? HttpException)?.statusCode == TooManyRequests || it == numAttempts - 1) throw e
         log.warn("Failed to extract ${type.simpleName}, retrying: $e")
         prompt += "\nPrevious error: ${e.message}"
       }
