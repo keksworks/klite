@@ -207,15 +207,13 @@ internal class XmlElement(
 ) {
   fun find(path: List<String>): List<XmlElement> {
     var e: XmlElement = this
-    for (i in path.indices) {
-      val n = path[i]
-      if (n == e.name) continue
-      else if (n == "") return listOf(e)
-      else if (n.startsWith("@")) return listOf(XmlElement(n, text = e.attributes?.get(n)))
-      val els = e.children.filter { it.name == n }
-      if (i == path.lastIndex) return els
-      else e = els.firstOrNull() ?: return emptyList()
+    val path = if (path.first() == e.name) path.drop(1) else path
+    for ((i, n) in path.withIndex()) {
+      if (n == "" || n == ".") break
+      if (n.startsWith("@")) return listOf(XmlElement(n, text = e.attributes?.get(n)))
+      if (i == path.lastIndex) return e.children.filter { it.name == n }
+      e = e.children.firstOrNull { it.name == n } ?: return emptyList()
     }
-    error("$path not found in $name")
+    return listOf(e)
   }
 }
