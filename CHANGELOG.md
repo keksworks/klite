@@ -1,3 +1,6 @@
+# Unreleased
+* ai: McpRoutes is now available for easier building of custom MCP servers
+
 # 2.0.1
 * json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project
 * xml: XmlPath annotations should build precise element paths now for performance

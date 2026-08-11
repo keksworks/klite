@@ -62,3 +62,42 @@ The `extractData` method:
 2. Sends the text to the AI client with a prompt describing the expected JSON structure, which is derived from the provided data class
 3. Parses the AI response into the target data class
 4. Retries up to 3 times on failure (except 429 Too Many Requests)
+
+## MCP Server
+
+Build an [MCP](https://modelcontextprotocol.io)-compatible server by extending `McpRoutes`:
+
+```kotlin
+class MyMcpRoutes(info: ServerInfo = ServerInfo("My Server", "1.0")) : McpRoutes(info) {
+  // Register tool functions as (method reference, description) pairs
+  override val tools: List<Pair<KFunction<*>, String>> by lazy { listOf(
+    this::search to "Search the database",
+    this::getById to "Get item by ID",
+  ) }
+
+  // Authenticate the request; return a context object passed to every tool, or null to reject
+  override fun authenticate(exchange: HttpExchange): String? =
+    exchange.header("Authorization")?.removePrefix("Bearer ")
+
+  // First parameter is always the auth context from authenticate()
+  fun search(user: String, query: String, limit: Int = 10): List<String> = ...
+  fun getById(user: String, id: Long): Item = ...
+}
+```
+
+Tool parameter types are derived from the function signature:
+- Non-nullable parameters become `required` in the JSON schema
+- Nullable parameters (with defaults) are optional
+- Enums are exposed with a `enum` constraint
+- Supported types: `String`, `Int`, `Long`, `Double`, `Boolean`
+
+Then register the routes on your server:
+
+```kotlin
+context("/mcp") {
+  use<JsonBody>()
+  annotated<MyMcpRoutes>()
+}
+```
+
+The server exposes a single `POST /` endpoint that handles all MCP JSON-RPC requests (`initialize`, `tools/list`, `tools/call`, `resources/list`).
