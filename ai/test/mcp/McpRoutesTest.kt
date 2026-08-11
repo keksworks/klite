@@ -1,4 +1,4 @@
-package klite.ai
+package klite.ai.mcp
 
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toThrow
@@ -15,7 +15,7 @@ import kotlin.reflect.KFunction
 class McpRoutesTest {
   val exchange = mockk<HttpExchange>(relaxed = true)
 
-  class TestRoutes(info: ServerInfo = ServerInfo()) : McpRoutes(info) {
+  class TestRoutes(info: ServerInfo = ServerInfo()): McpRoutes(info) {
     var authenticatedUser: String? = "test-user"
     override val tools: List<Pair<KFunction<*>, String>> by lazy { listOf(
       this::greet to "Greet someone",

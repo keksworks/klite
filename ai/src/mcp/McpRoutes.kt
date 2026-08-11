@@ -1,4 +1,4 @@
-package klite.ai
+package klite.ai.mcp
 
 import klite.*
 import klite.StatusCode.Companion.MethodNotAllowed
