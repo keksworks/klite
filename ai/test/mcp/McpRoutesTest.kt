@@ -10,18 +10,17 @@ import klite.StatusCode
 import klite.UnauthorizedException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.reflect.KFunction
 
 class McpRoutesTest {
   val exchange = mockk<HttpExchange>(relaxed = true)
 
-  class TestRoutes(info: ServerInfo = ServerInfo()): McpRoutes(info) {
+  class TestMcpRoutes(info: ServerInfo = ServerInfo()): McpRoutes(info) {
     var authenticatedUser: String? = "test-user"
-    override val tools: List<Pair<KFunction<*>, String>> by lazy { listOf(
+    override val tools = listOf(
       this::greet to "Greet someone",
       this::add to "Add two numbers",
       this::nullableTool to "Nullable tool",
-    ) }
+    )
     override fun authenticate(exchange: HttpExchange): Any? = authenticatedUser
 
     fun greet(context: String, name: String): String = "Hello, $name! (from $context)"
@@ -29,7 +28,7 @@ class McpRoutesTest {
     fun nullableTool(context: String, value: String? = null): String = value ?: "default"
   }
 
-  val routes = TestRoutes()
+  val routes = TestMcpRoutes()
 
   @Test fun `GET returns MethodNotAllowed`() {
     routes.get(exchange)
