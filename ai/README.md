@@ -100,4 +100,6 @@ context("/mcp") {
 }
 ```
 
-The server exposes a single `POST /` endpoint that handles all MCP JSON-RPC requests (`initialize`, `tools/list`, `tools/call`, `resources/list`).
+The server exposes a single `POST /` endpoint that handles all MCP JSON-RPC requests (`tools/list`, `tools/call`, etc).
+
+See [a working example in StoryTracker project](https://github.com/keksworks/storytracker/blob/main/src/mcp/McpRoutes.kt).
