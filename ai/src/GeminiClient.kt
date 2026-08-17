@@ -34,5 +34,5 @@ open class GeminiClient(httpClient: HttpClient, val params: Node = emptyMap()): 
   data class GenerationConfig(val thinkingLevel: String? = null, val temperature: Int = 1, val maxOutputTokens: Int? = null)
   data class Response(val id: String, val status: String, val steps: List<Step>, val usage: Node, val created: Instant, val model: String)
   data class Step(val type: String, val content: List<Content>? = null, val signature: String? = null)
-  data class Content(val type: String, val text: String? = null, val uri: URI? = null, val mimeType: String? = null)
+  data class Content(val type: String, val text: String? = null, val uri: URI? = null, val data: String? = null, val mimeType: String? = null)
 }
