@@ -1,5 +1,6 @@
 # Unreleased
 * ai: McpRoutes is now available for easier building of custom MCP servers
+* ai: extraParams can be provided to either AIClient on creation, e.g. `mapOf("store" to false)`
 
 # 2.0.1
 * json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project

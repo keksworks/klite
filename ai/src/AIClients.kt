@@ -29,7 +29,7 @@ interface AIClient {
 }
 
 // https://platform.openai.com/docs/api-reference/making-requests
-open class OpenAIClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper): AIClient {
+open class OpenAIClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper, val extraParams: Map<String, Any?> = emptyMap()): AIClient {
   private val defaultModel = Config["OPENAI_MODEL"]
   private val auth = "Bearer " + Config["OPENAI_API_KEY"]
   private val http = JsonHttpClient(Config.optional("OPENAI_URL", "https://api.openai.com/v1"), http = httpClient, json = json,
@@ -38,7 +38,7 @@ open class OpenAIClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeM
   override fun query(input: String): String = query(input, defaultModel)
 
   open fun query(input: String, model: String, temperature: Double = 1.0): String =
-    http.post<Map<String, Any>>("/responses", mapOf(
+    http.post<Map<String, Any>>("/responses", extraParams + mapOf(
       "model" to model,
       "input" to input,
       "temperature" to temperature
@@ -46,7 +46,7 @@ open class OpenAIClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeM
 }
 
 // https://aistudio.google.com/prompts/new_chat
-open class GeminiClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper): AIClient {
+open class GeminiClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper, val extraParams: Map<String, Any?> = emptyMap()): AIClient {
   private val defaultModel = Config["GEMINI_MODEL"]
   private val key = Config["GEMINI_API_KEY"]
   private val http = JsonHttpClient(Config.optional("GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta"), http = httpClient, json = json,
@@ -55,7 +55,7 @@ open class GeminiClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeM
   override fun query(input: String): String = query(input, defaultModel)
 
   open fun query(input: String, model: String): String =
-    http.post<Map<String, Any>>("/interactions?key=$key", mapOf(
+    http.post<Map<String, Any>>("/interactions?key=$key", extraParams + mapOf(
       "model" to model,
       "input" to input,
       "generation_config" to mapOf(
