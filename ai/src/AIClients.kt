@@ -3,6 +3,7 @@ package klite.ai
 import klite.Config
 import klite.SnakeCase
 import klite.ValueConverter
+import klite.http.httpClient
 import klite.http.timeout
 import klite.json.JsonHttpClient
 import klite.json.JsonMapper
@@ -25,37 +26,42 @@ val defaultSnakeMapper = JsonMapper(keys = SnakeCase, values = object: ValueConv
 })
 
 interface AIClient {
-  fun query(input: String): String
+  fun query(input: String, params: Node = emptyMap()): String
 }
 
 // https://platform.openai.com/docs/api-reference/making-requests
-open class OpenAIClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper, val extraParams: Map<String, Any?> = emptyMap()): AIClient {
-  private val defaultModel = Config["OPENAI_MODEL"]
+open class OpenAIClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper, val params: Node = emptyMap()): AIClient {
+  val model = Config["OPENAI_MODEL"]
   private val auth = "Bearer " + Config["OPENAI_API_KEY"]
   private val http = JsonHttpClient(Config.optional("OPENAI_URL", "https://api.openai.com/v1"), http = httpClient, json = json,
     reqModifier = { header("Authorization", auth).timeout(30.seconds) })
 
-  override fun query(input: String): String = query(input, defaultModel)
+  override fun query(input: String, params: Node): String =
+    query(input, params, null).output.first { it.type == "message" }.content.first().text
 
-  open fun query(input: String, model: String, temperature: Double = 1.0): String =
-    http.post<Map<String, Any>>("/responses", extraParams + mapOf(
+  // TODO: try structured output with "text": {"format": {"type": "json_schema"}}}
+  open fun query(input: Any /* String | List<Input> */, params: Node = emptyMap(), prevResponseId: String? = null): Response =
+    http.post("/responses", mapOf(
       "model" to model,
       "input" to input,
-      "temperature" to temperature
-    )).children<Node>("output").first().children<Node>("content").first().text("text")
+      "previous_response_id" to prevResponseId,
+    ) + this.params + params)
+
+  data class Input(val content: List<Content>, val role: String = "user")
+  data class Output(val id: String, val type: String, val content: List<Content>, val role: String? = null)
+  data class Content(val type: String, val text: String)
+  data class Response(val id: String, val createdAt: Instant, val status: String, val model: String, val output: List<Output>)
 }
 
 // https://aistudio.google.com/prompts/new_chat
-open class GeminiClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper, val extraParams: Map<String, Any?> = emptyMap()): AIClient {
-  private val defaultModel = Config["GEMINI_MODEL"]
+open class GeminiClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeMapper, val params: Node = emptyMap()): AIClient {
+  val model = Config["GEMINI_MODEL"]
   private val key = Config["GEMINI_API_KEY"]
   private val http = JsonHttpClient(Config.optional("GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta"), http = httpClient, json = json,
     reqModifier = { timeout(30.seconds) })
 
-  override fun query(input: String): String = query(input, defaultModel)
-
-  open fun query(input: String, model: String): String =
-    http.post<Map<String, Any>>("/interactions?key=$key", extraParams + mapOf(
+  override fun query(input: String, params: Node): String =
+    http.post<Map<String, Any>>("/interactions?key=$key", mapOf(
       "model" to model,
       "input" to input,
       "generation_config" to mapOf(
@@ -64,5 +70,5 @@ open class GeminiClient(httpClient: HttpClient, json: JsonMapper = defaultSnakeM
         "top_p" to 0.95,
         "thinking_level" to "minimal"
       )
-    )).children<Node>("steps").first { it.containsKey("content") }.children<Node>("content").first().text("text")
+    ) + this.params + params).children<Node>("steps").first { it.containsKey("content") }.children<Node>("content").first().text("text")
 }
