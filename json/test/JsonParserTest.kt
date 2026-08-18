@@ -6,17 +6,13 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
 import klite.*
-import klite.json.JsonSubTypes.Type
 import org.junit.jupiter.api.Test
 import java.io.StringReader
-import java.math.BigDecimal
 import java.math.BigDecimal.ONE
-import java.math.BigDecimal.ZERO
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.*
-import kotlin.reflect.KProperty1
 import kotlin.reflect.KType
 
 class JsonParserTest {
@@ -160,31 +156,3 @@ class JsonParserTest {
     expect { mapper.parse<Container>(json) }.toThrow<IllegalArgumentException>()
   }
 }
-
-data class Nullable(val x: String? = null)
-
-data class Hello(@JsonProperty("hellou") val hello: String, val id: UUID, val date: LocalDate, val instant: Instant, val nested: Nested,
-                 val array: List<Nested> = emptyList(), val map: Map<LocalDate, Nested> = emptyMap(), val nullable: String? = null,
-                 @JsonIgnore val ignore: Boolean = true, @JsonProperty(readOnly = true) val readOnly: Boolean = true, val isBoolean: Boolean = true) {
-  val computed get() = 1
-}
-data class Nested(val x: BigDecimal = ZERO, val y: Int = 123)
-data class TypedData<T>(val list: List<T>, val map: Map<String, T> = emptyMap())
-data class FieldRule<T: Comparable<T>>(val field: KProperty1<out Hello, T>, val limits: Ranges<T> = emptyMap())
-typealias Ranges<T> = Map<T, Decimal>
-data class DataResponse<T>(val data: T)
-
-sealed class Shape {
-  data class Circle(val radius: Double): Shape()
-  data class Rect(val width: Int, val height: Int): Shape()
-}
-
-data class Container(@JsonSubTypes val shape: Shape)
-
-data class ContainerWithExplicitSubtypes(
-  @JsonSubTypes(key = "kind", types = [
-    Type("circle", Shape.Circle::class),
-    Type("rect", Shape.Rect::class)
-  ])
-  val shape: Shape
-)

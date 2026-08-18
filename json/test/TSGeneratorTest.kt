@@ -2,13 +2,9 @@ package klite.json
 
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
-import klite.TSID
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
-import java.time.LocalDate
-import java.util.*
-import kotlin.reflect.KProperty1
 
 class TSGeneratorTest {
   val out = ByteArrayOutputStream()
@@ -66,26 +62,3 @@ class TSGeneratorTest {
     """.trimIndent())
   }
 }
-
-@JvmInline value class CountryCode(val value: String) {
-  val isCountry get() = value.length == 2
-}
-
-@JvmInline value class MyId<out T>(val uuid: UUID = UUID.randomUUID())
-
-enum class SomeEnum { HELLO, WORLD }
-enum class EnumWithFields(val bool: Boolean, val num: Int, val other: SomeEnum) {
-  HELLO(true, 1, SomeEnum.HELLO), WORLD(false, 2, SomeEnum.WORLD)
-}
-
-interface Person { val name: String; val hello get() = SomeEnum.HELLO; }
-
-data class SomeData(override val name: String, val age: Int, val birthDate: LocalDate?, val id: MyId<SomeData>, val other: SomeData?,
-                    val list: List<SomeData>, val map: Map<SomeEnum, Array<SomeData>>, val any: Any, val status: Status = Status.ACTIVE,
-                    val field: KProperty1<Person, *>, val bytes: ByteArray, val tsid: TSID<SomeData>): Person {
-  enum class Status { ACTIVE }
-}
-
-interface NoProps { fun onlyMethods() }
-
-data class CustomTypes(val id: TSID<CustomTypes>, val date: LocalDate)

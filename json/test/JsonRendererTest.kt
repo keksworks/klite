@@ -118,14 +118,4 @@ class JsonRendererTest {
     val shapes: List<Shape> = listOf(Shape.Circle(5.0), Shape.Rect(10, 20))
     expect(mapper.render(shapes)).toEqual("""[{"type":"Circle","radius":5.0},{"type":"Rect","height":20,"width":10}]""")
   }
-
-  @JvmInline value class NumCode<T: Any>(val value: Long) {
-    companion object {
-      init { Converter.use { NumCode<Any>(it.toLong()) } }
-    }
-    override fun toString() = value.toString()
-  }
-
-  @JvmInline value class InlineInt(val n: Int)
-  @JvmInline value class InlineString(val s: String)
 }
