@@ -52,3 +52,7 @@ so that you can write type-safe code in frontend.
 This is a pure Kotlin alternative to [jvm2dts](https://github.com/keksworks/jvm2dts), which takes Converter into account.
 
 See [types.ts sample Gradle task](../sample/build.gradle.kts)
+
+## Json schema generation
+
+Use [KType.toJsonSchema()](src/JsonSchema.kt) to generate json schema for your data classes, including nested types and enums.
