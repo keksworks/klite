@@ -2,6 +2,6 @@ dependencies {
   implementation(project(":server"))
   api("io.swagger.core.v3:swagger-annotations:2.2.53")
 
-  testImplementation(project(":json"))
+  implementation(project(":json"))
   testImplementation(project(":jackson"))
 }

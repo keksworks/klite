@@ -16,16 +16,15 @@ import klite.*
 import klite.StatusCode.Companion.NoContent
 import klite.StatusCode.Companion.OK
 import klite.annotations.*
-import java.net.URI
-import java.net.URL
-import java.time.*
-import java.util.*
-import kotlin.reflect.KClass
+import klite.json.toJsonSchema
 import kotlin.reflect.KParameter.Kind.INSTANCE
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KType
 import kotlin.reflect.KTypeProjection
-import kotlin.reflect.full.*
+import kotlin.reflect.full.createType
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.findAnnotations
+import kotlin.reflect.full.hasAnnotation
 
 context(e: HttpExchange)
 internal fun Router.generateOpenAPI() = mapOf(
@@ -79,36 +78,6 @@ private fun toParameterIn(paramAnnotation: Annotation?) = when(paramAnnotation) 
   is PathParam -> ParameterIn.PATH
   is CookieParam -> ParameterIn.COOKIE
   else -> null
-}
-
-private fun KType.toJsonSchema(response: Boolean = false): Map<String, Any?>? {
-  val cls = classifier as? KClass<*> ?: return null
-  if (cls.qualifiedName?.startsWith("kotlin.Function") == true) return null // workaround for https://youtrack.jetbrains.com/issue/KT-83608
-  return when {
-    cls == Nothing::class -> mapOf("type" to "null")
-    cls == Boolean::class -> mapOf("type" to "boolean")
-    cls == Int::class -> mapOf("type" to "integer", "format" to "int32")
-    cls == Long::class -> mapOf("type" to "integer", "format" to "int64")
-    cls == Float::class -> mapOf("type" to "number", "format" to "float")
-    cls == Double::class -> mapOf("type" to "number", "format" to "double")
-    cls.isSubclassOf(Number::class) -> mapOf("type" to "number")
-    cls.isSubclassOf(Enum::class) -> mapOf("type" to "string", "enum" to cls.java.enumConstants.toList())
-    cls.isSubclassOf(Array::class) || cls.isSubclassOf(Iterable::class) -> mapOf("type" to "array", "items" to arguments.firstOrNull()?.type?.toJsonSchema(response))
-    cls.isSubclassOf(CharSequence::class) || Converter.supports(cls) && cls != Any::class -> mapOfNotNull("type" to "string", "format" to when (cls) {
-      LocalDate::class, Date::class -> "date"
-      LocalTime::class -> "time"
-      Instant::class, LocalDateTime::class -> "date-time"
-      Period::class, Duration::class -> "duration"
-      URI::class, URL::class -> "uri"
-      UUID::class -> "uuid"
-      else -> null
-    })
-    else -> mapOfNotNull("type" to "object",
-      "properties" to cls.publicProperties.mapValues { it.value.returnType.toJsonSchema(response) }.takeIf { it.isNotEmpty() },
-      "required" to cls.publicProperties.values.filter { p ->
-        !p.returnType.isMarkedNullable && (response || cls.primaryConstructor?.parameters?.find { it.name == p.name }?.isOptional != true)
-      }.map { it.name }.toSet().takeIf { it.isNotEmpty() })
-  }
 }
 
 private fun toRequestBody(route: Route, annotation: RequestBody?): Map<String, Any?>? {
