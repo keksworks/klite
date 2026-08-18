@@ -159,9 +159,9 @@ class JsonParserTest {
     val json = """{"type": "Triangle", "sides": 3}"""
     expect { mapper.parse<Container>(json) }.toThrow<IllegalArgumentException>()
   }
-
-  data class Nullable(val x: String? = null)
 }
+
+data class Nullable(val x: String? = null)
 
 data class Hello(@JsonProperty("hellou") val hello: String, val id: UUID, val date: LocalDate, val instant: Instant, val nested: Nested,
                  val array: List<Nested> = emptyList(), val map: Map<LocalDate, Nested> = emptyMap(), val nullable: String? = null,
