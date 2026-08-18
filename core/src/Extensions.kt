@@ -19,7 +19,8 @@ fun <K, V> mapOfNotNull(vararg pairs: Pair<K, V?>?) = notNullValues(*pairs).toMa
 val KType.java get() = (classifier as KClass<*>).java
 fun Any.unboxInline() = javaClass.getMethod("unbox-impl").invoke(this)
 
-val String.uuid: UUID get() = UUID.fromString(this)
+fun UUID(uuid: String) = UUID.fromString(uuid)
+val String.uuid: UUID get() = UUID(this)
 
 fun <T: Comparable<T>> T.min(o: T) = if (this <= o) this else o
 fun <T: Comparable<T>> T.max(o: T) = if (this >= o) this else o
