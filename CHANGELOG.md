@@ -1,7 +1,7 @@
 # Unreleased
-* ai: McpRoutes is now available for easier building of custom MCP servers
+* ai: McpRoutes are now available for easier building of custom MCP servers
 * ai: extraParams can be provided to either AIClient on creation, e.g. `mapOf("store" to false)`
-* json: `KType.toJsonSchema()` moved from openapi module and is now public, can be useful for reqquesting structured outputs from AI clients
+* json: `KType.toJsonSchema()` moved from openapi module and is now public, can be useful for requesting structured outputs from AI clients
 
 # 2.0.1
 * json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project
