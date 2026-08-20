@@ -22,8 +22,12 @@ open class OpenAIClient(httpClient: HttpClient, val params: Node = emptyMap()): 
     json = JsonMapper(keys = SnakeCase, values = instantAsInt),
     reqModifier = { header("Authorization", auth).timeout(30.seconds) })
 
-  override fun query(input: String, params: Node): String =
-    query(input, params, null).output.first { it.type == "message" }.content.first().text!!
+  override fun query(input: String, imageUrl: URI?, params: Node): String =
+    query(if (imageUrl != null) listOf(Input(listOf(
+      Content(text = input, type = "input_text"),
+      Content(imageUrl = imageUrl, type = "input_image")
+    ))) else input, params, null)
+    .output.first { it.type == "message" }.content.first().text!!
 
   // TODO: try structured output with "text": {"format": {"type": "json_schema"}}}
   open fun query(input: Any /* String | List<Input | Output> */, params: Node = emptyMap(), prevResponseId: String? = null): Response =

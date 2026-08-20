@@ -15,7 +15,7 @@ fun ByteArray.base64UrlEncode() = base64Encode().replace('+', '-').replace('/', 
 fun String.base64UrlEncode() = toByteArray().base64UrlEncode()
 fun String.base64Decode() = Base64.getDecoder().decode(this)!!
 fun String.base64UrlDecode() = replace('-', '+').replace('_', '/').base64Decode()
-fun File.toBase64Url() =  URI("data:" + MimeTypes.typeFor(name) + ";base64," + readBytes().base64UrlEncode())
+fun File.toBase64Url() =  URI("data:" + MimeTypes.typeFor(name) + ";base64," + readBytes().base64Encode())
 
 typealias Params = Map<String, String?>
 val URI.queryParams: Params get() = urlDecodeParams(rawQuery)

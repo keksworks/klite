@@ -1,7 +1,9 @@
 package klite.ai
 
 import klite.Config
+import klite.MimeTypes
 import klite.SnakeCase
+import klite.base64Encode
 import klite.http.timeout
 import klite.json.JsonHttpClient
 import klite.json.JsonMapper
@@ -20,8 +22,12 @@ open class GeminiClient(httpClient: HttpClient, val params: Node = emptyMap()): 
     json = JsonMapper(keys = SnakeCase),
     reqModifier = { timeout(30.seconds) })
 
-  override fun query(input: String, params: Node): String =
-    query(input as Any, params).steps.first { it.content != null }.content!!.first().text!!
+  override fun query(input: String, imageUrl: URI?, params: Node): String =
+    query(if (imageUrl != null) listOf(
+      Content("text", input),
+      Content("image", data = imageUrl.toURL().readBytes().base64Encode(), mimeType = MimeTypes.typeFor(imageUrl.path)!!)
+    ) else input, params)
+    .steps.first { it.content != null }.content!!.first().text!!
 
   fun query(input: Any /* String | List<Content | Step> */, params: Node = emptyMap(), prevInteractionId: String? = null): Response =
     http.post("/interactions?key=$key", mapOf(
