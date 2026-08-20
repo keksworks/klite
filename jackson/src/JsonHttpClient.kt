@@ -6,7 +6,6 @@ import klite.Registry
 import klite.http.RequestModifier
 import klite.http.TypedHttpClient
 import klite.require
-import java.io.IOException
 import java.net.http.HttpClient
 import java.net.http.HttpResponse
 import kotlin.reflect.KType
@@ -21,7 +20,7 @@ import kotlin.time.Duration.Companion.seconds
 open class JsonHttpClient(
   urlPrefix: String = "",
   reqModifier: RequestModifier = { this },
-  errorHandler: (HttpResponse<*>, String) -> Nothing = { res, body -> throw IOException("Failed with ${res.statusCode()}: $body") },
+  errorHandler: ((HttpResponse<*>, String) -> Nothing)? = null,
   retryCount: Int = 0,
   retryAfter: Duration = 1.seconds,
   maxLoggedLen: Int = 1000,

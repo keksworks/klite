@@ -21,7 +21,7 @@ import kotlin.time.Duration.Companion.seconds
 open class TypedHttpClient(
   protected val urlPrefix: String = "",
   val reqModifier: RequestModifier = { this },
-  val errorHandler: (HttpResponse<*>, String) -> Nothing = { res, body -> throw HttpException(StatusCode(res.statusCode()), body) },
+  errorHandler: ((HttpResponse<*>, String) -> Nothing)? = null,
   val retryCount: Int = 0,
   val retryAfter: Duration = 1.seconds,
   private val maxLoggedLen: Int = 1000,
@@ -32,6 +32,8 @@ open class TypedHttpClient(
     .findFirst().get().className
   }
 ) {
+  val errorHandler = errorHandler ?: { res, body -> throw HttpException(StatusCode(res.statusCode()), body) }
+
   protected var trimToLog: String.() -> String = { if (length <= maxLoggedLen) this else substring(0, maxLoggedLen) + "…" }
   var logger = logger(loggerName).apply {
     if (urlPrefix.isNotEmpty()) info("Using $urlPrefix")
