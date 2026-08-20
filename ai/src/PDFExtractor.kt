@@ -35,15 +35,17 @@ class PDFExtractor(private val aiClient: AIClient, private val json: JsonMapper 
     val props = type.publicProperties - provided.keys.mapTo(mutableSetOf()) { it.name } - "id"
     val keys = props.values.joinToString { "${it.name}: " + it.returnType.toString().replace(classPackageRegex, "") }
     var prompt = "Output plain json with keys $keys, ISO dates, numbers as strings with dots: $text\n$extraPrompt"
+    var response: AIClient.Response? = null
     repeat(numAttempts) {
       try {
-        val jsonStr = aiClient.query(prompt).text.stripMarkdown()
+        response = aiClient.query(prompt, prevResponseId = response?.id)
+        val jsonStr = response.text.stripMarkdown()
         if (provided.isEmpty()) return json.parse(jsonStr, type.createType())
         return type.createFrom(json.parse<Node>(jsonStr) + provided.mapKeys { it.key.name })
       } catch (e: Exception) {
         if ((e as? HttpException)?.statusCode == TooManyRequests || it == numAttempts - 1) throw e
         log.warn("Failed to extract ${type.simpleName}, retrying: $e")
-        prompt += "\nPrevious error: ${e.message}"
+        prompt = (if (response?.id != null) "" else prompt) + "\nTry again, got $e"
       }
     }
     error("Failed to extract ${type.simpleName} after $numAttempts attempts")

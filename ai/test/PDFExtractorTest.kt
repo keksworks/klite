@@ -3,6 +3,8 @@ package klite.ai
 import ch.tutteli.atrium.api.fluent.en_GB.toContain
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
+import io.mockk.every
+import io.mockk.mockk
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
@@ -14,9 +16,11 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 class PDFExtractorTest {
-  val extractor = PDFExtractor(object: AIClient {
-    override fun query(input: String) = """{"result": "test"}"""
-  })
+  val response = AIClient.Response("r1", "success", "test-model", """{"result": "test"}""")
+  val aiClient = mockk<AIClient>(relaxed = true) {
+    every { query(any()) } returns response
+  }
+  val extractor = PDFExtractor(aiClient)
 
   @Test fun `extract text from simple PDF`() {
     val pdfBytes = createPdf("Invoice 123\nAmount: 100.00 EUR\nDate: 2025-01-15")
@@ -66,9 +70,7 @@ class PDFExtractorTest {
   }
 
   @Test fun `stripMarkdown removes code fences`() {
-    val extractor = PDFExtractor(object: AIClient {
-      override fun query(input: String) = "```json\n{\"key\": \"value\"}\n```"
-    })
+    every { aiClient.query(any()) } returns response.copy(text = "```json\n{\"key\": \"value\"}\n```")
     val pdfBytes = createPdf("test")
     val data = extractor.extractData<TestClass>(ByteArrayInputStream(pdfBytes))
     expect(data.key).toEqual("value")
@@ -76,13 +78,11 @@ class PDFExtractorTest {
 
   @Test fun `extractData retries on failure`() {
     var attempts = 0
-    val extractor = PDFExtractor(object: AIClient {
-      override fun query(input: String): String {
-        attempts++
-        if (attempts < 3) throw RuntimeException("API error")
-        return """{"key": "recovered"}"""
-      }
-    })
+    every { aiClient.query(any(), any(), any(), any()) } answers {
+      attempts++
+      if (attempts < 3) throw RuntimeException("API error")
+      response.copy(text = """{"key": "recovered"}""")
+    }
     val pdfBytes = createPdf("test")
     val data = extractor.extractData<TestClass>(ByteArrayInputStream(pdfBytes))
     expect(data.key).toEqual("recovered")
