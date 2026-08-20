@@ -7,6 +7,8 @@ import klite.http.timeout
 import klite.json.JsonHttpClient
 import klite.json.JsonMapper
 import klite.nodes.Node
+import klite.toBase64Url
+import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
 import java.time.Instant
@@ -25,7 +27,7 @@ open class OpenAIClient(httpClient: HttpClient, val params: Node = emptyMap()): 
   override fun query(input: String, imageUrl: URI?, params: Node): String =
     query(if (imageUrl != null) listOf(Input(listOf(
       Content(text = input, type = "input_text"),
-      Content(imageUrl = imageUrl, type = "input_image")
+      Content(imageUrl = if (imageUrl.scheme == "file") File(imageUrl.path).toBase64Url() else imageUrl, type = "input_image")
     ))) else input, params, null)
     .output.first { it.type == "message" }.content.first().text!!
 
