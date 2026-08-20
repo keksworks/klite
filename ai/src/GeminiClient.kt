@@ -22,12 +22,11 @@ open class GeminiClient(httpClient: HttpClient, val params: Node = emptyMap()): 
     json = JsonMapper(keys = SnakeCase),
     reqModifier = { timeout(30.seconds) })
 
-  override fun query(input: String, imageUrl: URI?, params: Node): String =
+  override fun query(input: String, imageUrl: URI?, prevResponseId: String?, params: Node): AIClient.Response =
     query(if (imageUrl != null) listOf(
       Content("text", input),
       Content("image", data = imageUrl.toURL().readBytes().base64Encode(), mimeType = MimeTypes.typeFor(imageUrl.path)!!)
-    ) else input, params)
-    .steps.first { it.content != null }.content!!.first().text!!
+    ) else input, params, prevResponseId).toTextResponse()
 
   fun query(input: Any /* String | List<Content | Step> */, params: Node = emptyMap(), prevInteractionId: String? = null): Response =
     http.post("/interactions?key=$key", mapOf(
@@ -38,7 +37,9 @@ open class GeminiClient(httpClient: HttpClient, val params: Node = emptyMap()): 
     ) + this.params + params)
 
   data class GenerationConfig(val thinkingLevel: String? = null, val temperature: Int = 1, val maxOutputTokens: Int? = null)
-  data class Response(val id: String, val status: String, val steps: List<Step>, val usage: Node, val created: Instant, val model: String)
   data class Step(val type: String, val content: List<Content>? = null, val signature: String? = null)
   data class Content(val type: String, val text: String? = null, val uri: URI? = null, val data: String? = null, val mimeType: String? = null)
+  data class Response(val id: String, val status: String, val steps: List<Step>, val usage: Node, val created: Instant, val model: String) {
+    fun toTextResponse() = AIClient.Response(id, status, model, steps.first { it.content != null }.content!!.first().text!!)
+  }
 }

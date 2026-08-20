@@ -37,7 +37,7 @@ class PDFExtractor(private val aiClient: AIClient, private val json: JsonMapper 
     var prompt = "Output plain json with keys $keys, ISO dates, numbers as strings with dots: $text\n$extraPrompt"
     repeat(numAttempts) {
       try {
-        val jsonStr = aiClient.query(prompt).stripMarkdown()
+        val jsonStr = aiClient.query(prompt).text.stripMarkdown()
         if (provided.isEmpty()) return json.parse(jsonStr, type.createType())
         return type.createFrom(json.parse<Node>(jsonStr) + provided.mapKeys { it.key.name })
       } catch (e: Exception) {
@@ -49,5 +49,5 @@ class PDFExtractor(private val aiClient: AIClient, private val json: JsonMapper 
     error("Failed to extract ${type.simpleName} after $numAttempts attempts")
   }
 
-  private fun String.stripMarkdown() = substringAfter("```json").substringBefore("```")
+  private fun String.stripMarkdown() = substringAfter("```json").substringBeforeLast("```")
 }
