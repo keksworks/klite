@@ -18,19 +18,23 @@ class SqlExprTest {
 
   @Test fun orExpr() {
     val or = orExpr("column" to null, "column" to listOf(1, 2, 3), null)
-    expect(or.expr).toEqual("(\"column\" is null or \"column\" = any(?))")
-    expect(or.values).toContainExactly(listOf(1, 2, 3))
+    expect(or.expr).toEqual("(\"column\" is null or \"column\"" +
+      if (isPostgres) " = any(?))" else " in (?, ?, ?))")
+    expect(or.values).toContainExactly(if (isPostgres) listOf(listOf(1, 2, 3)) else listOf(1, 2, 3))
   }
 
   @Test fun inOperators() {
-    expect(In(1, 2, 3).expr("column")).toEqual("\"column\" = any(?)")
-    expect(NotIn(1, 2, 3).expr("column")).toEqual("\"column\" <> all(?)")
+    expect(In(1, 2, 3).expr("column")).toEqual("\"column\"" +
+      if (isPostgres) " = any(?)" else " in (?, ?, ?)")
+    expect(NotIn(1, 2, 3).expr("column")).toEqual("\"column\"" +
+      if (isPostgres) " <> all(?)" else " not in (?, ?, ?)")
   }
 
   @Test fun expressionValuesAreFlattened() {
     val and = andExpr("column" to Between(1, 2), "array" to listOf(3, 4))
-    expect(and.expr).toEqual("(\"column\" between ? and ? and \"array\" = any(?))")
-    expect(and.values).toContainExactly(1, 2, listOf(3, 4))
+    expect(and.expr).toEqual("(\"column\" between ? and ? and \"array\"" +
+      if (isPostgres) " = any(?))" else " in (?, ?))")
+    expect(and.values).toContainExactly(if (isPostgres) listOf(1, 2, listOf(3, 4)) else listOf(1, 2, 3, 4))
   }
 
   @Test fun SqlComputed() {
