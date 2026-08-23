@@ -67,14 +67,14 @@ class BetweenExcl(from: Comparable<*>, to: Comparable<*>): SqlExpr("", from, to)
   override fun expr(key: String) = "${q(key)} >= ? and ${q(key)} < ?"
 }
 
-open class In(values: Iterable<*>): SqlExpr("", values) {
+open class In(values: Iterable<*>): SqlExpr("", listOf(values)) {
   constructor(vararg values: Any?): this(values.toList())
-  override fun expr(key: String) = q(key) + " in (${values.joinToString { "?" }})"
+  override fun expr(key: String) = q(key) + " = any(?)"
 }
 
 class NotIn(values: Iterable<*>): In(values) {
   constructor(vararg values: Any?): this(values.toList())
-  override fun expr(key: String) = super.expr(key).replace(" in ", " not in ")
+  override fun expr(key: String) = q(key) + " <> all(?)"
 }
 
 private fun seqExpr(where: Array<out Pair<ColName, Any?>?>, separator: String): SqlExpr {

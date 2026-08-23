@@ -18,8 +18,13 @@ class SqlExprTest {
 
   @Test fun orExpr() {
     val or = orExpr("column" to null, "column" to listOf(1, 2, 3), null)
-    expect(or.expr).toEqual("(\"column\" is null or \"column\" in (?, ?, ?))")
-    expect(or.values).toContainExactly(1, 2, 3)
+    expect(or.expr).toEqual("(\"column\" is null or \"column\" = any(?))")
+    expect(or.values).toContainExactly(listOf(1, 2, 3))
+  }
+
+  @Test fun inOperators() {
+    expect(In(1, 2, 3).expr("column")).toEqual("column = any(?)")
+    expect(NotIn(1, 2, 3).expr("column")).toEqual("column <> all(?)")
   }
 
   @Test fun SqlComputed() {
