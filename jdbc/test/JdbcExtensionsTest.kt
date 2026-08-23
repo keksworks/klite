@@ -39,6 +39,6 @@ class JdbcExtensionsTest {
     expect(whereExpr(where)).toEqual(" where array" +
       if (isPostgres) " = any(?) and excluded <> all(?)" else " in (?, ?, ?) and excluded not in (?, ?)")
     val expectedValues: List<Any?> = if (isPostgres) listOf(listOf(1, 2, 3), listOf("a", "b")) else listOf(1, 2, 3, "a", "b")
-    expect(whereValues(where).toList()).toContainExactly(*expectedValues.toTypedArray())
+    expect(whereValues(where).toList()).toEqual(expectedValues)
   }
 }
