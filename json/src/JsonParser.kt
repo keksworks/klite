@@ -17,7 +17,6 @@ private const val EOF = '\uFFFF'
 class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
   private var line: Int = 1
   private var pos: Int = 0
-  private var nextChar: Char? = null
   private val buf = CharArray(8192)
   private var bufPos = 0
   private var bufLen = 0
@@ -108,7 +107,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
   private fun <T> readArrayElements(type: KType?, consumer: (o: T) -> Unit) {
     while (true) {
       var c = nextNonSpace()
-      if (c == ']') break else unRead(c)
+      if (c == ']') break else unRead()
       consumer(readValue(type) as T)
       c = nextNonSpace()
       if (c == ']') break else c.expect(',')
@@ -131,21 +130,23 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     append(include)
     while (true) {
       val c = next()
-      if (c == EOF || !(c.isLetterOrDigit() || c == '-' || c == '.')) { unRead(c); break }
+      if (c == EOF || !(c.isLetterOrDigit() || c == '-' || c == '.')) { unRead(); break }
       else append(c)
     }
   }.toString()
 
-  private fun next(): Char = nextChar?.also { nextChar = null } ?: run {
+  private fun next(): Char {
     if (bufPos >= bufLen) {
-      bufLen = reader.read(buf)
-      bufPos = 0
-      if (bufLen < 0) return EOF
+      bufLen = reader.read(buf, 1, buf.size - 1) + 1
+      if (bufLen <= 0) return EOF
+      bufPos = 1
+      buf[0] = buf[bufLen - 1]
     }
-    buf[bufPos++]
-  }.also { if (it == '\n') { line++; pos = 0 } else pos++ }
+    val c = buf[bufPos++]
+    return c.also { if (it == '\n') { line++; pos = 0 } else pos++ }
+  }
 
-  private fun unRead(c: Char) { nextChar = c }
+  private fun unRead() { bufPos-- }
   private fun fail(msg: String): Nothing = throw JsonParseException(msg, line, pos)
 
   private fun Char.expect(char: Char) {
