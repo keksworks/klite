@@ -27,6 +27,12 @@ class SqlExprTest {
     expect(NotIn(1, 2, 3).expr("column")).toEqual("\"column\" <> all(?)")
   }
 
+  @Test fun expressionValuesAreFlattened() {
+    val and = andExpr("column" to Between(1, 2), "array" to listOf(3, 4))
+    expect(and.expr).toEqual("(\"column\" between ? and ? and \"array\" = any(?))")
+    expect(and.values).toContainExactly(1, 2, listOf(3, 4))
+  }
+
   @Test fun SqlComputed() {
     expect(SqlComputed("current_date").expr("date")).toEqual("date=current_date")
   }

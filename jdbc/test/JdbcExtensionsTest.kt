@@ -31,4 +31,10 @@ class JdbcExtensionsTest {
       " and date=current_date and json=?::jsonb and exists (subselect) and (a=? or ?=any(array) or something like ? or num >= ?)")
     expect(whereValues(where).toList()).toContainExactly("world", listOf(1, 2, 3), "{}", "b", 123, "x%", 1)
   }
+
+  @Test fun directCollectionWherePair() {
+    val where = whereConvert(listOf("array" to listOf(1, 2, 3), "excluded" to NotIn("a", "b")))
+    expect(whereExpr(where)).toEqual(" where array = any(?) and excluded <> all(?)")
+    expect(whereValues(where).toList()).toContainExactly(listOf(1, 2, 3), listOf("a", "b"))
+  }
 }
