@@ -23,8 +23,8 @@ class SqlExprTest {
   }
 
   @Test fun inOperators() {
-    expect(In(1, 2, 3).expr("column")).toEqual("column = any(?)")
-    expect(NotIn(1, 2, 3).expr("column")).toEqual("column <> all(?)")
+    expect(In(1, 2, 3).expr("column")).toEqual("\"column\" = any(?)")
+    expect(NotIn(1, 2, 3).expr("column")).toEqual("\"column\" <> all(?)")
   }
 
   @Test fun SqlComputed() {
