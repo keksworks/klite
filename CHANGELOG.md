@@ -4,6 +4,7 @@
 * ai: extra params can be provided to either AIClient on creation, e.g. `mapOf("store" to false)`
 * json: `KType.toJsonSchema()` moved from openapi module and is now public, can be useful for requesting structured outputs from AI clients
 * json: use explicit buffering to increase JsonParser speed (by avoiding reading each char separately)
+* jdbc: optimize `in`/`not in` for Postgres to avoid generating unique select statements depending on the number of elements
 
 # 2.0.1
 * json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project
