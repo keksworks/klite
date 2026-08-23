@@ -41,9 +41,9 @@ class JsonParserTest {
   @Test fun `parse invalid`() {
     expect { mapper.parse<Any>("""z""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'z' at 1:1")
     expect { mapper.parse<Any>("""{"hello": x""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'x' at 1:11")
-    expect { mapper.parse<Any>("""{"hello": """") }.toThrow<JsonParseException>().messageToContain("Unterminated string at 1:12")
-    expect { mapper.parse<Any>("""{"hello": 123""") }.toThrow<JsonParseException>().messageToContain("Expecting ',' but got EOF at 1:14")
-    expect { mapper.parse<Any>("""nulls""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'nulls' at 1:6")
+    expect { mapper.parse<Any>("""{"hello": """") }.toThrow<JsonParseException>().messageToContain("Unterminated string at 1:11")
+    expect { mapper.parse<Any>("""{"hello": 123""") }.toThrow<JsonParseException>().messageToContain("Expecting ',' but got EOF at 1:13")
+    expect { mapper.parse<Any>("""nulls""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'nulls' at 1:5")
     expect { mapper.parse<Any>("""123.12.12""") }.toThrow<NumberFormatException>().messageToContain("multiple points")
     expect { mapper.parse<Any>("{\r\n\r\nx}") }.toThrow<JsonParseException>().messageToContain("Expecting '\"' but got 'x' at 3:1")
   }

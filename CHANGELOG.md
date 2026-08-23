@@ -3,6 +3,7 @@
 * ai: both AIClient.query now supports images as input
 * ai: extra params can be provided to either AIClient on creation, e.g. `mapOf("store" to false)`
 * json: `KType.toJsonSchema()` moved from openapi module and is now public, can be useful for requesting structured outputs from AI clients
+* json: use explicit buffering to increase JsonParser speed (by avoiding reading each char separately)
 
 # 2.0.1
 * json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project
