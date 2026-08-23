@@ -31,7 +31,7 @@ class SqlExprTest {
       if (isPostgres) " <> all(?)" else " not in (?, ?, ?)")
   }
 
-  @Test fun expressionValuesAreFlattened() {
+  @Test fun expressionValuesBindingStrategy() {
     val and = andExpr("column" to Between(1, 2), "array" to listOf(3, 4))
     expect(and.expr).toEqual("(\"column\" between ? and ? and array" +
       if (isPostgres) " = any(?))" else " in (?, ?))")
