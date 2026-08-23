@@ -30,8 +30,10 @@ class JdbcExtensionsTest {
     expect(whereExpr(where)).toEqual(" where hello=? and nullable is null and array" +
       if (isPostgres) " = any(?) and emptyArray='{}'" else " in (?, ?, ?) and emptyArray='{}'" +
       " and date=current_date and json=?::jsonb and exists (subselect) and (a=? or ?=any(array) or something like ? or num >= ?)")
-    expect(whereValues(where).toList()).toContainExactly("world",
-      1, 2, 3, "{}", "b", 123, "x%", 1)
+    val expectedValues: List<Any?> = if (isPostgres)
+      listOf("world", listOf(1, 2, 3), "{}", "b", 123, "x%", 1)
+    else listOf("world", 1, 2, 3, "{}", "b", 123, "x%", 1)
+    expect(whereValues(where).toList()).toEqual(expectedValues)
   }
 
   @Test fun directCollectionWherePair() {
