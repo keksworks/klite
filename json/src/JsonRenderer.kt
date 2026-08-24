@@ -9,7 +9,11 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.superclasses
 
+const val bufSize = 8192
+
 class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoCloseable {
+  private val buf = StringBuilder(bufSize)
+
   fun render(o: Any?) = writeValue(o)
 
   @Suppress("NAME_SHADOWING")
@@ -79,10 +83,25 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
     writeValue(it.value, it.key as? KProperty1<Any, *>)
   }
 
-  private fun write(c: Char) = out.write(c.code)
-  private fun write(s: String) = out.write(s)
+  private fun write(c: Char) {
+    buf.append(c)
+    if (buf.length >= bufSize) flush()
+  }
 
-  override fun close() = out.close()
+  private fun write(s: String) {
+    if (buf.length + s.length >= bufSize) flush()
+    buf.append(s)
+  }
+
+  private fun flush() {
+    out.write(buf.toString())
+    buf.setLength(0)
+  }
+
+  override fun close() {
+    flush()
+    out.close()
+  }
 }
 
 internal val <T: Any> Sequence<KProperty1<T, *>>.notIgnored get() = filter { !it.hasAnnotation<JsonIgnore>() }
