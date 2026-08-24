@@ -118,4 +118,27 @@ class JsonRendererTest {
     val shapes: List<Shape> = listOf(Shape.Circle(5.0), Shape.Rect(10, 20))
     expect(mapper.render(shapes)).toEqual("""[{"type":"Circle","radius":5.0},{"type":"Rect","height":20,"width":10}]""")
   }
+
+  @Test fun `render string larger than buffer`() {
+    val largeValue = "x".repeat(9000)
+    val data = mapOf("key" to largeValue)
+    val json = mapper.render(data)
+    expect(json).toEqual("""{"key":"$largeValue"}""")
+    expect(mapper.parse<Map<String, Any?>>(json)["key"]).toEqual(largeValue)
+  }
+
+  @Test fun `render array larger than buffer`() {
+    val values = (1..3000).toList()
+    val json = mapper.render(values)
+    expect(json).toEqual(values.joinToString(",", "[", "]"))
+    expect(mapper.parse<List<Int>>(json)).toEqual(values)
+  }
+
+  @Test fun `render large output to OutputStream`() {
+    val largeValue = "x".repeat(9000)
+    val data = mapOf("key" to largeValue)
+    val out = ByteArrayOutputStream()
+    mapper.render(data, out)
+    expect(out.toByteArray().decodeToString()).toEqual("""{"key":"$largeValue"}""")
+  }
 }

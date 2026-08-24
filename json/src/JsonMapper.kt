@@ -16,6 +16,8 @@ import kotlin.reflect.typeOf
   annotation class Type(val value: String, val type: KClass<*>)
 }
 
+const val bufSize = 8192
+
 data class JsonMapper(
   val trimToNull: Boolean = true,
   val renderNulls: Boolean = false,

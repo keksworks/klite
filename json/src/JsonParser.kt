@@ -17,7 +17,7 @@ private const val EOF = '\uFFFF'
 class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
   private var line: Int = 1
   private var pos: Int = 0
-  private val buf = CharArray(8192)
+  private val buf = CharArray(bufSize)
   private var bufPos = 0
   private var bufLen = 0
 
@@ -137,7 +137,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
 
   private fun next(): Char {
     if (bufPos >= bufLen) {
-      bufLen = reader.read(buf, 1, buf.size - 1) + 1
+      bufLen = reader.read(buf, 1, bufSize - 1) + 1
       if (bufLen <= 0) return EOF
       bufPos = 1
       buf[0] = buf[bufLen - 1]

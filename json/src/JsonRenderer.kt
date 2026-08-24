@@ -9,8 +9,6 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.superclasses
 
-const val bufSize = 8192
-
 class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoCloseable {
   private val buf = StringBuilder(bufSize)
 

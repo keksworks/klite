@@ -155,4 +155,17 @@ class JsonParserTest {
     val json = """{"type": "Triangle", "sides": 3}"""
     expect { mapper.parse<Container>(json) }.toThrow<IllegalArgumentException>()
   }
+
+  @Test fun `parse string larger than buffer`() {
+    val largeValue = "x".repeat(9000)
+    val json = """{"key":"$largeValue"}"""
+    val result = mapper.parse<Map<String, Any?>>(json)
+    expect(result["key"]).toEqual(largeValue)
+  }
+
+  @Test fun `parse array larger than buffer`() {
+    val values = (1..3000).toList()
+    val json = values.joinToString(",", "[", "]")
+    expect(mapper.parse<List<Int>>(json)).toEqual(values)
+  }
 }
