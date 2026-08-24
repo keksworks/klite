@@ -2,27 +2,19 @@
 
 [![Release](https://jitpack.io/v/keksworks/klite.svg)](https://jitpack.io/#keksworks/klite) [![Build & Test](https://github.com/keksworks/klite/actions/workflows/ci.yml/badge.svg)](https://github.com/keksworks/klite/actions/workflows/ci.yml)
 
-Klite: a very light-weight (lite) non-blocking http framework for Kotlin/JVM, batteries included.
-Probably the most sustainable JVM web framework (low resource usage and CO₂ emissions).
+# Klite
 
-Inspired by SparkJava, Jooby, etc, but [smaller, simpler and better](docs/Comparisons.md).
+**A tiny, non-blocking Kotlin/JVM web framework with batteries included.**
 
-Includes very light [json](json) and [jdbc & migrations](jdbc) submodules for Kotlin, which can be used independently.
+Klite gives you a fast path from an idea to a production service: write plain Kotlin, start a server, and add only the modules you need. It is inspired by SparkJava and Jooby, but is [smaller, simpler, and better](docs/Comparisons.md).
 
-Please **star the repo** to let us know you are interested.
+Klite is built for developers—and for the AI-assisted development era. Its behavior is explicit, its source is short and readable, and your application code stays mostly independent of the framework. No sprawling abstractions or annotation magic for you or your coding agent to decipher.
 
-## Key features / differences from other frameworks
+> **Sustainable by default:** low resource usage means low infrastructure costs and lower CO₂ emissions.
 
-* Zero dependencies, Java built-in **jdk.httpserver** under the hood
-* Optimized for programmer happiness, with minimal boilerplate and clear code (validation, exception handling mostly automatic)
-* Small, simple and debuggable codebase
-* No magic, everything is explicit
-* All components are tightly integrated with consistent behavior (unlike separate libraries for everything)
-* Provides extreme type-safety, supports all modern Kotlin features and class types, including [TypeScript type generation for frontend](json)
-* Constructor-based [dependency injection](core/src/Registry.kt) for singletons
-* Batteries included: logging, json, xml, csv, jdbc, migrations, jobs, i18n, openapi, oauth, smtp, push, etc
+Please **star the repo** if Klite looks useful to you.
 
-## Quick code sample
+## See it in action
 
 ```kotlin
 fun main() {
@@ -30,7 +22,7 @@ fun main() {
     assets("/", AssetsHandler(Path.of("public"), useIndexForUnknownPaths = true))
     context("/api") {
       get("/hello") { "Hello, world!" }
-      // or
+      // Or use a plain annotated route class:
       annotated<MyRoutesClass>("/my")
     }
     start()
@@ -38,141 +30,132 @@ fun main() {
 }
 ```
 
-See the [Tutorial](TUTORIAL.md) to grasp the basics quickly.
+Read the [Tutorial](TUTORIAL.md) for a guided TODO REST API, or explore the [sample project](sample), which includes a database, Docker setup, SSE, OpenAPI, and OAuth.
 
-## Design goals
+## Why developers choose Klite
 
-* Follows [The Pure Code Manifesto](https://github.com/keksworks/manifesto)
-* Minimal amount of code
-  * Simple to maintain & change
-  * Performance is also important, but simplicity is preferred
-* Zero dependencies — Java built-in **jdk.httpserver** is used under the hood
-  * Perfect for microservices
-  * But still possible to easily add support for other servers if needed
-  * [Sample docker image](sample/Dockerfile) is about 50–70Mb thanks to jlink, depending on used modules
-  * Production applications can run with as low as 50Mb of heap memory, suitable for very cheap plans at Fly.io or Heroku
-* 12-factor apps by default
-* Most behavior can be overridden if necessary
-* Both route builder and annotated classes
-* Proper Kotlin coroutine support with working before/after filters for e.g. transactions and logging
-* Shared [type-safe value classes](core/src/Types.kt) across http parameters, database columns, json and xml fields, e.g. `Id<User>`, `Phone`, `Email`, etc.
-* Most app code will not depend on the framework, easy to switch
-* Not much need for documentation — the source code is short and readable.
+- **Zero dependencies:** the core server uses Java's built-in, non-blocking `jdk.httpserver`; no third-party server is hidden underneath.
+- **Minimal ceremony:** clear Kotlin APIs, automatic validation and exception handling, and a small, debuggable codebase.
+- **No magic:** behavior is explicit, overridable, and easy to test.
+- **Kotlin-first type safety:** modern Kotlin features and class types work naturally, including shared value classes such as `Id<User>`, `Phone`, and `Email` across HTTP, JDBC, JSON, and XML.
+- **Coroutines that work:** proper coroutine support, including reliable before/after filters for transactions, logging, and other cross-cutting concerns.
+- **Two routing styles:** a concise route builder DSL or plain annotated classes.
+- **Built-in DI:** constructor-based dependency injection for singletons.
+- **Production essentials:** logging, JSON, XML, CSV, JDBC, migrations, jobs, i18n, OpenAPI, OAuth, SMTP, push notifications, and AI integrations.
+- **Small deployments:** a jlink-built [sample Docker image](sample/Dockerfile) is about 50–70 MB, depending on modules; production apps can run with as little as 50 MB of heap.
 
-[llms.txt](llms.txt) version
+## Modules
 
-## Dependencies
+Use the pieces independently where useful:
 
-* Java 6+ built-in non-blocking jdk.httpserver
-* Re-routable Java 9+ System.Logger
-* Java 21 is the minimum supported version
+| Module | Purpose |
+| --- | --- |
+| [server](server) | Main HTTP server; zero external dependencies |
+| [json](json) | Lightweight, configurable JSON parsing/rendering and TypeScript type generation |
+| [xml](xml) | Fast XML parsing into data classes |
+| [csv](csv) | Simple CSV parsing and generation |
+| [jdbc](jdbc) | JDBC extensions, transactions, database access, and migrations |
+| [jdbc-test](jdbc-test) | Test database code against a real database |
+| [jobs](jobs) | Scheduled `JobRunner` |
+| [i18n](i18n) | Server-side translations |
+| [openapi](openapi) | OpenAPI 3.0 generation for routes; view with [Swagger UI](https://swagger.io/tools/swagger-ui/) |
+| [oauth](oauth) | OAuth 2.0 login with several providers |
+| [smtp](smtp) | SMTP email sending |
+| [push](push) | Browser Web Push notifications with VAPID |
+| [ai](ai) | AI clients, MCP servers, and PDF data extraction |
 
-# Modules
-
-* [core](core) - some reusable classes, e.g. Config. Don't depend on it directly.
-* [server](server) - the main server module. See [it's documentation](server). Zero external dependencies.
-* [json](json) - lightweight and easily configurable json parsing/rendering (usable *standalone*)
-* [xml](xml) - fast and lightweight xml parsing into data classes (usable *standalone*)
-* [csv](csv) - simple CSV parsing/generation (usable *standalone*)
-* [i18n](i18n) - simple server-side translations (for emails, etc)
-* [jdbc](jdbc) - provides JDBC extensions for database access, transaction handling and migrations (usable *standalone*)
-* [jdbc-test](jdbc-test) - provides a way of testing your DB code using a real DB
-* [jobs](jobs) - provides a simple scheduled JobRunner
-* [openapi](openapi) - generates OpenAPI 3.0 spec for all routes in a context, viewable with [Swagger UI](https://swagger.io/tools/swagger-ui/)
-* [oauth](oauth) - implements OAuth 2.0 login with several providers
-* [smtp](smtp) - for sending email over SMTP
-* [push](push) - implements Web Push notifications (VAPID) for sending push notifications to browsers
-* [ai](ai) - new module for calling AI clients, implementing MCP servers and extracting data from PDF
+The reusable [core](core) module contains shared classes such as `Config` and is normally used transitively.
 
 ### Integrations
 
-These integrate with external libraries. All of this functionality is available in Klite's own modules.
+These optional modules connect Klite to external libraries:
 
-* [slf4j](slf4j) - redirects server logs to slf4j and configures it (recommended for production)
-* [jackson](jackson) - json parsing/rendering using Jackson
-* [serialization](serialization) - json parsing/rendering using kotlinx-serialization
-* [liquibase](liquibase) - allows to use Liquibase for DB migration
+- [slf4j](slf4j) — redirect server logs to SLF4J (recommended for production)
+- [jackson](jackson) — JSON through Jackson
+- [serialization](serialization) — JSON through kotlinx-serialization
+- [liquibase](liquibase) — Liquibase database migrations
 
-## Status
+## Install
 
-The main server module is only ~1000 lines of code.
+Klite requires **Java 21 or newer**. `jdk.httpserver` has been part of the JDK since Java 6, and Java 9+ provides re-routable `System.Logger`.
 
-Klite powers dozens of known production apps.
-
-Publicly announced at [KKON 2022](https://rheinwerk-kkon.de/programm/keks-klite/), see [the slides](https://docs.google.com/presentation/d/1m5UORE88nVRdZXyDEoj74c0alk1Ff_tX8mfB8oLMbk0).
-
-## Performance
-
-Klite (including jdk.httpserver) has sub-1ms overhead per request after warmup.
-Can be verified with Apache Benchmark after [the sample project](sample) is launched:
-
-This simple route handles ~23000 rps, with 99% taking less than 1ms:<br>
-`ab -n 10000 -c 10 http://localhost:8080/api/hello`
-
-JDBC access route handles ~8000 rps, with 99% taking less than 1ms:<br>
-`ab -n 10000 -c 10 http://localhost:8080/api/hello/user/9725b054-426b-11ee-92a5-0bd2a151eea2`
-
-Coroutine suspension test with 1000 concurrent requests, ~8000 rps, 80% of requests complete within the specified delay of 100ms:<br>
-`ab -n 10000 -c 1000 http://localhost:8080/api/hello/suspend`
-
-Tests ran on Ubuntu, Java 25, i7-1165G7 Laptop CPU from 2020.
-
-## Usage
-
-See [the sample project](sample) on how to build apps with Klite and run them in Docker.
-
-There are open-source fully-fledged applications built with Klite (using Klite for backend):
-* [StoryTracker](https://github.com/keksworks/storytracker) - an agile project management tool
-* [AitaValida](https://github.com/keksworks/aitavalida) - voting compass application for Estonian elections
-
-Klite builds are available from [jitpack](https://jitpack.io/#keksworks/klite), see also [changelog](CHANGELOG.md)
+Add the modules you need through [JitPack](https://jitpack.io/#keksworks/klite):
 
 ```kotlin
-  repositories {
-    mavenCentral()
-    maven { url = uri("https://jitpack.io") }
-  }
+repositories {
+  mavenCentral()
+  maven { url = uri("https://jitpack.io") }
+}
 
-  dependencies {
-    val kliteVersion = "main-SNAPSHOT" // use a released tag or commit hash here
-    fun klite(module: String) = "com.github.keksworks.klite:klite-$module:$kliteVersion"
-    implementation(klite("server"))
-    // Plus any optional components with their own external dependencies, see above for list
-    implementation(klite("json"))
-    implementation(klite("jdbc"))
-    testImplementation(klite("jdbc-test"))
-    // ...
-  }
+dependencies {
+  val kliteVersion = "main-SNAPSHOT" // Prefer a released tag or commit hash
+  fun klite(module: String) = "com.github.keksworks.klite:klite-$module:$kliteVersion"
+
+  implementation(klite("server"))
+  implementation(klite("json"))
+  implementation(klite("jdbc"))
+  testImplementation(klite("jdbc-test"))
+}
 ```
 
-Also configure your IDE to download dependency sources (in Intellij -> Settings -> Advanced Settings), which will serve as documentation during development.
+Configure your IDE to download dependency sources (IntelliJ: **Settings → Advanced Settings**). The source is intentionally part of the documentation.
 
-### Using unreleased commits
+### Fork, local, or source builds
 
-Jitpack builds requested versions on the fly, so it is also good if you want to fork Klite and customize for your own needs -
-you will still be able to add your fork as a Maven/Gradle dependency in your apps.
+JitPack builds requested versions on demand, so you can use unreleased commits or a customized fork as a normal Gradle dependency. Pull requests are welcome.
 
-But pull-requests are welcome if you want to improve something for everybody!
+For a local build, publish to `~/.m2/repository`:
 
-### Depending on a local build
+```bash
+./gradlew publishToMavenLocal
+```
 
-Publish to `~/.m2/repository` by running `./gradlew publishToMavenLocal`
+Then add `mavenLocal()` and use `main-SNAPSHOT`.
 
-Then add `mavenLocal()` repository to your project and use Klite version of `main-SNAPSHOT`.
-
-### Depending on the Git repository (source) directly
-
-If there is a problem with Jitpack, then it's possible to add the following to your `settings.gradle.kts`:
+If JitPack is unavailable, depend directly on the Git repository from `settings.gradle.kts`:
 
 ```kotlin
 sourceControl {
   gitRepository(java.net.URI("https://github.com/keksworks/klite.git")) {
     producesModule("com.github.keksworks.klite:server")
     producesModule("com.github.keksworks.klite:jdbc")
-    // list all subprojects you depend on in build.gradle.kts, use their un-prefixed names, e.g. server, not klite-server
+    // Add every subproject used by build.gradle.kts, without the "klite-" prefix.
   }
 }
 ```
 
-Gradle will clone and build Klite for you automatically during your project's build.
-*Tagged version numbers* are supported this way, but *not commit hashes*.
+Gradle clones and builds Klite automatically. Tagged versions work this way; commit hashes do not.
+
+## Design principles
+
+- Follow [The Pure Code Manifesto](https://github.com/keksworks/manifesto).
+- Prefer the smallest amount of code: maintainability and easy change come before theoretical performance gains.
+- Support 12-factor applications by default.
+- Make it easy to add another server implementation if needed.
+- Keep most application code framework-independent, so switching remains practical.
+- Offer both route builders and annotated classes.
+- Keep documentation lightweight: the source is short enough to read directly.
+
+## Performance
+
+Klite, including `jdk.httpserver`, adds **under 1 ms of overhead per request after warmup**. On an Ubuntu laptop with Java 25 and a 2020 i7-1165G7:
+
+- A simple route handled about **23,000 requests/second**, with 99% under 1 ms:
+  `ab -n 10000 -c 10 http://localhost:8080/api/hello`
+- A JDBC route handled about **8,000 requests/second**, with 99% under 1 ms:
+  `ab -n 10000 -c 10 http://localhost:8080/api/hello/user/9725b054-426b-11ee-92a5-0bd2a151eea2`
+- With 1,000 concurrent requests, coroutine suspension handled about **8,000 requests/second**, with 80% completing within a 100 ms delay:
+  `ab -n 10000 -c 1000 http://localhost:8080/api/hello/suspend`
+
+Run these benchmarks with the [sample project](sample).
+
+## In production
+
+Klite's main server module is only about **1,000 lines of code** and powers dozens of known production applications. It was publicly announced at [KKON 2022](https://rheinwerk-kkon.de/programm/keks-klite/); see [the slides](https://docs.google.com/presentation/d/1m5UORE88nVRdZXyDEoj74c0alk1Ff_tX8mfB8oLMbk0).
+
+Open-source applications built with Klite include:
+
+- [StoryTracker](https://github.com/keksworks/storytracker) — agile project management
+- [AitaValida](https://github.com/keksworks/aitavalida) — voting compass for Estonian elections
+
+For an AI-readable overview, see [llms.txt](llms.txt). See [CHANGELOG.md](CHANGELOG.md) for releases and changes.
