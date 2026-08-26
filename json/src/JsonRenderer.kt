@@ -12,7 +12,10 @@ import kotlin.reflect.full.superclasses
 class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoCloseable {
   private val buf = StringBuilder(bufSize)
 
-  fun render(o: Any?) = writeValue(o)
+  fun render(o: Any?) {
+    writeValue(o)
+    flush()
+  }
 
   @Suppress("NAME_SHADOWING")
   private fun writeValue(o: Any?, prop: KProperty1<*, *>? = null) {
@@ -93,6 +96,7 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
 
   private fun flush() {
     out.write(buf.toString())
+    out.flush()
     buf.setLength(0)
   }
 

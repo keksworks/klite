@@ -28,8 +28,8 @@ data class JsonMapper(
   fun <T> parse(@Language("JSON") json: String, type: KType?): T = parse(json.reader(), type) as T
   fun <T> parse(json: InputStream, type: KType?): T = parse(json.reader(), type) as T
 
-  fun render(o: Any?, out: Writer) = JsonRenderer(out, this).use { it.render(o) }
-  fun render(o: Any?, out: OutputStream) = FastOutputStreamWriter(out).let { try { render(o, it) } finally { it.flush() } }
+  fun render(o: Any?, out: Writer) = JsonRenderer(out, this).render(o)
+  fun render(o: Any?, out: OutputStream) = render(o, OutputStreamWriter(out))
   @Language("JSON") fun render(o: Any?): String = StringWriter().also { render(o, it) }.toString()
 
   internal val inlineClassesAsString = ConcurrentHashMap<KClass<*>, Boolean>()
@@ -38,23 +38,3 @@ data class JsonMapper(
 inline fun <reified T> JsonMapper.parse(json: Reader): T = parse(json, typeOf<T>())
 inline fun <reified T> JsonMapper.parse(@Language("JSON") json: String): T = parse(json, typeOf<T>())
 inline fun <reified T> JsonMapper.parse(json: InputStream): T = parse(json, typeOf<T>())
-
-class FastOutputStreamWriter(private val out: OutputStream): Writer() {
-  private var highSurrogate = '\u0000'
-
-  override fun write(c: Int) {
-    val ch = c.toChar()
-    when {
-      c < 0x80 -> out.write(c)
-      ch.isHighSurrogate() -> highSurrogate = ch
-      ch.isLowSurrogate() -> write(charArrayOf(highSurrogate, ch))
-      else -> write(ch.toString())
-    }
-  }
-
-  override fun write(s: String) = out.write(s.encodeToByteArray())
-  override fun write(cbuf: CharArray, off: Int, len: Int) = write(String(cbuf, off, len))
-
-  override fun flush() = out.flush()
-  override fun close() = out.close()
-}
