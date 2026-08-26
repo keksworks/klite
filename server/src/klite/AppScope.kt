@@ -7,12 +7,18 @@ import java.util.concurrent.Future
 
 object AppScope {
   private val executor = Executors.newVirtualThreadPerTaskExecutor()
+  private val log = logger()
 
   fun <T> async(task: Callable<T>): Future<T> {
     val threadName = currentThread().name
     return executor.submit(Callable {
       currentThread().name = "$threadName+async"
-      task.call()
+      try {
+        task.call()
+      } catch (e: Exception) {
+        log.error("Async task failed", e)
+        throw e
+      }
     })
   }
 }

@@ -1,4 +1,5 @@
 # Unreleased
+* server: AppScope.async will now log any exceptions to avoid silent failures
 * ai: McpRoutes are now available for easier building of custom MCP servers
 * ai: both AIClient.query now supports images as input
 * ai: extra params can be provided to either AIClient on creation, e.g. `mapOf("store" to false)`
