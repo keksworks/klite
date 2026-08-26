@@ -19,7 +19,7 @@ import kotlin.time.Duration.Companion.seconds
  * Configure a default java.net.HttpClient in your registry with proper default timeout
  */
 open class TypedHttpClient(
-  protected val urlPrefix: String = "",
+  val baseUrl: String = "",
   val reqModifier: RequestModifier = { this },
   errorHandler: ((HttpResponse<*>, String) -> Nothing)? = null,
   val retryCount: Int = 0,
@@ -36,10 +36,10 @@ open class TypedHttpClient(
 
   protected var trimToLog: String.() -> String = { if (length <= maxLoggedLen) this else substring(0, maxLoggedLen) + "…" }
   var logger = logger(loggerName).apply {
-    if (urlPrefix.isNotEmpty()) info("Using $urlPrefix")
+    if (baseUrl.isNotEmpty()) info("Using $baseUrl")
   }
 
-  private fun buildReq(urlSuffix: String) = HttpRequest.newBuilder().uri(URI("$urlPrefix$urlSuffix"))
+  private fun buildReq(urlSuffix: String) = HttpRequest.newBuilder().uri(URI("$baseUrl$urlSuffix"))
     .contentType("application/json; charset=UTF-8").accept("application/json")
     .timeout(10.seconds).reqModifier()
 
