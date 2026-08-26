@@ -27,7 +27,6 @@ object MimeTypes {
     "mjs" to "text/javascript",
     "json" to json,
     "css" to "text/css",
-    "csv" to "text/csv",
     "ico" to "image/vnd.microsoft.icon",
     "png" to "image/png",
     "gif" to "image/gif",

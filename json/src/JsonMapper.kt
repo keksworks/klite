@@ -29,8 +29,8 @@ data class JsonMapper(
   fun <T> parse(json: InputStream, type: KType?): T = parse(json.reader(), type) as T
 
   fun render(o: Any?, out: Writer) = JsonRenderer(out, this).render(o)
-  fun render(o: Any?, out: OutputStream) = render(o, OutputStreamWriter(out))
-  @Language("JSON") fun render(o: Any?): String = StringWriter().also { render(o, it) }.toString()
+  fun render(o: Any?, out: OutputStream) = render(o, OutputStreamWriter(out, Charsets.UTF_8)) // TODO: MimeTypes.textCharset
+  @Language("JSON") fun render(o: Any?): String = StringWriter(bufSize).also { render(o, it) }.toString() // TODO: test bufSize
 
   internal val inlineClassesAsString = ConcurrentHashMap<KClass<*>, Boolean>()
 }

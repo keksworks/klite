@@ -1,3 +1,6 @@
+# Unreleased
+* json: JsonRenderer.render() should not close the stream
+
 # 2.0.2
 * server: AppScope.async will now log any exceptions to avoid silent failures
 * json: use explicit buffering in JsonParser and JsonReader to speed up by ~25% (avoids virtual calls and char-int conversions)
