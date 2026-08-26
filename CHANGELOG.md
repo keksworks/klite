@@ -1,11 +1,11 @@
-# Unreleased
+# 2.0.2
 * server: AppScope.async will now log any exceptions to avoid silent failures
+* json: use explicit buffering in JsonParser and JsonReader to speed up by ~25% (avoids virtual calls and char-int conversions)
+* jdbc: optimize `in`/`not in` for Postgres to avoid generating unique select statements depending on the number of elements
 * ai: McpRoutes are now available for easier building of custom MCP servers
 * ai: both AIClient.query now supports images as input
 * ai: extra params can be provided to either AIClient on creation, e.g. `mapOf("store" to false)`
 * json: `KType.toJsonSchema()` moved from openapi module and is now public, can be useful for requesting structured outputs from AI clients
-* json: use explicit buffering in JsonParser and JsonReader to speed up by ~25% (avoids virtual calls and char-int conversions)
-* jdbc: optimize `in`/`not in` for Postgres to avoid generating unique select statements depending on the number of elements
 
 # 2.0.1
 * json: TSGenerator -r option introduced to generate types only for input/output types of route classes; skipping unreferenced data classes that exist in the project
