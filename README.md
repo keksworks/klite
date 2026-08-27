@@ -20,6 +20,7 @@ Please **star the repo** to let us know you are interested.
 * All components are tightly integrated with consistent behavior (unlike separate libraries for everything)
 * Provides extreme type-safety, supports all modern Kotlin features and class types, including [TypeScript type generation for frontend](json)
 * Constructor-based [dependency injection](core/src/Registry.kt) for singletons
+* JVM VirtualThreads by default + Kotlin coroutine support
 * Batteries included: logging, json, xml, csv, jdbc, migrations, jobs, i18n, openapi, oauth, smtp, push, etc
 
 ## Quick code sample
@@ -123,6 +124,7 @@ See [the sample project](sample) on how to build apps with Klite and run them in
 
 There are open-source fully-fledged applications built with Klite (using Klite for backend):
 * [StoryTracker](https://github.com/keksworks/storytracker) - an agile project management tool
+* [TimeTracker](https://github.com/pikkerdev/time-tracker) - project time tracking and invoicing tool
 * [AitaValida](https://github.com/keksworks/aitavalida) - voting compass application for Estonian elections
 
 Klite builds are available from [jitpack](https://jitpack.io/#keksworks/klite), see also [changelog](CHANGELOG.md)
