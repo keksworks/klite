@@ -1,7 +1,4 @@
-# Unreleased
-* json: JsonRenderer.render() should not close the stream
-
-# 2.0.2
+# 2.0.3
 * server: AppScope.async will now log any exceptions to avoid silent failures
 * json: use explicit buffering in JsonParser and JsonReader to speed up by ~25% (avoids virtual calls and char-int conversions)
 * jdbc: optimize `in`/`not in` for Postgres to avoid generating unique select statements depending on the number of elements
