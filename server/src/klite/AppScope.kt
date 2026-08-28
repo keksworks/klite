@@ -9,10 +9,10 @@ object AppScope {
   private val executor = Executors.newVirtualThreadPerTaskExecutor()
   private val log = logger()
 
-  fun <T> async(task: Callable<T>): Future<T> {
+  fun <T> async(threadNameSuffix: String = "+async", task: Callable<T>): Future<T> {
     val threadName = currentThread().name
     return executor.submit(Callable {
-      currentThread().name = "$threadName+async"
+      currentThread().name = "$threadName$threadNameSuffix"
       try {
         task.call()
       } catch (e: Exception) {
