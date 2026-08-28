@@ -1,5 +1,9 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
+plugins {
+  id("org.graalvm.buildtools.native") version "1.1.10"
+}
+
 val mainClassName = "LauncherKt"
 
 dependencies {
@@ -56,4 +60,32 @@ tasks.register<JavaExec>("types.ts") {
 
 tasks.withType<KotlinCompile> {
   finalizedBy("types.ts")
+}
+
+// GraalVM native image build: ./gradlew :sample:nativeCompile, run with build/native/nativeCompile/klite-sample
+// klite relies heavily on Kotlin/Java reflection (annotated routes, JDBC row mapping, JSON (de)serialization),
+// so any newly added reflectively-used classes must be captured by (re-)running the tracing agent:
+//   ./gradlew -Pagent :sample:run   # exercise all the code paths you want covered, then Ctrl+C
+//   ./gradlew :sample:metadataCopy  # merges the recorded config into src/META-INF/native-image
+graalvmNative {
+  metadataRepository { // use GraalVM's shared reachability metadata for 3rd-party deps, e.g. postgresql, HikariCP
+    enabled.set(true)
+  }
+  agent {
+    defaultMode.set("standard")
+    metadataCopy {
+      mergeWithExisting.set(true)
+      inputTaskNames.add("run")
+      outputDirectories.add("src/META-INF/native-image")
+    }
+  }
+  binaries {
+    named("main") {
+      imageName.set("klite-sample")
+      mainClass.set(mainClassName)
+      buildArgs.add("--enable-http")
+      buildArgs.add("--enable-https")
+      buildArgs.add("-H:+ReportExceptionStackTraces")
+    }
+  }
 }
