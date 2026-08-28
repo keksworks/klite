@@ -25,8 +25,8 @@ This subproject can be compiled into a standalone [GraalVM](https://www.graalvm.
 ./gradlew :sample:nativeRun       # builds (if needed) and runs the native executable
 ```
 
-This requires a GraalVM distribution (e.g. installed via [sdkman](https://sdkman.io): `sdk install java 25-graalce`)
-to be used as the Gradle toolchain/JAVA_HOME when running these tasks.
+This requires a GraalVM distribution to be used as the Gradle toolchain/JAVA_HOME when running these tasks, e.g.
+installed via [sdkman](https://sdkman.io): `sdk install java $(sdk list java | grep -oP '\d+\.\d+\.\d+-graalce' | head -1)`.
 
 klite relies heavily on Kotlin/Java reflection (e.g. `annotated<Routes>()` route discovery, JDBC row-to-object
 mapping, JSON (de)serialization), which native-image cannot see statically. Reflection metadata for known
