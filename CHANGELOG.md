@@ -1,6 +1,7 @@
 # Unreleased
 * jdbc: let tryLock/unlock not eat exceptions; also log if unlock returns false
 * jobs: fix locking/unlocking of non-transactional jobs that should not run in parallel
+* json: flush partial buffer when generating of json fails
 
 # 2.0.3
 * server: AppScope.async will now log any exceptions to avoid silent failures
