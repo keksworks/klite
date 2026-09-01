@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.ceil
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 
 fun RouterConfig.enforceHttps(maxAge: Duration = 365.days) = before { e ->
   if (!e.isSecure) {
@@ -82,6 +83,27 @@ fun RouterConfig.rateLimit(limit: Int, window: Duration) {
       }
     }
     handler(e)
+  }
+}
+
+fun RouterConfig.securityBan(bannedFor: Duration = 1.hours,
+  blacklistedPaths: List<String> = listOf("/..", "/.env", "/.git", "compose.yml", ".php")) {
+  val banned = Cache<String, Boolean>(expiration = bannedFor)
+  val requestsBanned = AtomicLong()
+  val log = logger("securityBan")
+  Metrics.register("requestsBanned") { requestsBanned.get() }
+
+  before { e ->
+    if (banned[e.remoteAddress] == true) {
+      requestsBanned.incrementAndGet()
+      throw StatusCodeException(TooManyRequests)
+    }
+    if (blacklistedPaths.any { e.path.contains(it) }) {
+      banned[e.remoteAddress] = true
+      requestsBanned.incrementAndGet()
+      log.warn("banned ${e.remoteAddress} for $bannedFor because of requesting ${e.path}")
+      throw ForbiddenException()
+    }
   }
 }
 
