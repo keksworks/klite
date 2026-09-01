@@ -60,10 +60,11 @@ fun HttpExchange.lastModified(at: Instant): String = DateTimeFormatter.RFC_1123_
   header("Last-Modified", it)
 }
 
-fun RouterConfig.rateLimit(limit: Int, window: Duration, bannedFor: Duration = window * 3) {
-  val limits = Cache<String, RateLimit>(expiration = bannedFor, prolongOnAccess = true)
+fun RouterConfig.rateLimit(limit: Int, window: Duration) {
+  val limits = Cache<String, RateLimit>(expiration = window * 3, prolongOnAccess = true)
   val rate = limit.toDouble() / window.inWholeNanoseconds
   val maxTokens = limit.toDouble()
+  val log = logger("rateLimit")
   val requestsLimited = AtomicLong()
   Metrics.register("requestsLimited") { requestsLimited.get() }
 
@@ -79,6 +80,7 @@ fun RouterConfig.rateLimit(limit: Int, window: Duration, bannedFor: Duration = w
         requestsLimited.incrementAndGet()
         val retryAfter = ceil((1 - limiter.tokens) / rate / 1e9).toInt()
         e.header("Retry-After", retryAfter.toString())
+        log.warn("exceeded for ${e.remoteAddress}, retry after $retryAfter sec")
         throw StatusCodeException(TooManyRequests)
       }
     }
@@ -89,8 +91,8 @@ fun RouterConfig.rateLimit(limit: Int, window: Duration, bannedFor: Duration = w
 fun RouterConfig.securityBan(bannedFor: Duration = 1.hours,
   blacklistedPaths: List<String> = listOf("/..", "/.env", "/.git", "compose.yml", ".php")) {
   val banned = Cache<String, Boolean>(expiration = bannedFor)
-  val requestsBanned = AtomicLong()
   val log = logger("securityBan")
+  val requestsBanned = AtomicLong()
   Metrics.register("requestsBanned") { requestsBanned.get() }
 
   before { e ->
