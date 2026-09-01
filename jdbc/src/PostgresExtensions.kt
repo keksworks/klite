@@ -3,8 +3,9 @@ package klite.jdbc
 import klite.logger
 import klite.trimToNull
 import klite.warn
+import java.sql.Connection
 import java.sql.ResultSet
-import java.sql.SQLException
+import java.sql.Types
 import java.util.concurrent.ConcurrentHashMap
 import javax.sql.DataSource
 import kotlin.text.RegexOption.IGNORE_CASE
@@ -17,14 +18,21 @@ val DataSource.isPostgres get() = dbPostgresIndicators.getOrPut(this) {
   (url ?: withConnection { metaData.url }).contains("postgresql")
 }
 
-fun DataSource.lock(on: String) = logOnFailure { query("select pg_advisory_lock(${lockKey(on)})") {}.first() }
-fun DataSource.tryLock(on: String): Boolean = logOnFailure { query("select pg_try_advisory_lock(${lockKey(on)})") { getBoolean(1) }.first() } == true
-fun DataSource.unlock(on: String): Boolean = logOnFailure { query("select pg_advisory_unlock(${lockKey(on)})") { getBoolean(1) }.first() } == true
+fun Connection.lock(on: String) { call("pg_advisory_lock", lockKey(on)) }
+fun Connection.tryLock(on: String): Boolean = tryCall("pg_try_advisory_lock", lockKey(on))
+fun Connection.unlock(on: String): Boolean = tryCall("pg_advisory_unlock", lockKey(on))
+
+// TODO: should these be deprecated? unlock() must be run always on the same connection
+fun DataSource.lock(on: String) = withConnection { lock(on) }
+fun DataSource.tryLock(on: String): Boolean = withConnection { tryLock(on) }
+fun DataSource.unlock(on: String): Boolean = withConnection { unlock(on) }
 
 private fun lockKey(on: String): Long = on.fold(0L) { acc, char -> 31L * acc + char.code }
 
-private fun <T> DataSource.logOnFailure(block: () -> T): T? =
-  try { block() } catch (e: SQLException) { logger().warn("$e, ignoring"); null }
+private fun Connection.tryCall(callable: String, param: Long): Boolean =
+  (call(callable, param, returnSqlType = Types.BOOLEAN) == true).also {
+    if (!it) logger().warn("$callable: $it")
+  }
 
 private val columnNameIndexMapField = runCatching {
   Class.forName("org.postgresql.jdbc.PgResultSet").getDeclaredField("columnNameIndexMap").apply { trySetAccessible() }
