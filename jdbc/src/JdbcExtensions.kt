@@ -30,6 +30,8 @@ typealias ValueMap = Map<out ColName, *>
 @Deprecated(replaceWith = ReplaceWith("ValueMap"), message = "Use ValueMap instead")
 typealias Values = ValueMap
 
+// TODO: idea - define all the methods on Wrapper and then check if it's DataSource or Connection - this will avoid duplicating all fun variants
+
 fun <R, ID> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, id: ID, column: String = "id", @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): R =
   select(table, listOf(column to id), suffix, ArrayList(1), mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
 
@@ -114,16 +116,18 @@ fun <R> DataSource.withStatement(@Language("SQL") sql: String, keys: Int = NO_GE
 
 @IgnorableReturnValue
 fun Connection.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? =
-  prepareCall("{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}").use { it.apply {
+  prepareCall("{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}").use { c ->
     var i = 1
-    returnSqlType?.let { registerOutParameter(i++, it) }
-    setAll(parameters.toList(), i)
-    execute()
-    returnSqlType?.let { getObject(1) }
-  }}
+    returnSqlType?.let { c.registerOutParameter(i++, it) }
+    c.setAll(parameters.toList(), i)
+    c.execute()
+    returnSqlType?.let { c.getObject(1) }
+  }
 
 @IgnorableReturnValue
-fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? = withConnection { call(callable, parameters, returnSqlType) }
+fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? = withConnection {
+  call(callable, *parameters, returnSqlType = returnSqlType)
+}
 
 // TODO: add insert with mapper that returns the generated keys
 @IgnorableReturnValue
