@@ -19,8 +19,10 @@ val DataSource.isPostgres get() = dbPostgresIndicators.getOrPut(this) {
 }
 
 fun Connection.lock(on: String) { call("pg_advisory_lock", lockKey(on)) }
-fun Connection.tryLock(on: String): Boolean = tryCall("pg_try_advisory_lock", lockKey(on))
-fun Connection.unlock(on: String): Boolean = tryCall("pg_advisory_unlock", lockKey(on))
+fun Connection.tryLock(on: String): Boolean = call("pg_try_advisory_lock", lockKey(on), returnSqlType = Types.BOOLEAN) == true
+fun Connection.unlock(on: String): Boolean = (call("pg_advisory_unlock", lockKey(on), returnSqlType = Types.BOOLEAN) == true).also {
+  if (!it) logger().warn("Unlocking of $on failed in $this")
+}
 
 // TODO: should these be deprecated? unlock() must be run always on the same connection
 fun DataSource.lock(on: String) = withConnection { lock(on) }
@@ -28,11 +30,6 @@ fun DataSource.tryLock(on: String): Boolean = withConnection { tryLock(on) }
 fun DataSource.unlock(on: String): Boolean = withConnection { unlock(on) }
 
 private fun lockKey(on: String): Long = on.fold(0L) { acc, char -> 31L * acc + char.code }
-
-private fun Connection.tryCall(callable: String, param: Long): Boolean =
-  (call(callable, param, returnSqlType = Types.BOOLEAN) == true).also {
-    if (!it) logger().warn("$callable: $it")
-  }
 
 private val columnNameIndexMapField = runCatching {
   Class.forName("org.postgresql.jdbc.PgResultSet").getDeclaredField("columnNameIndexMap").apply { trySetAccessible() }

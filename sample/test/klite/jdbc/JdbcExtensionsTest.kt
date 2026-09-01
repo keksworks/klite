@@ -114,14 +114,11 @@ open class JdbcExtensionsTest: TempTableDBTest() {
   @Test fun `postgres advisory locks`() {
     val ok = "Hello"
     expect(db.unlock(ok)).toEqual(false)
-    try {
-      expect(db.tryLock(ok)).toEqual(true)
-      expect(db.tryLock(ok)).toEqual(true)
-    } finally {
-      expect(db.unlock(ok)).toEqual(true)
-      expect(db.unlock(ok)).toEqual(true)
-      expect(db.unlock(ok)).toEqual(false)
-    }
+    expect(db.tryLock(ok)).toEqual(true)
+    expect(db.tryLock(ok)).toEqual(true)
+    expect(db.unlock(ok)).toEqual(true)
+    expect(db.unlock(ok)).toEqual(true)
+    expect(db.unlock(ok)).toEqual(false)
   }
 
   @Test fun `postgres notify and listen`() = runTest {

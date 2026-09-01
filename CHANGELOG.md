@@ -1,5 +1,5 @@
 # Unreleased
-* jdbc: let tryLock/unlock not eat exceptions; also log if they return false
+* jdbc: let tryLock/unlock not eat exceptions; also log if unlock returns false
 
 # 2.0.3
 * server: AppScope.async will now log any exceptions to avoid silent failures
