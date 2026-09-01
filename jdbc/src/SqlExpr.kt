@@ -6,7 +6,7 @@ import kotlin.reflect.KProperty1
 open class SqlExpr(@Language("SQL", prefix = selectWhere) internal val expr: String, val values: Iterable<*> = emptyList<Any>()) {
   constructor(@Language("SQL", prefix = selectWhere) expr: String, vararg values: Any?): this(expr, values.toList())
   open fun expr(key: String) = expr
-  override fun equals(other: Any?) = other === this || other is SqlExpr && other.expr == this.expr && other.values == this.values
+  override fun equals(other: Any?) = other === this || other?.javaClass == javaClass && (other as SqlExpr).expr == expr && other.values == values
   override fun hashCode() = expr.hashCode() + values.hashCode()
 }
 
