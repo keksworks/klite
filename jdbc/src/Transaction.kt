@@ -24,7 +24,7 @@ class Transaction: AutoCloseable {
   }
 
   override fun close() = close(true)
-  fun close(commit: Boolean = true) {
+  fun close(commit: Boolean = true, extraAction: Connection.() -> Unit = {}) {
     connections.forEach { (_, conn) ->
       try {
         conn.apply {
@@ -32,6 +32,7 @@ class Transaction: AutoCloseable {
             if (commit) commit() else rollback()
             autoCommit = true
           }
+          extraAction()
         }
       } catch (e: SQLException) {
         log.error("Failed to ${if (commit) "commit" else "rollback"}", e)
