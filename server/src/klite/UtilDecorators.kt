@@ -60,8 +60,8 @@ fun HttpExchange.lastModified(at: Instant): String = DateTimeFormatter.RFC_1123_
   header("Last-Modified", it)
 }
 
-fun RouterConfig.rateLimit(limit: Int, window: Duration) {
-  val limits = Cache<String, RateLimit>(expiration = window * 3, prolongOnAccess = true)
+fun RouterConfig.rateLimit(limit: Int, window: Duration, bannedFor: Duration = window * 3) {
+  val limits = Cache<String, RateLimit>(expiration = bannedFor, prolongOnAccess = true)
   val rate = limit.toDouble() / window.inWholeNanoseconds
   val maxTokens = limit.toDouble()
   val requestsLimited = AtomicLong()
