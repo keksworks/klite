@@ -13,12 +13,12 @@ jobs:
       contents: write # The Dependency Submission API requires write permission
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -30,13 +30,3 @@ jobs:
       - run: cd sample && docker compose stop db && cd -
       - run: cd sample && docker compose build && cd -
       - run: .github/workflows/check-readme-links.sh
-
-      - uses: mikepenz/gradle-dependency-submission@v0.8.6
-        if: ${{ github.ref == 'refs/heads/master' }}
-        with:
-          gradle-build-module: |-
-            :server
-            :slf4j
-            :jackson
-            :liquibase
-            :sample
