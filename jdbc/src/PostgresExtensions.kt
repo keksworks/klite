@@ -17,9 +17,11 @@ val DataSource.isPostgres get() = dbPostgresIndicators.getOrPut(this) {
   (url ?: withConnection { metaData.url }).contains("postgresql")
 }
 
-fun DataSource.lock(on: String) = logOnFailure { query("select pg_advisory_lock(${on.hashCode()})") {}.first() }
-fun DataSource.tryLock(on: String): Boolean = logOnFailure { query("select pg_try_advisory_lock(${on.hashCode()})") { getBoolean(1) }.first() } == true
-fun DataSource.unlock(on: String): Boolean = logOnFailure { query("select pg_advisory_unlock(${on.hashCode()})") { getBoolean(1) }.first() } == true
+fun DataSource.lock(on: String) = logOnFailure { query("select pg_advisory_lock(${lockKey(on)})") {}.first() }
+fun DataSource.tryLock(on: String): Boolean = logOnFailure { query("select pg_try_advisory_lock(${lockKey(on)})") { getBoolean(1) }.first() } == true
+fun DataSource.unlock(on: String): Boolean = logOnFailure { query("select pg_advisory_unlock(${lockKey(on)})") { getBoolean(1) }.first() } == true
+
+private fun lockKey(on: String): Long = on.fold(0L) { acc, char -> 31L * acc + char.code }
 
 private fun <T> DataSource.logOnFailure(block: () -> T): T? =
   try { block() } catch (e: SQLException) { logger().warn("$e, ignoring"); null }
