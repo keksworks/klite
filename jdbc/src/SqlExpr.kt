@@ -70,11 +70,13 @@ class BetweenExcl(from: Comparable<*>, to: Comparable<*>): SqlExpr("", from, to)
 open class In(values: Iterable<*>): SqlExpr("", if (isPostgres) listOf(values) else values) {
   constructor(vararg values: Any?): this(values.toList())
   override fun expr(key: String) = q(key) + if (isPostgres) " = any(?)" else " in (${values.joinToString { "?" }})"
+  override fun toString() = "In$values"
 }
 
 class NotIn(values: Iterable<*>): In(values) {
   constructor(vararg values: Any?): this(values.toList())
   override fun expr(key: String) = q(key) + if (isPostgres) " <> all(?)" else " not in (${values.joinToString { "?" }})"
+  override fun toString() = "NotIn$values"
 }
 
 private fun seqExpr(where: Array<out Pair<ColName, Any?>?>, separator: String): SqlExpr {
