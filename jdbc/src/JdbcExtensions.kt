@@ -112,18 +112,18 @@ fun <R> DataSource.withStatement(@Language("SQL") sql: String, keys: Int = NO_GE
   }
 }
 
-fun <R> DataSource.withCall(@Language("SQL") sql: String, block: CallableStatement.() -> R): R = withConnection {
-  prepareCall(sql).use { it.block() }
-}
-
-fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any =
-  withCall("{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}") {
+@IgnorableReturnValue
+fun Connection.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? =
+  prepareCall("{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}").use { it.apply {
     var i = 1
     returnSqlType?.let { registerOutParameter(i++, it) }
-    setAll(listOf(*parameters), i)
+    setAll(parameters.toList(), i)
     execute()
-    (returnSqlType?.let { getObject(1) } ?: Unit)
-  }
+    returnSqlType?.let { getObject(1) }
+  }}
+
+@IgnorableReturnValue
+fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? = withConnection { call(callable, parameters, returnSqlType) }
 
 // TODO: add insert with mapper that returns the generated keys
 @IgnorableReturnValue
