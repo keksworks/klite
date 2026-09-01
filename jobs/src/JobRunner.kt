@@ -1,12 +1,11 @@
 package klite.jobs
 
 import klite.*
-import klite.jdbc.NoTransaction
-import klite.jdbc.Transaction
-import klite.jdbc.tryLock
-import klite.jdbc.unlock
+import klite.jdbc.*
 import kotlinx.coroutines.Runnable
 import java.lang.Thread.currentThread
+import java.sql.Connection
+import java.sql.SQLException
 import java.time.Duration.between
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -63,23 +62,33 @@ open class JobRunner(
     val thread = currentThread()
     val prevName = thread.name
     thread.name = "${requestIdGenerator.prefix}/${job.name}#${seq.incrementAndGet()}"
+
     val tx = if (job.noTransaction) null else Transaction()
+    var lockConn: Connection? = null
+    var lockAcquired = false
     var commit = true
+
     try {
-      if (!job.allowParallelRun && !db.tryLock(job.name)) return log.info("${job.name} locked, skipping")
-      try {
-        log.info("${job.name} started")
-        tx?.attachToThread()
-        run(job)
-      } finally {
-        if (!job.allowParallelRun) db.unlock(job.name)
+      tx?.attachToThread()
+      lockConn = if (!job.allowParallelRun) tx?.connection(db) ?: db.connection else null
+      if (lockConn != null) {
+        lockAcquired = lockConn.tryLock(job.name)
+        if (!lockAcquired) return log.info("${job.name} locked, skipping")
       }
+
+      log.info("${job.name} started")
+      run(job)
     } catch (e: Exception) {
-      commit = false
       log.error("${job.name} failed", e)
+      commit = false
     } finally {
-      tx?.close(commit)
-      tx?.detachFromThread()
+      tx?.close(commit) {
+        if (lockAcquired && this == lockConn) unlock(job.name)
+      }
+      if (tx == null && lockConn != null && lockAcquired) {
+        try { lockConn.unlock(job.name) } catch (e: SQLException) { log.error("${job.name} failed to unlock", e) }
+        lockConn.safeClose()
+      }
       thread.name = prevName
     }
   }

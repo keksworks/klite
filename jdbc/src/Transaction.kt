@@ -37,7 +37,7 @@ class Transaction: AutoCloseable {
       } catch (e: SQLException) {
         log.error("Failed to ${if (commit) "commit" else "rollback"}", e)
       } finally {
-        try { conn.close() } catch (e: Exception) { log.error("Failed to close $conn: $e") }
+        conn.safeClose()
       }
     }
     connections.clear()

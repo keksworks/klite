@@ -4,6 +4,8 @@ package klite.jdbc
 
 import klite.Config
 import klite.Decimal
+import klite.error
+import klite.logger
 import org.intellij.lang.annotations.Language
 import java.io.InputStream
 import java.sql.*
@@ -255,6 +257,8 @@ fun PreparedStatement.setAll(values: Iterable<Any?>, startIndex: Int = 1) {
 
 var Connection.applicationName get() = getClientInfo("ApplicationName")
                                set(value) { setClientInfo("ApplicationName", value) }
+
+fun Connection.safeClose() = try { close() } catch (e: Exception) { logger().error("Failed to close $this: $e") }
 
 inline fun <reified T: Wrapper> Wrapper.isWrapperFor(): Boolean = isWrapperFor(T::class.java)
 inline fun <reified T: Wrapper> Wrapper.unwrap(): T = unwrap(T::class.java)
