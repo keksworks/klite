@@ -1,5 +1,6 @@
 package klite.http
 
+import klite.StatusCode
 import klite.error
 import klite.info
 import klite.logger
@@ -53,4 +54,9 @@ fun toBodyPublisher(data: Any?): BodyPublisher = when (data) {
   is BodyPublisher -> data
   is ByteArray -> BodyPublishers.ofByteArray(data)
   else -> BodyPublishers.ofString(data.toString())
+}
+
+fun <T> HttpResponse<T>.bodyOrThrow(): T {
+  if (statusCode() >= 300) throw HttpException(StatusCode(statusCode()), body().toString())
+  return body()
 }
