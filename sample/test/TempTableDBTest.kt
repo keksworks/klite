@@ -12,7 +12,7 @@ abstract class TempTableDBTest: DBTest() {
 
   @BeforeAll
   fun before() {
-    db.exec("create table $table(id uuid primary key, hello varchar, world int, gen serial)")
+    db.exec("create table $table(id uuid primary key, hello varchar, world int, gen serial, json jsonb)")
   }
 
   @AfterAll

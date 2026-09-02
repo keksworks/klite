@@ -4,6 +4,7 @@ import ch.tutteli.atrium.api.fluent.en_GB.*
 import ch.tutteli.atrium.api.verbs.expect
 import klite.d
 import klite.jdbc.*
+import klite.nodes.Node
 import klite.sample.TempTableDBTest
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -32,7 +33,7 @@ open class JdbcExtensionsTest: TempTableDBTest() {
     expect(db.select(table, "world" to notNull) { getUuid() }).notToContain(id2)
     expect(db.select(table, "world" notDistinct null) { getUuid() }).toContain(id2)
 
-    expect(db.select<SomeData>(table)).toContain(SomeData("Hello", 42, id))
+    expect(db.select<SomeData>(table)).toContain(SomeData("Hello", 42, id = id))
     expect(db.select(table, "hello" to "World") { getUuid() }).toBeEmpty()
 
     expect(db.select(table, "hello" gt "Hello") { getUuid() }).toContain(id2)
@@ -71,13 +72,16 @@ open class JdbcExtensionsTest: TempTableDBTest() {
 
   @Test fun upsert() {
     val data = SomeData("World", 37)
+    val data2 = SomeData("World2", null, mapOf("x" to 1))
     expect(db.upsert(table, data.toDBValues())).toEqual(1)
     expect(db.upsert(table, data.toDBValues())).toEqual(1)
-    expect(db.upsertBatch(table, [data.toDBValues(), data.toDBValues(), data.toDBValues()]).toList()).toContainExactly(1, 1, 1)
+    expect(db.upsertBatch(table, [data.toDBValues(), data.toDBValues(), data2.toDBValues()]).toList()).toContainExactly(1, 1, 1)
     expect(db.upsert(table, data.toDBValues(), where = listOf(SomeData::world neq 37))).toEqual(0)
 
     var loaded: SomeData = db.select(table, data.id) { create() }
     expect(loaded).toEqual(data)
+    val loaded2: SomeData = db.select(table, data2.id) { create() }
+    expect(loaded2).toEqual(data2)
 
     expect(db.upsert(table, data.toDBValues(SomeData::world to 38), skipUpdateFields = setOf(SomeData::world.name))).toEqual(1)
     loaded = db.select(table, data.id) { create() }
@@ -104,6 +108,6 @@ open class JdbcExtensionsTest: TempTableDBTest() {
     expect(db.call("length", "hello", returnSqlType = Types.INTEGER)).toEqual(5)
   }
 
-  data class SomeData(val hello: String, val world: Int?, val id: UUID = randomUUID())
+  data class SomeData(val hello: String, val world: Int?, @JsonColumn val json: Node? = null, val id: UUID = randomUUID())
   data class OnlyId(val id: UUID = randomUUID())
 }
