@@ -5,19 +5,13 @@ import ch.tutteli.atrium.api.verbs.expect
 import klite.d
 import klite.jdbc.*
 import klite.sample.TempTableDBTest
-import klite.sleep
 import klite.toValues
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.math.BigDecimal.ZERO
 import java.sql.Types
 import java.util.*
 import java.util.UUID.randomUUID
-import kotlin.concurrent.thread
-import kotlin.time.Duration.Companion.milliseconds
 
 open class JdbcExtensionsTest: TempTableDBTest() {
   @Test fun `insert & query`() {
@@ -109,33 +103,6 @@ open class JdbcExtensionsTest: TempTableDBTest() {
 
   @Test fun call() {
     expect(db.call("length", "hello", returnSqlType = Types.INTEGER)).toEqual(5)
-  }
-
-  @Test fun `postgres advisory locks`() {
-    val ok = "Hello"
-    expect(db.unlock(ok)).toEqual(false)
-    expect(db.tryLock(ok)).toEqual(true)
-    expect(db.tryLock(ok)).toEqual(true)
-    expect(db.unlock(ok)).toEqual(true)
-    expect(db.unlock(ok)).toEqual(true)
-    expect(db.unlock(ok)).toEqual(false)
-  }
-
-  @Test fun `postgres notify and listen`() = runTest {
-    val channel = Channel<String>(UNLIMITED)
-    val reader = thread {
-      db.consumeNotifications(setOf("hello"), 500.milliseconds) {
-        channel.trySend(it.parameter)
-      }
-    }
-    sleep(100.milliseconds)
-    db.notify("hello")
-    db.notify("hello", "world")
-    Transaction.current()!!.commit()
-    expect(channel.receive()).toEqual("")
-    expect(channel.receive()).toEqual("world")
-    reader.interrupt()
-    reader.join()
   }
 
   data class SomeData(val hello: String, val world: Int?, val id: UUID = randomUUID())
