@@ -1,4 +1,4 @@
-# Unreleased
+# 2.0.4
 * jdbc: let tryLock/unlock not eat exceptions; also log if unlock returns false
 * jdbc: insertBatch()/upsertBatch() now work properly with mixing of nullable and not nullable @JsonColumn
 * jobs: fix locking/unlocking of non-transactional jobs that should not run in parallel
