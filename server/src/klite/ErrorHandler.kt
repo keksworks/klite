@@ -4,6 +4,7 @@ import klite.StatusCode.Companion.BadRequest
 import klite.StatusCode.Companion.InternalServerError
 import klite.StatusCode.Companion.NotFound
 import klite.StatusCode.Companion.UnprocessableEntity
+import klite.http.HttpException
 import java.io.FileNotFoundException
 import java.net.URI
 import java.nio.file.NoSuchFileException
@@ -26,6 +27,7 @@ open class ErrorHandler {
   )
 
   init {
+    on<HttpException> { e -> ErrorResponse(e.statusCode, e.message) }
     on<NoSuchElementException> { e -> log.error(e); ErrorResponse(NotFound, e.message?.takeIf { "is empty" !in it }) }
     on<NullPointerException> { e ->
       if (e.message?.startsWith("Parameter specified as non-null is null") == true)
