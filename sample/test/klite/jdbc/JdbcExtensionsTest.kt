@@ -5,7 +5,6 @@ import ch.tutteli.atrium.api.verbs.expect
 import klite.d
 import klite.jdbc.*
 import klite.sample.TempTableDBTest
-import klite.toValues
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.math.BigDecimal.ZERO
@@ -72,15 +71,15 @@ open class JdbcExtensionsTest: TempTableDBTest() {
 
   @Test fun upsert() {
     val data = SomeData("World", 37)
-    expect(db.upsert(table, data.toValues())).toEqual(1)
-    expect(db.upsert(table, data.toValues())).toEqual(1)
-    expect(db.upsertBatch(table, [data.toValues(), data.toValues(), data.toValues()]).toList()).toContainExactly(1, 1, 1)
-    expect(db.upsert(table, data.toValues(), where = listOf(SomeData::world neq 37))).toEqual(0)
+    expect(db.upsert(table, data.toDBValues())).toEqual(1)
+    expect(db.upsert(table, data.toDBValues())).toEqual(1)
+    expect(db.upsertBatch(table, [data.toDBValues(), data.toDBValues(), data.toDBValues()]).toList()).toContainExactly(1, 1, 1)
+    expect(db.upsert(table, data.toDBValues(), where = listOf(SomeData::world neq 37))).toEqual(0)
 
     var loaded: SomeData = db.select(table, data.id) { create() }
     expect(loaded).toEqual(data)
 
-    expect(db.upsert(table, data.toValues(SomeData::world to 38), skipUpdateFields = setOf(SomeData::world.name))).toEqual(1)
+    expect(db.upsert(table, data.toDBValues(SomeData::world to 38), skipUpdateFields = setOf(SomeData::world.name))).toEqual(1)
     loaded = db.select(table, data.id) { create() }
     expect(loaded).toEqual(data)
   }
@@ -92,7 +91,7 @@ open class JdbcExtensionsTest: TempTableDBTest() {
 
   @Test fun `update and delete`() {
     val data = SomeData("World", 37)
-    db.insert(table, data.toValues())
+    db.insert(table, data.toDBValues())
 
     expect(db.update(table, mapOf("world" to 39), "id" to data.id)).toEqual(1)
     expect(db.select(table, data.id) { create<SomeData>() }).toEqual(data.copy(world = 39))
