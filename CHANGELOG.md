@@ -2,6 +2,7 @@
 * jdbc: let tryLock/unlock not eat exceptions; also log if unlock returns false
 * jobs: fix locking/unlocking of non-transactional jobs that should not run in parallel
 * json: flush partial buffer when generating of json fails
+* openapi: guarantee that /openapi.json is rendered as json, no matter which renderers are used in the project
 * server: new `securityBan()` decorator to ban IPs for requesting blacklisted paths
 
 # 2.0.3

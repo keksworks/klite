@@ -8,6 +8,7 @@ import klite.Route
 import klite.Router
 import klite.StatusCode.Companion.OK
 import klite.html.escapeJs
+import klite.json.JsonBody
 import org.intellij.lang.annotations.Language
 
 /**
@@ -27,11 +28,16 @@ import org.intellij.lang.annotations.Language
 // TODO: support @Schema(description on data classes and fields)
 fun Router.openApi(path: String = "/openapi", annotations: List<Annotation> = emptyList(), swaggerUIConfig: Map<String, Comparable<*>> = emptyMap()) {
   val hidden = annotations + Hidden()
-  add(Route(GET, pathParamRegexer.from("$path.json"), hidden) { generateOpenAPI() })
+  val jsonBody = JsonBody()
+  fun HttpExchange.generateOpenAPIAsJson() {
+    jsonBody.render(this, OK, generateOpenAPI())
+  }
+
+  add(Route(GET, pathParamRegexer.from("$path.json"), hidden) { generateOpenAPIAsJson() })
   add(Route(GET, pathParamRegexer.from("$path.html"), hidden) { swaggerUI(path, swaggerUIConfig) })
   add(Route(GET, pathParamRegexer.from(path), hidden) {
     if (accept(MimeTypes.html)) swaggerUI(path, swaggerUIConfig)
-    else generateOpenAPI()
+    else generateOpenAPIAsJson()
   })
 }
 
