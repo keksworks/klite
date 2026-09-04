@@ -18,8 +18,7 @@ fun String.extractXmlTag(tagName: String, preserveNs: Set<String> = emptySet()):
     if (prefix in nsPrefixes) it.value else it.groups[1]!!.value
   }
   val i = stripped.indexOf('>')
-  return stripped.substring(0, i) +
-    (if (nsPrefixes.isEmpty()) "" else " ") +
-    nsPrefixes.entries.joinToString(separator = " ") { (prefix, uri) -> """xmlns:$prefix="$uri"""" } +
-    stripped.substring(i)
+  val openingTag = stripped.substring(0, i)
+  val nsToAdd = nsPrefixes.entries.filter { (_, uri) -> uri !in openingTag }.map { (prefix, uri) -> """xmlns:$prefix="$uri"""" }
+  return openingTag + (if (nsToAdd.isEmpty()) "" else " ") + nsToAdd.joinToString(" ") + stripped.substring(i)
 }

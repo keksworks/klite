@@ -36,4 +36,9 @@ class XmlStringsTest {
     expect(xml.extractXmlTag("consignment"))
       .toEqual("<consignment xmlns=\"http://efti.eu/v1/consignment/common\">data</consignment>")
   }
+
+  @Test fun extractRootTagAlreadyWithNamespace() {
+    @Language("xml") val xml = "<root xmlns:udt=\"UDT:NS\"><udt:content>Blah</udt:content></root>"
+    expect(xml.extractXmlTag("root", setOf("UDT:NS"))).toEqual(xml)
+  }
 }
