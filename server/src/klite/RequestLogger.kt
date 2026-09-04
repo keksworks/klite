@@ -24,7 +24,7 @@ open class RequestLogger(
   }
 
   open fun logLevel(e: Throwable?): Level = if (e == null) INFO
-    else if (e is NotFoundException || e is UnauthorizedException) WARNING
+    else if (e is NotFoundException || e is UnauthorizedException || e is ForbiddenException) WARNING
     else if (e !is StatusCodeException || e.statusCode.isError) ERROR
     else INFO
 }
