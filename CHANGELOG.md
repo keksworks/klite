@@ -1,6 +1,7 @@
 # Unreleased
 * jdbc: all extensions can now be used on either a DataSource or an existing Connection
 * server: log Forbidden requests as WARN instead of ERROR, to avoid alerting on them
+* xml: added some utility functions to manipulate string-based xml
 
 # 2.0.4
 * jdbc: let tryLock/unlock not eat exceptions; also log if unlock returns false
