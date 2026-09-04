@@ -2,6 +2,7 @@ package klite.xml
 
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
+import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
 
 class XmlStringsTest {
@@ -14,23 +15,24 @@ class XmlStringsTest {
   }
 
   @Test fun extractXmlTag() {
-    expect("<root><content>Hello</content></root>".extractXmlTag("content")).toEqual("<content>Hello</content>")
+    @Language("xml") val xml = "<root><content>Hello</content></root>"
+    expect(xml.extractXmlTag("content")).toEqual("<content>Hello</content>")
   }
 
   @Test fun extractXmlTagStrippingNamespaces() {
-    val xml = "<root xmlns:udt=\"UDT:NS\"><ns:content><udt:DateTimeString><value>123</value></udt:DateTimeString></ns:content></root>"
+    @Language("xml") val xml = "<root xmlns:udt=\"UDT:NS\"><ns:content><udt:DateTimeString><value>123</value></udt:DateTimeString></ns:content></root>"
     expect(xml.extractXmlTag("content"))
       .toEqual("<content><DateTimeString><value>123</value></DateTimeString></content>")
   }
 
   @Test fun extractXmlTagPreservingNamespace() {
-    val xml = "<root xmlns:udt=\"UDT:NS\"><ns:content>\n<udt:DateTimeString><value>123</value></udt:DateTimeString>\n</ns:content></root>"
+    @Language("xml") val xml = "<root xmlns:udt=\"UDT:NS\"><ns:content>\n<udt:DateTimeString><value>123</value></udt:DateTimeString>\n</ns:content></root>"
     expect(xml.extractXmlTag("content", preserveNs = setOf("UDT:NS")))
       .toEqual("<content xmlns:udt=\"UDT:NS\">\n<udt:DateTimeString><value>123</value></udt:DateTimeString>\n</content>")
   }
 
   @Test fun extractXmlTagThatHasNamespace() {
-    val xml = "<uilResponse xmlns=\"http://efti.eu/v1/edelivery\" requestId=\"123123123123\" status=\"200\"><consignment xmlns=\"http://efti.eu/v1/consignment/common\">data</consignment></uilResponse>"
+    @Language("xml") val xml = "<uilResponse xmlns=\"http://efti.eu/v1/edelivery\" requestId=\"123123123123\" status=\"200\"><consignment xmlns=\"http://efti.eu/v1/consignment/common\">data</consignment></uilResponse>"
     expect(xml.extractXmlTag("consignment"))
       .toEqual("<consignment xmlns=\"http://efti.eu/v1/consignment/common\">data</consignment>")
   }
