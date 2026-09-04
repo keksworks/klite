@@ -117,7 +117,7 @@ fun <R> DB.withStatement(@Language("SQL") sql: String, keys: Int = NO_GENERATED_
 }
 
 @IgnorableReturnValue
-fun Connection.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? =
+fun DB.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? = withConnection {
   prepareCall("{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}").use { c ->
     var i = 1
     returnSqlType?.let { c.registerOutParameter(i++, it) }
@@ -125,10 +125,6 @@ fun Connection.call(callable: String, vararg parameters: Any?, returnSqlType: In
     c.execute()
     returnSqlType?.let { c.getObject(1) }
   }
-
-@IgnorableReturnValue
-fun DB.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? = withConnection {
-  call(callable, *parameters, returnSqlType = returnSqlType)
 }
 
 // TODO: add insert with mapper that returns the generated keys
