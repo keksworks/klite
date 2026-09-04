@@ -12,7 +12,6 @@ import java.sql.*
 import java.sql.Statement.NO_GENERATED_KEYS
 import java.sql.Statement.RETURN_GENERATED_KEYS
 import java.util.concurrent.ConcurrentHashMap
-import javax.sql.DataSource
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 
@@ -32,27 +31,28 @@ typealias ValueMap = Map<out ColName, *>
 @Deprecated(replaceWith = ReplaceWith("ValueMap"), message = "Use ValueMap instead")
 typealias Values = ValueMap
 
-// TODO: idea - define all the methods on Wrapper and then check if it's DataSource or Connection - this will avoid duplicating all fun variants
+/** DataSource or Connection */
+typealias DB = Wrapper
 
-fun <R, ID> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, id: ID, column: String = "id", @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): R =
+fun <R, ID> DB.select(@Language("SQL", prefix = selectFrom) table: String, id: ID, column: String = "id", @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): R =
   select(table, listOf(column to id), suffix, ArrayList(1), mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
 
-fun <R, C: MutableCollection<R>> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
+fun <R, C: MutableCollection<R>> DB.select(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
   query(selectFrom + q(table), where, suffix, into, mapper)
 
-inline fun <R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = "", noinline mapper: Mapper<R>): List<R> =
+inline fun <R> DB.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = "", noinline mapper: Mapper<R>): List<R> =
   select(table, where.filterNotNull(), suffix, mapper = mapper)
 
-fun <R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>) =
+fun <R> DB.select(@Language("SQL", prefix = selectFrom) table: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>) =
   select(table, where, suffix, mutableListOf(), mapper) as List<R>
 
-inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
+inline fun <reified R> DB.select(@Language("SQL", prefix = selectFrom) table: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   select(table, where, suffix = suffix) { create() }
 
-inline fun <reified R> DataSource.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
+inline fun <reified R> DB.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   select(table, *where, suffix = suffix) { create() }
 
-fun <R, C: MutableCollection<R>> DataSource.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
+fun <R, C: MutableCollection<R>> DB.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
   whereConvert(where).let { where ->
   withStatement("$select${whereExpr(where)} $suffix") {
     setAll(whereValues(where))
@@ -63,33 +63,33 @@ fun <R, C: MutableCollection<R>> DataSource.query(@Language("SQL") select: Strin
   }
 }
 
-inline fun <R> DataSource.query(@Language("SQL") select: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = "", noinline mapper: Mapper<R>): List<R> =
+inline fun <R> DB.query(@Language("SQL") select: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = "", noinline mapper: Mapper<R>): List<R> =
   query(select, where.filterNotNull(), suffix, mapper = mapper)
 
-fun <R> DataSource.query(@Language("SQL") select: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>) =
+fun <R> DB.query(@Language("SQL") select: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>) =
   query(select, where, suffix, mutableListOf(), mapper) as List<R>
 
-inline fun <reified R> DataSource.query(@Language("SQL") select: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
+inline fun <reified R> DB.query(@Language("SQL") select: String, where: Where, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   query(select, where, suffix = suffix) { create() }
 
-inline fun <reified R> DataSource.query(@Language("SQL") select: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
+inline fun <reified R> DB.query(@Language("SQL") select: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   query(select, *where, suffix = suffix) { create() }
 
-fun DataSource.count(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList()) = query("select count(*) from $table", where) { getLong(1) }.first()
+fun DB.count(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList()) = query("select count(*) from $table", where) { getLong(1) }.first()
 
 internal inline fun <R> ResultSet.process(consumer: (R) -> Unit = {}, mapper: Mapper<R>) {
   while (next()) consumer(mapper())
 }
 
 @IgnorableReturnValue
-fun DataSource.exec(@Language("SQL") expr: String, vararg values: Any?): Int = exec(expr, values.asList())
+fun DB.exec(@Language("SQL") expr: String, vararg values: Any?): Int = exec(expr, values.asList())
 
 @IgnorableReturnValue
-fun DataSource.exec(@Language("SQL") expr: String, values: Iterable<Any?> = emptyList(), keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): Int =
+fun DB.exec(@Language("SQL") expr: String, values: Iterable<Any?> = emptyList(), keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): Int =
   execBatch(expr, listOf(values), keys, callback).first()
 
 @IgnorableReturnValue
-fun DataSource.execBatch(@Language("SQL") expr: String, values: Iterable<Iterable<Any?>>, keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): IntArray {
+fun DB.execBatch(@Language("SQL") expr: String, values: Iterable<Iterable<Any?>>, keys: Int = NO_GENERATED_KEYS, callback: (Statement.() -> Unit)? = null): IntArray {
   val i = values.iterator()
   if (!i.hasNext()) return intArrayOf()
   return withStatement(expr, keys) {
@@ -105,7 +105,7 @@ fun DataSource.execBatch(@Language("SQL") expr: String, values: Iterable<Iterabl
   }
 }
 
-fun <R> DataSource.withStatement(@Language("SQL") sql: String, keys: Int = NO_GENERATED_KEYS, block: PreparedStatement.() -> R): R = withConnection {
+fun <R> DB.withStatement(@Language("SQL") sql: String, keys: Int = NO_GENERATED_KEYS, block: PreparedStatement.() -> R): R = withConnection {
   try {
     prepareStatement(sql, keys).use { it.block() }
   } catch (e: SQLException) {
@@ -127,17 +127,17 @@ fun Connection.call(callable: String, vararg parameters: Any?, returnSqlType: In
   }
 
 @IgnorableReturnValue
-fun DataSource.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? = withConnection {
+fun DB.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? = withConnection {
   call(callable, *parameters, returnSqlType = returnSqlType)
 }
 
 // TODO: add insert with mapper that returns the generated keys
 @IgnorableReturnValue
-fun DataSource.insert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, suffix: String = "") =
+fun DB.insert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, suffix: String = "") =
   insertBatch(table, listOf(values), suffix).first()
 
 @IgnorableReturnValue
-fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, suffix: String = ""): IntArray {
+fun DB.insertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, suffix: String = ""): IntArray {
   val keyValuesToSet = values.map { it.filter { it.value !is GeneratedKey<*> } }
   val valuesToSet = keyValuesToSet.map { setValues(it) }
   val first = keyValuesToSet.firstOrNull() ?: return intArrayOf()
@@ -148,18 +148,18 @@ fun DataSource.insertBatch(@Language("SQL", prefix = selectFrom) table: String, 
 }
 
 @Deprecated("Specify uniqueFields as a Set", replaceWith = ReplaceWith("upsert(table, values, setOf(uniqueFields), where, skipUpdateFields)"))
-inline fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: String, where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): Int =
+inline fun DB.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: String, where: Where = emptyList(), skipUpdateFields: Set<String> = setOf(uniqueFields)): Int =
   upsert(table, values, uniqueFields.split(',').mapTo(mutableSetOf()) { it.trim() }, where, skipUpdateFields)
 
 @IgnorableReturnValue
-fun DataSource.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): Int =
+fun DB.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): Int =
   upsertBatch(table, listOf(values), uniqueFields, where, skipUpdateFields).first()
 
-// TODO: make it work per DataSource, use ConfigDataSource.isPostgres
+// TODO: make it work per DataSource, use ConfigDB.isPostgres
 internal val isPostgres = Config.optional("DB_URL")?.startsWith("jdbc:postgres") == true
 
 @IgnorableReturnValue
-fun DataSource.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): IntArray {
+fun DB.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): IntArray {
   val where = whereConvert(where.map { (k, v) -> "$table.${q(name(k))}" to v })
   val first = values.firstOrNull() ?: return intArrayOf()
   val updateExpr = first.keys.map { name(it) }.filter { it !in skipUpdateFields }
@@ -186,19 +186,19 @@ internal fun columnsExpr(values: ValueMap) = "(${values.keys.joinToString { q(na
 internal fun valuesExpr(values: ValueMap) = "values (${values.values.joinToString { placeholder(it) }})"
 
 @IgnorableReturnValue
-inline fun DataSource.update(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, vararg where: ColValue?): Int =
+inline fun DB.update(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, vararg where: ColValue?): Int =
   update(table, values, where.filterNotNull())
 
 @IgnorableReturnValue
-fun DataSource.update(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, where: Where): Int = whereConvert(where).let { where ->
+fun DB.update(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, where: Where): Int = whereConvert(where).let { where ->
   exec("update ${q(table)} set ${setExpr(values)}${whereExpr(where)}", setValues(values) + whereValues(where))
 }
 
 @IgnorableReturnValue
-inline fun DataSource.delete(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?): Int = delete(table, where.filterNotNull())
+inline fun DB.delete(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?): Int = delete(table, where.filterNotNull())
 
 @IgnorableReturnValue
-fun DataSource.delete(@Language("SQL", prefix = selectFrom) table: String, where: Where): Int = whereConvert(where).let { where ->
+fun DB.delete(@Language("SQL", prefix = selectFrom) table: String, where: Where): Int = whereConvert(where).let { where ->
   exec("delete from ${q(table)}${whereExpr(where)}", whereValues(where))
 }
 
