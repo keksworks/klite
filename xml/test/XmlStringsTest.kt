@@ -4,7 +4,7 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import org.junit.jupiter.api.Test
 
-class XmlUtilsTest {
+class XmlStringsTest {
   @Test fun dropXmlHeader() {
     expect("<?xml?>\n<root/>".dropXmlHeader()).toEqual("<root/>")
   }
