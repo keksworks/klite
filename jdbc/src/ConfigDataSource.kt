@@ -38,7 +38,7 @@ open class ConfigDataSource(
     log.info("Connecting to $url${user?.let { ", user: $user" } ?: ""}")
   }
 
-  val isPostgres get() = url.startsWith("jdbc:postgresql")
+  val isPostgres get() = url.isPostgresUrl
 
   fun waitForAcceptConnections(numTries: Int = Config.optional("DB_WAIT_TRIES", "10").toInt(), timeoutMs: Long = 1000L) {
     var tries = 1

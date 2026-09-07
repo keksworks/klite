@@ -2,7 +2,6 @@
 @file:MustUseReturnValues
 package klite.jdbc
 
-import klite.Config
 import klite.Decimal
 import klite.error
 import klite.logger
@@ -31,9 +30,6 @@ typealias ValueMap = Map<out ColName, *>
 @Deprecated(replaceWith = ReplaceWith("ValueMap"), message = "Use ValueMap instead")
 typealias Values = ValueMap
 
-/** DataSource or Connection */
-typealias DB = Wrapper
-
 fun <R, ID> DB.select(@Language("SQL", prefix = selectFrom) table: String, id: ID, column: String = "id", @Language("SQL", prefix = selectFromTable) suffix: String = "", mapper: Mapper<R>): R =
   select(table, listOf(column to id), suffix, ArrayList(1), mapper).firstOrNull() ?: throw NoSuchElementException("${table.substringBefore(" ")}:$id not found")
 
@@ -55,7 +51,7 @@ inline fun <reified R> DB.select(@Language("SQL", prefix = selectFrom) table: St
 fun <R, C: MutableCollection<R>> DB.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
   whereConvert(where).let { where ->
   withStatement("$select${whereExpr(where)} $suffix") {
-    setAll(whereValues(where))
+    setAll(this@query.whereValues(where))
     executeQuery().run {
       populatePgColumnNameIndex(select)
       into.also { process(it::add, mapper) }
@@ -151,9 +147,6 @@ inline fun DB.upsert(@Language("SQL", prefix = selectFrom) table: String, values
 fun DB.upsert(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): Int =
   upsertBatch(table, listOf(values), uniqueFields, where, skipUpdateFields).first()
 
-// TODO: make it work per DataSource, use ConfigDB.isPostgres
-internal val isPostgres = Config.optional("DB_URL")?.startsWith("jdbc:postgres") == true
-
 @IgnorableReturnValue
 fun DB.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: Iterable<ValueMap>, uniqueFields: Set<String> = setOf("id"), where: Where = emptyList(), skipUpdateFields: Set<String> = uniqueFields): IntArray {
   val where = whereConvert(where.map { (k, v) -> "$table.${q(name(k))}" to v })
@@ -175,11 +168,11 @@ fun DB.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: 
   return execBatch(expr, valuesToSet)
 }
 
-internal fun insertExpr(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap) =
+internal fun DB.insertExpr(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap) =
   "insert into ${q(table)} ${columnsExpr(values)} ${valuesExpr(values)}"
 
 internal fun columnsExpr(values: ValueMap) = "(${values.keys.joinToString { q(name(it)) }})"
-internal fun valuesExpr(values: ValueMap) = "values (${values.values.joinToString { placeholder(it) }})"
+internal fun DB.valuesExpr(values: ValueMap) = "values (${values.values.joinToString { placeholder(it) }})"
 
 @IgnorableReturnValue
 inline fun DB.update(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, vararg where: ColValue?): Int =
@@ -210,12 +203,13 @@ internal fun whereValueConvert(v: Any?) = if (isEmptyCollection(v)) emptyArray e
   else -> v
 }
 
-internal fun setExpr(values: ValueMap) = values.entries.map { (k, v) -> k to v }.join(", ")
-internal fun whereExpr(where: Where) = if (where.isEmpty()) "" else " where " + where.join(" and ")
+internal fun DB.setExpr(values: ValueMap) = values.entries.map { (k, v) -> k to v }.join(", ")
+internal fun DB.whereExpr(where: Where) = if (where.isEmpty()) "" else " where " + where.join(" and ")
 
+context(db: DB)
 internal fun Iterable<ColValue>.join(separator: String) = joinToString(separator) { (k, v) ->
   val n = name(k)
-  if (v is SqlExpr) v.expr(n) else q(n) + "=" + placeholder(v)
+  if (v is SqlExpr) v.expr(db, n) else q(n) + "=" + db.placeholder(v)
 }
 
 internal fun name(key: ColName) = when(key) {
@@ -229,17 +223,21 @@ val KProperty1<*, *>.colName get() = colNameCache[this] ?: (findAnnotation<Colum
 
 internal fun q(name: String) = if (name in namesToQuote) "\"$name\"" else name
 
-internal fun placeholder(v: Any?) = when {
+internal fun DB.placeholder(v: Any?) = when {
   v is SqlExpr -> v.expr
   isEmptyCollection(v) -> emptyArray.expr
   v is Decimal -> if (isPostgres) "?::decimal" else "?"
   else -> "?"
 }
 
-internal fun setValues(values: ValueMap) = values.values.flatValues()
-internal fun whereValues(where: Where) = where.mapNotNull { it.second }.flatValues()
+internal fun DB.setValues(values: ValueMap) = values.values.flatValues()
+internal fun DB.whereValues(where: Where) = where.mapNotNull { it.second }.flatValues()
+
+context(db: DB)
 internal fun Iterable<Any?>.flatValues() = flatMap { it.toIterable() }
-private fun Any?.toIterable(): Iterable<Any?> = if (isEmptyCollection(this)) emptyList() else if (this is SqlExpr) values else listOf(this)
+
+context(db: DB)
+private fun Any?.toIterable(): Iterable<Any?> = if (isEmptyCollection(this)) emptyList() else if (this is SqlExpr) values(db) else listOf(this)
 
 operator fun PreparedStatement.set(i: Int, value: Any?) {
   if (value is InputStream) setBinaryStream(i, value)

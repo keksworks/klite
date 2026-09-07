@@ -57,7 +57,7 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
   protected open fun E.persister(): Map<out ColName, Any?> = toDBValues()
 
   open fun get(id: ID, forUpdate: Boolean = false): E = db.select(selectFrom, id, "$table." + idProp.colName,
-    if (forUpdate) (if (isPostgres) "for no key update" else "for update") else "") { mapper() }
+    if (forUpdate) (if (db.isPostgres) "for no key update" else "for update") else "") { mapper() }
 
   open fun list(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = defaultOrder): List<E> =
     db.select(selectFrom, where.filterNotNull(), suffix) { mapper() }

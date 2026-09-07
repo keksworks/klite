@@ -5,17 +5,8 @@ import klite.trimToNull
 import klite.warn
 import java.sql.ResultSet
 import java.sql.Types
-import java.util.concurrent.ConcurrentHashMap
-import javax.sql.DataSource
 import kotlin.text.RegexOption.IGNORE_CASE
 import kotlin.text.RegexOption.MULTILINE
-
-private val DataSource.url get() = unwrapOrNull<ConfigDataSource>()?.url
-private val dbPostgresIndicators = ConcurrentHashMap<DataSource, Boolean>()
-
-val DataSource.isPostgres get() = dbPostgresIndicators.getOrPut(this) {
-  (url ?: withConnection { metaData.url }).contains("postgresql")
-}
 
 fun DB.lock(on: String) { call("pg_advisory_lock", lockKey(on)) }
 fun DB.tryLock(on: String): Boolean = call("pg_try_advisory_lock", lockKey(on), returnSqlType = Types.BOOLEAN) == true

@@ -51,11 +51,3 @@ class Transaction: AutoCloseable {
   fun attachToThread() = this.also { threadLocal.set(it) }
   fun detachFromThread() = threadLocal.remove()
 }
-
-fun <R> DB.withConnection(block: Connection.() -> R): R {
-  if (this is Connection) return use(block)
-  if (this !is DataSource) error("DB must be a Connection or DataSource")
-  val tx = Transaction.current()
-  return if (tx != null) tx.connection(this).block()
-         else connection.use(block)
-}
