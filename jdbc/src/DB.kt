@@ -9,7 +9,7 @@ import javax.sql.DataSource
 typealias DB = Wrapper
 
 fun <R> DB.withConnection(block: Connection.() -> R): R {
-  if (this is Connection) return use(block)
+  if (this is Connection) return block()
   if (this !is DataSource) unsupported()
   val tx = Transaction.current()
   return if (tx != null) tx.connection(this).block()
