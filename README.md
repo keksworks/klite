@@ -126,6 +126,7 @@ There are open-source fully-fledged applications built with Klite (using Klite f
 * [StoryTracker](https://github.com/keksworks/storytracker) - an agile project management tool
 * [TimeTracker](https://github.com/pikkerdev/time-tracker) - project time tracking and invoicing tool
 * [AitaValida](https://github.com/keksworks/aitavalida) - voting compass application for Estonian elections
+* [Klite-starter](https://github.com/keksworks/klite-starter) - use it as a template for new projects, with frontend and auth
 
 Klite builds are available from [jitpack](https://jitpack.io/#keksworks/klite), see also [changelog](CHANGELOG.md)
 
