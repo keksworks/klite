@@ -32,6 +32,10 @@ class PDFExtractor(private val aiClient: AIClient, private val json: JsonMapper 
 
   fun <T: Any> extractData(pdf: InputStream, type: KClass<T>, provided: Map<KProperty1<T, *>, Any?> = emptyMap(), extraPrompt: String = "", numAttempts: Int = 3): T {
     val text = extractText(pdf)
+    return extractData(text, type, provided, extraPrompt, numAttempts)
+  }
+
+  fun <T: Any> extractData(text: String, type: KClass<T>, provided: Map<KProperty1<T, *>, Any?> = emptyMap(), extraPrompt: String = "", numAttempts: Int = 3): T {
     val props = type.publicProperties - provided.keys.mapTo(mutableSetOf()) { it.name } - "id"
     val keys = props.values.joinToString { "${it.name}: " + it.returnType.toString().replace(classPackageRegex, "") }
     var prompt = "Output plain json with keys $keys, ISO dates, numbers as strings with dots: $text\n$extraPrompt"
