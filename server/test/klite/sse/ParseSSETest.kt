@@ -6,7 +6,7 @@ import klite.TextBodyRenderer
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
 
-class EventTest {
+class ParseSSETest {
   val out = ByteArrayOutputStream()
 
   @Test fun `multiline string message`() {
