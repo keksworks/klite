@@ -20,7 +20,7 @@ class PDFExtractorTest {
   val aiClient = mockk<AIClient>(relaxed = true) {
     every { query(any()) } returns response
   }
-  val extractor = PDFExtractor(aiClient)
+  val extractor = PDFExtractor(DataExtractor(aiClient))
 
   @Test fun `extract text from simple PDF`() {
     val pdfBytes = createPdf("Invoice 123\nAmount: 100.00 EUR\nDate: 2025-01-15")
