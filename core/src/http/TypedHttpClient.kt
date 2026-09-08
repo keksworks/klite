@@ -46,31 +46,23 @@ open class TypedHttpClient(
     .contentType("application/json; charset=UTF-8").accept("application/json")
     .timeout(10.seconds).reqModifier()
 
-  private fun <T> request(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
-    val req = buildReq(urlSuffix).builder().build()
-    val start = System.nanoTime()
-    val res = http.send(req, BodyHandlers.ofString())
-    val ms = (System.nanoTime() - start) / 1000_000
-    val body = res.body().trim() // TODO: NPE -> return nullable type
-    if (res.statusCode() < 300) {
-      logger.info("${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: ${body.trimToLog()}")
-      return parse(body, type)
-    } else {
-      logger.error("Failed ${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: ${res.statusCode()}: $body")
-      errorHandler(res, body)
-    }
-  }
+  private fun <T> requestJson(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T =
+    parse(request(urlSuffix, payload, BodyHandlers.ofString(), builder).trim(), type)
 
-  private fun requestStream(urlSuffix: String, payload: String? = null, builder: RequestModifier): InputStream {
+  private fun requestStream(urlSuffix: String, payload: String? = null, builder: RequestModifier) =
+    request(urlSuffix, payload, BodyHandlers.ofInputStream(), builder)
+
+  private fun <T> request(urlSuffix: String, payload: String? = null, bodyHandler: HttpResponse.BodyHandler<T>, builder: RequestModifier): T {
     val req = buildReq(urlSuffix).builder().build()
     val start = System.nanoTime()
-    val res = http.send(req, BodyHandlers.ofInputStream())
+    val res = http.send(req, bodyHandler)
     val ms = (System.nanoTime() - start) / 1000_000
+    val body = res.body()
     if (res.statusCode() < 300) {
-      logger.info("${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: streaming")
+      logger.info("${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: " + (if (body is InputStream) "streaming" else body.toString().trimToLog()))
       return res.body()
     } else {
-      val errorBody = res.body().readAllBytes().decodeToString()
+      val errorBody = if (body is InputStream) body.readAllBytes().decodeToString() else body.toString()
       logger.error("Failed ${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: ${res.statusCode()}: ${errorBody.trimToLog()}")
       errorHandler(res, errorBody)
     }
@@ -79,7 +71,7 @@ open class TypedHttpClient(
   fun <T> retryRequest(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
     for (i in 0..retryCount) {
       try {
-        return request(urlSuffix, type, payload, builder)
+        return requestJson(urlSuffix, type, payload, builder)
       } catch (e: IOException) {
         if (i < retryCount && (e as? HttpException)?.statusCode != TooManyRequests) {
           logger.error("Failed $urlSuffix, retry ${i + 1} after $retryAfter", e)
