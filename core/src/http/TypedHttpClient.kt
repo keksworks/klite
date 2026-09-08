@@ -2,6 +2,7 @@ package klite.http
 
 import klite.*
 import klite.StatusCode.Companion.TooManyRequests
+import klite.sse.Event
 import klite.sse.parseSSE
 import java.io.IOException
 import java.io.InputStream
@@ -90,30 +91,39 @@ open class TypedHttpClient(
 
   fun <T> get(urlSuffix: String, type: KType, modifier: RequestModifier? = null): T =
     retryRequest(urlSuffix, type) { GET().apply(modifier) }
+
   inline fun <reified T> get(urlSuffix: String, noinline modifier: RequestModifier? = null): T = get(urlSuffix, typeOf<T>(), modifier)
+
+  fun <T> getSSE(urlSuffix: String, type: KType, eventName: String? = null, modifier: RequestModifier? = null): Sequence<T> =
+    requestStream(urlSuffix) { GET().accept("text/event-stream").apply(modifier) }.parseSSE().parseEvents(eventName, type)
+
+  inline fun <reified T> getSSE(urlSuffix: String, eventName: String? = null, noinline modifier: RequestModifier? = null): Sequence<T> =
+    getSSE(urlSuffix, typeOf<T>(), eventName, modifier)
 
   fun <T> post(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
     retryRequest(urlSuffix, type, it) { POST(ofString(it)).apply(modifier) } }
+
   inline fun <reified T> post(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = post(urlSuffix, o, typeOf<T>(), modifier)
 
   fun <T> postSSE(urlSuffix: String, o: Any?, type: KType, eventName: String? = null, modifier: RequestModifier? = null): Sequence<T> =
-    render(o).let { requestStream(urlSuffix, it) { POST(ofString(it)).accept("text/event-stream").apply(modifier) } }.parseSSE().mapNotNull {
-      if ((eventName == null || it.name == eventName) && it.data is String) parse(it.data, type) else null
-    }
+    render(o).let { requestStream(urlSuffix, it) { POST(ofString(it)).accept("text/event-stream").apply(modifier) } }.parseSSE().parseEvents(eventName, type)
 
   inline fun <reified T> postSSE(urlSuffix: String, o: Any?, eventName: String? = null, noinline modifier: RequestModifier? = null): Sequence<T> =
     postSSE(urlSuffix, o, typeOf<T>(), eventName, modifier)
 
   fun <T> put(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
     retryRequest(urlSuffix, type, it) { PUT(ofString(it)).apply(modifier) } }
+
   inline fun <reified T> put(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = put(urlSuffix, o, typeOf<T>(), modifier)
 
   fun <T> delete(urlSuffix: String, type: KType, modifier: RequestModifier? = null): T =
     retryRequest(urlSuffix, type) { DELETE().apply(modifier) }
+
   inline fun <reified T> delete(urlSuffix: String, noinline modifier: RequestModifier? = null): T = delete(urlSuffix, typeOf<T>(), modifier)
 
   fun <T> patch(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
     retryRequest(urlSuffix, type, it) { method("PATCH", ofString(it)).apply(modifier) } }
+
   inline fun <reified T> patch(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = patch(urlSuffix, o, typeOf<T>(), modifier)
 
   private fun HttpRequest.Builder.apply(modifier: RequestModifier?) = modifier?.let { it() } ?: this
@@ -124,6 +134,10 @@ open class TypedHttpClient(
   protected open fun <T> parse(body: String, type: KType): T = when (type.classifier) {
     Unit::class -> Unit as T
     else -> body as T
+  }
+
+  private fun <T> Sequence<Event>.parseEvents(eventName: String? = null, type: KType): Sequence<T> = mapNotNull {
+    if ((eventName == null || it.name == eventName) && it.data is String) parse(it.data, type) else null
   }
 }
 

@@ -3,7 +3,7 @@
 * jdbc: db.isPostgres checks are now strictly per-DataSource/Connection, not global
 * server: log Forbidden requests as WARN instead of ERROR, to avoid alerting on them
 * xml: added some utility functions to manipulate string-based xml
-* core: `InputStream.parseSSE()` introduced for parsing Server-Sent Events streams
+* core: `InputStream.parseSSE()` and `JsonHttpClient.getSSE/postSSE` introduced for parsing Server-Sent Events streams
 * ai: `DataExtractor` can now be used separately from `PDFExtractor` for e.g. extracting from images
 * ai: `AiClient.stream()` introduced for streaming of LLM responses
 
