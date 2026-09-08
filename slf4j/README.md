@@ -10,9 +10,10 @@ The following Config properties are supported:
 
 If you want to redefine the logging format, extend [KliteLogger](src/KliteLogger.kt) and specify it's full class name as `LOGGER_CLASS`.
 
-There are two non-default implementations available:
+There are some non-default implementations available:
 * `klite.slf4j.StackTraceOptimizingLogger` - this one will omit some lower stack trace frames that are not very useful
 * `klite.slf4j.StackTraceOptimizingJsonLogger` - this one will output exception and stack trace as a single-line json, friendly for log indexing services
+* `klite.slf4j.EcsJsonLogger` - ECS-compliant fully-json logger
 
 When deploying as a 12-factor app, this is all you need - logging to standard out.
 
