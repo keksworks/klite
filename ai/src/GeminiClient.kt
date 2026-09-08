@@ -8,6 +8,8 @@ import klite.http.timeout
 import klite.json.JsonHttpClient
 import klite.json.JsonMapper
 import klite.nodes.Node
+import klite.nodes.at
+import klite.nodes.textOrNull
 import java.net.URI
 import java.net.http.HttpClient
 import java.time.Instant
@@ -23,10 +25,18 @@ open class GeminiClient(httpClient: HttpClient, val params: Node = emptyMap()): 
     reqModifier = { timeout(30.seconds) })
 
   override fun query(input: String, imageUrl: URI?, prevResponseId: String?, params: Node): AIClient.Response =
-    query(if (imageUrl != null) listOf(
-      Content("text", input),
-      Content("image", data = imageUrl.toURL().readBytes().base64Encode(), mimeType = MimeTypes.typeFor(imageUrl.path)!!)
-    ) else input, params, prevResponseId).toTextResponse()
+    query(toInput(input, imageUrl), params, prevResponseId).toTextResponse()
+
+
+  override fun stream(input: String, imageUrl: URI?, params: Node): Sequence<String> =
+    http.postSSE<Node>("/interactions?key=$key", mapOf("model" to model, "input" to toInput(input, imageUrl), "stream" to true) + this.params + params, eventName = "step.delta").mapNotNull { node ->
+      node.at("delta").textOrNull("text")
+    }
+
+  private fun toInput(input: String, imageUrl: URI?): Any = if (imageUrl != null) listOf(
+    Content("text", input),
+    Content("image", data = imageUrl.toURL().readBytes().base64Encode(), mimeType = MimeTypes.typeFor(imageUrl.path)!!)
+  ) else input
 
   fun query(input: Any /* String | List<Content | Step> */, params: Node = emptyMap(), prevInteractionId: String? = null): Response =
     http.post("/interactions?key=$key", mapOf(

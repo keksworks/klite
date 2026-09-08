@@ -10,6 +10,7 @@ fun <T> Node.children(key: String): List<T> = childOrNull<Any>(key).let {
   if (it == null) emptyList() else it as? List<T> ?: listOf(it as T)
 }
 fun Node.at(key: String) = child<Node>(key)
+fun Node.atOrNull(key: String) = childOrNull<Node>(key)
 fun Node.nodes(key: String): List<Node> = children(key)
 fun Node.text(key: String) = child<Any>(key).toString()
 fun Node.textOrNull(key: String) = childOrNull<Any>(key)?.toString()

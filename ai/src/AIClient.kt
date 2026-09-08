@@ -6,8 +6,7 @@ import java.net.URI
 interface AIClient {
   fun query(input: String, imageUrl: URI? = null, prevResponseId: String? = null, params: Node = emptyMap()): Response
 
-  fun stream(input: String, imageUrl: URI? = null, params: Node = emptyMap()): Sequence<String> =
-    throw UnsupportedOperationException("Streaming not supported by ${this::class.simpleName}")
+  fun stream(input: String, imageUrl: URI? = null, params: Node = emptyMap()): Sequence<String>
 
   data class Response(val id: String?, val status: String, val model: String, val text: String)
 }

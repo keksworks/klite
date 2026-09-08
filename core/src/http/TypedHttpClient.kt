@@ -96,9 +96,13 @@ open class TypedHttpClient(
     retryRequest(urlSuffix, type, it) { POST(ofString(it)).apply(modifier) } }
   inline fun <reified T> post(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = post(urlSuffix, o, typeOf<T>(), modifier)
 
-  fun <T> postSSE(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): Sequence<T> = render(o).let {
-    requestStream(urlSuffix, it) { POST(ofString(it)).accept("text/event-stream").apply(modifier) } }.parseSSE().mapNotNull { (it.data as? String)?.let { parse(it, type) } }
-  inline fun <reified T> postSSE(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): Sequence<T> = postSSE(urlSuffix, o, typeOf<T>(), modifier)
+  fun <T> postSSE(urlSuffix: String, o: Any?, type: KType, eventName: String? = null, modifier: RequestModifier? = null): Sequence<T> =
+    render(o).let { requestStream(urlSuffix, it) { POST(ofString(it)).accept("text/event-stream").apply(modifier) } }.parseSSE().mapNotNull {
+      if ((eventName == null || it.name == eventName) && it.data is String) parse(it.data, type) else null
+    }
+
+  inline fun <reified T> postSSE(urlSuffix: String, o: Any?, eventName: String? = null, noinline modifier: RequestModifier? = null): Sequence<T> =
+    postSSE(urlSuffix, o, typeOf<T>(), eventName, modifier)
 
   fun <T> put(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
     retryRequest(urlSuffix, type, it) { PUT(ofString(it)).apply(modifier) } }
