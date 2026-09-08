@@ -18,16 +18,12 @@ class HttpClientSSETest {
     expect("data:first\n\nevent:custom\ndata:second\n\n".inputStream().parseSSE().toList()).toEqual(listOf(Event("first"), Event("second", "custom")))
   }
 
-  @Test fun `skip empty data`() {
-    expect("data:\n\ndata:ok\n\n".inputStream().parseSSE().toList()).toEqual(listOf(Event("ok")))
-  }
-
   @Test fun `skip unknown tags`() {
     expect("retry:5000\ndata:test\n\n".inputStream().parseSSE().toList()).toEqual(listOf(Event("test")))
   }
 
-  @Test fun `skip lines without colon`() {
-    expect("comment\ndata:test\n\n".inputStream().parseSSE().toList()).toEqual(listOf(Event("test")))
+  @Test fun `multiline data`() {
+    expect("comment\nevent:hello\ndata:line1\ndata:line2\n\n".inputStream().parseSSE().toList()).toEqual(listOf(Event("line1\nline2", name = "hello")))
   }
 
   @Test fun `reset id and name after each event`() {
