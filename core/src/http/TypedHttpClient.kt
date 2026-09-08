@@ -47,14 +47,14 @@ open class TypedHttpClient(
     .contentType("application/json; charset=UTF-8").accept("application/json")
     .timeout(10.seconds).reqModifier()
 
-  private fun <T> requestJson(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T =
-    parse(request(urlSuffix, payload, BodyHandlers.ofString(), builder).trim(), type)
+  private fun <T> requestJson(urlSuffix: String, type: KType, payload: String? = null, modifier: RequestModifier): T =
+    parse(request(urlSuffix, payload, BodyHandlers.ofString(), modifier).trim(), type)
 
-  private fun requestStream(urlSuffix: String, payload: String? = null, builder: RequestModifier) =
-    request(urlSuffix, payload, BodyHandlers.ofInputStream(), builder)
+  private fun requestStream(urlSuffix: String, payload: String? = null, modifier: RequestModifier) =
+    request(urlSuffix, payload, BodyHandlers.ofInputStream(), modifier)
 
-  private fun <T> request(urlSuffix: String, payload: String? = null, bodyHandler: HttpResponse.BodyHandler<T>, builder: RequestModifier): T {
-    val req = buildReq(urlSuffix).builder().build()
+  private fun <T> request(urlSuffix: String, payload: String? = null, bodyHandler: HttpResponse.BodyHandler<T>, modifier: RequestModifier): T {
+    val req = buildReq(urlSuffix).modifier().build()
     val start = System.nanoTime()
     val res = http.send(req, bodyHandler)
     val ms = (System.nanoTime() - start) / 1000_000
@@ -69,10 +69,10 @@ open class TypedHttpClient(
     }
   }
 
-  fun <T> retryRequest(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
+  fun <T> retryRequest(urlSuffix: String, type: KType, payload: String? = null, modifier: RequestModifier): T {
     for (i in 0..retryCount) {
       try {
-        return requestJson(urlSuffix, type, payload, builder)
+        return requestJson(urlSuffix, type, payload, modifier)
       } catch (e: IOException) {
         if (i < retryCount && (e as? HttpException)?.statusCode != TooManyRequests) {
           logger.error("Failed $urlSuffix, retry ${i + 1} after $retryAfter", e)
@@ -86,8 +86,8 @@ open class TypedHttpClient(
     error("Unreachable")
   }
 
-  inline fun <reified T> request(urlSuffix: String, payload: String? = null, noinline builder: RequestModifier): T =
-    retryRequest(urlSuffix, typeOf<T>(), payload, builder)
+  inline fun <reified T> request(urlSuffix: String, payload: String? = null, noinline modifier: RequestModifier): T =
+    retryRequest(urlSuffix, typeOf<T>(), payload, modifier)
 
   fun <T> get(urlSuffix: String, type: KType, modifier: RequestModifier? = null): T =
     retryRequest(urlSuffix, type) { GET().apply(modifier) }
