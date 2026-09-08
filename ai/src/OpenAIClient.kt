@@ -7,6 +7,7 @@ import klite.http.timeout
 import klite.json.JsonHttpClient
 import klite.json.JsonMapper
 import klite.nodes.Node
+import klite.nodes.text
 import klite.toBase64Url
 import java.io.File
 import java.net.URI
@@ -25,18 +26,21 @@ open class OpenAIClient(httpClient: HttpClient, val params: Node = emptyMap()): 
     reqModifier = { header("Authorization", auth).timeout(30.seconds) })
 
   override fun query(input: String, imageUrl: URI?, prevResponseId: String?, params: Node): AIClient.Response =
-    query(if (imageUrl != null) listOf(Input(listOf(
-      Content(text = input, type = "input_text"),
-      Content(imageUrl = if (imageUrl.scheme == "file") File(imageUrl.path).toBase64Url() else imageUrl, type = "input_image")
-    ))) else input, params, prevResponseId).toTextResponse()
+    query(toInput(input, imageUrl), params, prevResponseId).toTextResponse()
+
+  override fun stream(input: String, imageUrl: URI?, params: Node): Sequence<String> =
+    http.postSSE<Node>("/responses", mapOf("model" to model, "input" to toInput(input, imageUrl), "stream" to true) + this.params + params).mapNotNull { node ->
+      if (node.text("type") == "response.output_text.delta") node.text("delta") else null
+    }
+
+  private fun toInput(input: String, imageUrl: URI?): Any = if (imageUrl != null) listOf(Input(listOf(
+    Content(text = input, type = "input_text"),
+    Content(imageUrl = if (imageUrl.scheme == "file") File(imageUrl.path).toBase64Url() else imageUrl, type = "input_image")
+  ))) else input
 
   // TODO: try structured output with "text": {"format": {"type": "json_schema"}}}
   open fun query(input: Any /* String | List<Input | Output> */, params: Node = emptyMap(), prevResponseId: String? = null): Response =
-    http.post("/responses", mapOf(
-      "model" to model,
-      "input" to input,
-      "previous_response_id" to prevResponseId,
-    ) + this.params + params)
+    http.post("/responses", mapOf("model" to model, "input" to input, "previous_response_id" to prevResponseId) + this.params + params)
 
   data class Input(val content: List<Content>, val role: String = "user")
   data class Output(val id: String, val type: String, val content: List<Content>, val role: String? = null)

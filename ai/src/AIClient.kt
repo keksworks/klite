@@ -1,7 +1,5 @@
 package klite.ai
 
-import klite.json.JsonMapper
-import klite.json.parse
 import klite.nodes.Node
 import java.net.URI
 
@@ -13,6 +11,3 @@ interface AIClient {
 
   data class Response(val id: String?, val status: String, val model: String, val text: String)
 }
-
-internal fun Sequence<String>.parseJSON(json: JsonMapper, extractText: (Node) -> String?): Sequence<String> =
-  map { json.parse<Node>(it) }.mapNotNull { extractText(it) }

@@ -2,14 +2,17 @@ package klite.http
 
 import klite.*
 import klite.StatusCode.Companion.TooManyRequests
+import klite.sse.parseSSE
 import java.io.IOException
+import java.io.InputStream
 import java.lang.StackWalker.Option.RETAIN_CLASS_REFERENCE
 import java.lang.reflect.Modifier.ABSTRACT
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
-import java.net.http.HttpRequest.BodyPublishers
+import java.net.http.HttpRequest.BodyPublishers.ofString
 import java.net.http.HttpResponse
+import java.net.http.HttpResponse.BodyHandlers
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 import kotlin.time.Duration
@@ -46,7 +49,7 @@ open class TypedHttpClient(
   private fun <T> request(urlSuffix: String, type: KType, payload: String? = null, builder: RequestModifier): T {
     val req = buildReq(urlSuffix).builder().build()
     val start = System.nanoTime()
-    val res = http.send(req, HttpResponse.BodyHandlers.ofString())
+    val res = http.send(req, BodyHandlers.ofString())
     val ms = (System.nanoTime() - start) / 1000_000
     val body = res.body().trim() // TODO: NPE -> return nullable type
     if (res.statusCode() < 300) {
@@ -55,6 +58,21 @@ open class TypedHttpClient(
     } else {
       logger.error("Failed ${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: ${res.statusCode()}: $body")
       errorHandler(res, body)
+    }
+  }
+
+  private fun requestStream(urlSuffix: String, payload: String? = null, builder: RequestModifier): InputStream {
+    val req = buildReq(urlSuffix).builder().build()
+    val start = System.nanoTime()
+    val res = http.send(req, BodyHandlers.ofInputStream())
+    val ms = (System.nanoTime() - start) / 1000_000
+    if (res.statusCode() < 300) {
+      logger.info("${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: streaming")
+      return res.body()
+    } else {
+      val errorBody = res.body().readAllBytes().decodeToString()
+      logger.error("Failed ${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: ${res.statusCode()}: ${errorBody.trimToLog()}")
+      errorHandler(res, errorBody)
     }
   }
 
@@ -83,11 +101,15 @@ open class TypedHttpClient(
   inline fun <reified T> get(urlSuffix: String, noinline modifier: RequestModifier? = null): T = get(urlSuffix, typeOf<T>(), modifier)
 
   fun <T> post(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
-    retryRequest(urlSuffix, type, it) { POST(BodyPublishers.ofString(it)).apply(modifier) } }
+    retryRequest(urlSuffix, type, it) { POST(ofString(it)).apply(modifier) } }
   inline fun <reified T> post(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = post(urlSuffix, o, typeOf<T>(), modifier)
 
+  fun <T> postSSE(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): Sequence<T> = render(o).let {
+    requestStream(urlSuffix, it) { POST(ofString(it)).accept("text/event-stream").apply(modifier) } }.parseSSE().mapNotNull { (it.data as? String)?.let { parse(it, type) } }
+  inline fun <reified T> postSSE(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): Sequence<T> = postSSE(urlSuffix, o, typeOf<T>(), modifier)
+
   fun <T> put(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
-    retryRequest(urlSuffix, type, it) { PUT(BodyPublishers.ofString(it)).apply(modifier) } }
+    retryRequest(urlSuffix, type, it) { PUT(ofString(it)).apply(modifier) } }
   inline fun <reified T> put(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = put(urlSuffix, o, typeOf<T>(), modifier)
 
   fun <T> delete(urlSuffix: String, type: KType, modifier: RequestModifier? = null): T =
@@ -95,7 +117,7 @@ open class TypedHttpClient(
   inline fun <reified T> delete(urlSuffix: String, noinline modifier: RequestModifier? = null): T = delete(urlSuffix, typeOf<T>(), modifier)
 
   fun <T> patch(urlSuffix: String, o: Any?, type: KType, modifier: RequestModifier? = null): T = render(o).let {
-    retryRequest(urlSuffix, type, it) { method("PATCH", BodyPublishers.ofString(it)).apply(modifier) } }
+    retryRequest(urlSuffix, type, it) { method("PATCH", ofString(it)).apply(modifier) } }
   inline fun <reified T> patch(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = patch(urlSuffix, o, typeOf<T>(), modifier)
 
   private fun HttpRequest.Builder.apply(modifier: RequestModifier?) = modifier?.let { it() } ?: this
