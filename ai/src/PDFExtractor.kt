@@ -19,6 +19,6 @@ class PDFExtractor(private val extractor: DataExtractor) {
 
   fun <T: Any> extractData(pdf: InputStream, type: KClass<T>, provided: Map<KProperty1<T, *>, Any?> = emptyMap(), extraPrompt: String = "", numAttempts: Int = 3): T {
     val text = extractText(pdf)
-    return extractor.extract(text, type, provided, extraPrompt, numAttempts)
+    return extractor.extract(text, type, null, provided, extraPrompt, numAttempts)
   }
 }

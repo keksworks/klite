@@ -3,7 +3,7 @@
 * jdbc: db.isPostgres checks are now strictly per-DataSource/Connection, not global
 * server: log Forbidden requests as WARN instead of ERROR, to avoid alerting on them
 * xml: added some utility functions to manipulate string-based xml
-* ai: DataExtractor can now be used separately from PDFExtractor
+* ai: DataExtractor can now be used separately from PDFExtractor for e.g. extracting from images
 
 # 2.0.4
 * jdbc: let tryLock/unlock not eat exceptions; also log if unlock returns false
