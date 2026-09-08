@@ -1,4 +1,4 @@
-# 2.0.5
+# 2.0.6
 * jdbc: all extensions can now be used on either a DataSource or an existing Connection
 * jdbc: db.isPostgres checks are now strictly per-DataSource/Connection, not global
 * server: log Forbidden requests as WARN instead of ERROR, to avoid alerting on them
