@@ -88,6 +88,48 @@ fun RouterConfig.rateLimit(limit: Int, window: Duration) {
   }
 }
 
+private data class RateLimit(var tokens: Double, var lastRefill: Long)
+
+fun RouterConfig.rateLimitWithBan(
+  limit: Int, window: Duration,
+  banAfter: Int = 10, bannedFor: Duration = 1.hours
+) {
+  val limits = Cache<String, RateLimit>(expiration = window * 3, prolongOnAccess = true)
+  val violations = Cache<String, Int>(expiration = bannedFor)
+  val banned = Cache<String, Boolean>(expiration = bannedFor)
+  val rate = limit.toDouble() / window.inWholeNanoseconds
+  val maxTokens = limit.toDouble()
+  val log = logger("rateLimit")
+
+  before { e ->
+    if (banned[e.remoteAddress] == true)
+      throw StatusCodeException(TooManyRequests)
+  }
+  decorator { e, handler ->
+    val limiter = limits.getOrSet(e.remoteAddress) { RateLimit(maxTokens, System.nanoTime()) }
+    synchronized(limiter) {
+      val now = System.nanoTime()
+      val refill = (now - limiter.lastRefill) * rate
+      limiter.tokens = (limiter.tokens + refill).coerceAtMost(maxTokens)
+      limiter.lastRefill = now
+      if (limiter.tokens >= 1) limiter.tokens -= 1
+      else {
+        val count = violations.getOrSet(e.remoteAddress) { 0 } + 1
+        violations[e.remoteAddress] = count
+        if (count >= banAfter) {
+          banned[e.remoteAddress] = true
+          log.warn("banned ${e.remoteAddress} for $bannedFor after $count violations")
+          throw StatusCodeException(TooManyRequests)
+        }
+        val retryAfter = ceil((1 - limiter.tokens) / rate / 1e9).toInt()
+        e.header("Retry-After", retryAfter.toString())
+        throw StatusCodeException(TooManyRequests)
+      }
+    }
+    handler(e)
+  }
+}
+
 fun RouterConfig.securityBan(bannedFor: Duration = 1.hours,
   blacklistedPaths: List<String> = listOf("/..", "/.env", "/.git", "compose.yml", ".php")) {
   val banned = Cache<String, Boolean>(expiration = bannedFor)
@@ -108,5 +150,3 @@ fun RouterConfig.securityBan(bannedFor: Duration = 1.hours,
     }
   }
 }
-
-private data class RateLimit(var tokens: Double, var lastRefill: Long)

@@ -4,6 +4,7 @@
 * server: log Forbidden requests as WARN instead of ERROR, to avoid alerting on them
 * xml: added some utility functions to manipulate string-based xml
 * ai: DataExtractor can now be used separately from PDFExtractor for e.g. extracting from images
+* core: InputStream.parseSSE() introduced for parsing Server-Sent Events streams
 
 # 2.0.4
 * jdbc: let tryLock/unlock not eat exceptions; also log if unlock returns false

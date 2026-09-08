@@ -11,6 +11,8 @@ import java.net.http.HttpRequest
 import java.net.http.HttpRequest.BodyPublisher
 import java.net.http.HttpRequest.BodyPublishers
 import java.net.http.HttpResponse
+import java.net.http.HttpResponse.BodyHandler
+import java.net.http.HttpResponse.BodyHandlers.ofInputStream
 import java.net.http.HttpResponse.BodyHandlers.ofString
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -30,7 +32,7 @@ typealias RequestModifier = HttpRequest.Builder.() -> HttpRequest.Builder
 
 private val log = logger<HttpClient>()
 
-fun <R> HttpClient.request(url: URI, bodyHandler: HttpResponse.BodyHandler<R>, modifier: RequestModifier = { this }): HttpResponse<R> {
+fun <R> HttpClient.request(url: URI, bodyHandler: BodyHandler<R>, modifier: RequestModifier = { this }): HttpResponse<R> {
   val start = currentTimeMillis()
   val req = HttpRequest.newBuilder().uri(url).timeout(10.seconds).modifier().build()
   try {
@@ -48,6 +50,9 @@ fun HttpClient.post(url: URI, data: Any?, modifier: RequestModifier = { this }) 
 fun HttpClient.put(url: URI, data: Any?, modifier: RequestModifier = { this }) = request(url, ofString()) { PUT(toBodyPublisher(data)).modifier() }
 fun HttpClient.patch(url: URI, data: Any?, modifier: RequestModifier = { this }) = request(url, ofString()) { method("PATCH", toBodyPublisher(data)).modifier() }
 fun HttpClient.delete(url: URI, modifier: RequestModifier = { this }) = request(url, ofString()) { DELETE().modifier() }
+
+fun HttpClient.getStreaming(url: URI, modifier: RequestModifier = { this }) = request(url, ofInputStream()) { GET().modifier() }
+fun HttpClient.postStreaming(url: URI, data: Any?, modifier: RequestModifier = { this }) = request(url, ofInputStream()) { POST(toBodyPublisher(data)).modifier() }
 
 fun toBodyPublisher(data: Any?): BodyPublisher = when (data) {
   null, Unit -> BodyPublishers.noBody()

@@ -3,9 +3,6 @@ package klite.sse
 import klite.*
 import java.io.OutputStream
 
-/** Server-Sent Event */
-data class Event(val data: Any? = "", val name: String? = null, val id: Any? = null)
-
 /** Use in a GET handler to implement SSE (Server-Sent Events), follow by [send] calls */
 fun HttpExchange.startEventStream() = startResponse(StatusCode.OK, null, MimeTypes.eventStream)
 
