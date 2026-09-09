@@ -35,6 +35,10 @@ package klite
     val GatewayTimeout = StatusCode(504)
     val InsufficientStorage = StatusCode(507)
 
+    init {
+      Converter.use { StatusCode(it.toInt()) }
+    }
+
     private val reasons: Map<StatusCode, String> by lazy {
       publicProperties.associate {
         it.get(this) as StatusCode to it.name.replace("[A-Z]".toRegex(), " $0").trim()

@@ -1,5 +1,6 @@
 # Unreleased
 * xml: @XmlPath now supports attribute predicates to filter elements by attribute value, e.g. `item[@type=something]`
+* core: creation of StatusCode is now supported by Converter by default
 
 # 2.0.6
 * jdbc: all extensions can now be used on either a DataSource or an existing Connection

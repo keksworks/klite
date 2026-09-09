@@ -74,6 +74,7 @@ class ConverterTest {
   }
 
   @Test fun jvmInline() {
+    expect(Converter.from<StatusCode>("404")).toEqual(StatusCode.NotFound)
     expect(Converter.from<Inline>("hello")).toEqual(Inline("hello"))
     val id = randomUUID()
     expect(Converter.from<InlineId>(id.toString())).toEqual(InlineId(id))
