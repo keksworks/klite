@@ -1,47 +1,42 @@
 package klite.ai
 
 import klite.StatusCode.Companion.TooManyRequests
-import klite.createFrom
 import klite.http.HttpException
 import klite.json.JsonMapper
-import klite.json.parse
+import klite.json.toJsonSchema
 import klite.logger
-import klite.nodes.Node
-import klite.publicProperties
 import klite.warn
 import java.net.URI
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
-import kotlin.reflect.full.createType
+import kotlin.reflect.KType
+import kotlin.reflect.typeOf
 
 class DataExtractor(
   private val aiClient: AIClient,
   private val json: JsonMapper = JsonMapper()
 ) {
   private val log = logger()
-  private val classPackageRegex = "\\b[\\w.]*\\.".toRegex()
 
-  inline fun <reified T: Any> extract(text: String = "", imageUrl: URI? = null, provided: Map<KProperty1<T, *>, Any?> = emptyMap(), extraPrompt: String = ""): T =
-    extract(text, T::class, imageUrl, provided, extraPrompt)
+  inline fun <reified T: Any> extract(text: String = "", imageUrl: URI? = null, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = ""): T =
+    extract(text, typeOf<T>(), imageUrl, provided, extraPrompt)
 
-  fun <T: Any> extract(text: String, type: KClass<T>, imageUrl: URI? = null, provided: Map<KProperty1<T, *>, Any?> = emptyMap(), extraPrompt: String = "", numAttempts: Int = 3): T {
-    val props = type.publicProperties - provided.keys.mapTo(mutableSetOf()) { it.name } - "id"
-    val keys = props.values.joinToString { "${it.name}: " + it.returnType.toString().replace(classPackageRegex, "") }
-    var prompt = "Output plain json with keys $keys, ISO dates, numbers as strings with dots: $text\n$extraPrompt"
+  fun <T: Any> extract(text: String, type: KType, imageUrl: URI? = null, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = "", numAttempts: Int = 3): T {
+    val providedText = if (provided.isNotEmpty()) ", use these provided values: " + provided.entries.joinToString { "${it.key.name}=${it.value}" } else ""
+    var prompt = "Output plain json with keys ${type.toJsonSchema()}, skip 'id' if available: $text\n$providedText\n$extraPrompt"
     var response: AIClient.Response? = null
     repeat(numAttempts) {
       try {
         response = aiClient.query(prompt, imageUrl = imageUrl, prevResponseId = response?.id)
         val jsonStr = response.text.stripMarkdown()
-        if (provided.isEmpty()) return json.parse(jsonStr, type.createType())
-        return type.createFrom(json.parse<Node>(jsonStr) + provided.mapKeys { it.key.name })
+        if (provided.isEmpty()) return json.parse(jsonStr, type)
+        return json.parse(jsonStr, type)
       } catch (e: Exception) {
         if ((e as? HttpException)?.statusCode == TooManyRequests || it == numAttempts - 1) throw e
-        log.warn("Failed to extract ${type.simpleName}, retrying: $e")
+        log.warn("Failed to extract $type, retrying: $e")
         prompt = (if (response?.id != null) "" else prompt) + "\nTry again, got $e"
       }
     }
-    error("Failed to extract ${type.simpleName} after $numAttempts attempts")
+    error("Failed to extract $type after $numAttempts attempts")
   }
 
   private fun String.stripMarkdown() = substringAfter("```json").substringBeforeLast("```")
