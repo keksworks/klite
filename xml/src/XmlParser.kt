@@ -216,13 +216,9 @@ internal class XmlElement(
     for ((i, n) in path.withIndex()) {
       if (n == "" || n == ".") break
       if (n.startsWith("@")) return listOf(XmlElement(n, text = e.attributes?.get(n)))
-      val bracketIdx = n.indexOf('[')
-      val elemName = if (bracketIdx >= 0) n.substring(0, bracketIdx) else n
-      val attrFilter = if (bracketIdx >= 0) {
-        val (name, value) = n.substring(bracketIdx + 1, n.indexOf(']')).removePrefix("@").split('=', limit = 2)
-        name to value
-      } else null
-      fun matches(c: XmlElement) = c.name == elemName && (attrFilter == null || c.attributes?.get("@${attrFilter.first}") == attrFilter.second)
+      val elemName = n.substringBefore('[')
+      val attr = n.substringAfter("[@", "").substringBefore(']').split('=', limit = 2)
+      fun matches(c: XmlElement) = c.name == elemName && (attr.size < 2 || c.attributes?.get("@${attr[0]}") == attr[1])
       if (i == path.lastIndex) return e.children.filter(::matches)
       e = e.children.firstOrNull(::matches) ?: return emptyList()
     }
