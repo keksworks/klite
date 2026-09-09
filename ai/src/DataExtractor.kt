@@ -17,12 +17,12 @@ class DataExtractor(
 ) {
   private val log = logger()
 
-  inline fun <reified T: Any> extract(text: String = "", imageUrl: URI? = null, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = ""): T =
-    extract(text, typeOf<T>(), imageUrl, provided, extraPrompt)
+  inline fun <reified T: Any> extract(text: String = "", imageUrl: URI? = null, provided: Map<KProperty1<*, *>, Any?> = emptyMap()): T =
+    extract(text, typeOf<T>(), imageUrl, provided)
 
-  fun <T: Any> extract(text: String, type: KType, imageUrl: URI? = null, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = "", numAttempts: Int = 3): T {
+  fun <T: Any> extract(text: String, type: KType, imageUrl: URI? = null, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), numAttempts: Int = 3): T {
     val providedText = if (provided.isNotEmpty()) ", use these provided values: " + provided.entries.joinToString { "${it.key.name}=${it.value}" } else ""
-    var prompt = "Output plain json of $type according to schema ${type.toJsonSchema()}, skip 'id' and non-required fields if not available:\n$text\n$providedText\n$extraPrompt"
+    var prompt = "Output plain json of $type according to schema ${type.toJsonSchema()}, skip 'id' and non-required fields if not available:\n$text\n$providedText"
     var response: AIClient.Response? = null
     repeat(numAttempts) {
       try {
