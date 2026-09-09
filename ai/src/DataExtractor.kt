@@ -22,7 +22,7 @@ class DataExtractor(
 
   fun <T: Any> extract(text: String, type: KType, imageUrl: URI? = null, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = "", numAttempts: Int = 3): T {
     val providedText = if (provided.isNotEmpty()) ", use these provided values: " + provided.entries.joinToString { "${it.key.name}=${it.value}" } else ""
-    var prompt = "Output plain json with keys ${type.toJsonSchema()}, skip 'id' if available: $text\n$providedText\n$extraPrompt"
+    var prompt = "Output plain json according to schema ${type.toJsonSchema()}, skip 'id' if available:\n$text\n$providedText\n$extraPrompt"
     var response: AIClient.Response? = null
     repeat(numAttempts) {
       try {
