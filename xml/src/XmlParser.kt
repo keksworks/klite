@@ -22,7 +22,8 @@ import kotlin.reflect.full.isSubclassOf
 
 /**
  * Supports absolute (from root /) and relative paths (resolved from current element),
- * empty path means current element, attributes start with @, namespace prefixes are ignored
+ * empty path means current element, attributes start with @, namespace prefixes are ignored.
+ * Attribute predicates filter children by attribute value, e.g. `item[@type=something]`.
  */
 @Target(PROPERTY) @Retention(RUNTIME)
 annotation class XmlPath(val path: String)
@@ -211,12 +212,19 @@ internal class XmlElement(
 ) {
   fun find(path: List<String>): List<XmlElement> {
     var e: XmlElement = this
-    val path = if (path.first() == e.name) path.drop(1) else path
+    val path = if (path.first().substringBefore('[') == e.name) path.drop(1) else path
     for ((i, n) in path.withIndex()) {
       if (n == "" || n == ".") break
       if (n.startsWith("@")) return listOf(XmlElement(n, text = e.attributes?.get(n)))
-      if (i == path.lastIndex) return e.children.filter { it.name == n }
-      e = e.children.firstOrNull { it.name == n } ?: return emptyList()
+      val bracketIdx = n.indexOf('[')
+      val elemName = if (bracketIdx >= 0) n.substring(0, bracketIdx) else n
+      val attrFilter = if (bracketIdx >= 0) {
+        val (name, value) = n.substring(bracketIdx + 1, n.indexOf(']')).removePrefix("@").split('=', limit = 2)
+        name to value
+      } else null
+      fun matches(c: XmlElement) = c.name == elemName && (attrFilter == null || c.attributes?.get("@${attrFilter.first}") == attrFilter.second)
+      if (i == path.lastIndex) return e.children.filter(::matches)
+      e = e.children.firstOrNull(::matches) ?: return emptyList()
     }
     return listOf(e)
   }

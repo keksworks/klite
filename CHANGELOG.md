@@ -1,3 +1,6 @@
+# Unreleased
+* xml: @XmlPath now supports attribute predicates to filter elements by attribute value, e.g. `item[@type=something]`
+
 # 2.0.6
 * jdbc: all extensions can now be used on either a DataSource or an existing Connection
 * jdbc: db.isPostgres checks are now strictly per-DataSource/Connection, not global

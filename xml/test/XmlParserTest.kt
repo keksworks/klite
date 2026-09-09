@@ -425,6 +425,38 @@ class XmlParserTest {
     expect(result.data).toEqual(mapOf("@attr" to "a", "x" to "1", "y" to "2"))
   }
 
+  data class WithPropertyFilter(
+    @XmlPath("root/items/Property[@name=CompressionType]") val compressionType: String? = null,
+    @XmlPath("root/items/Property[@name=MimeType]") val mimeType: String? = null
+  )
+
+  @Test fun `attribute predicate filters by attribute value`() {
+    @Language("XML") val xml = """
+      <root>
+        <items>
+          <Property name="MimeType">text/xml</Property>
+          <Property name="CompressionType">application/gzip</Property>
+        </items>
+      </root>
+    """.trimIndent()
+    val result = parser.parse<WithPropertyFilter>(xml)
+    expect(result.compressionType).toEqual("application/gzip")
+    expect(result.mimeType).toEqual("text/xml")
+  }
+
+  @Test fun `attribute predicate returns null when missing`() {
+    @Language("XML") val xml = """
+      <root>
+        <items>
+          <Property name="MimeType">text/xml</Property>
+        </items>
+      </root>
+    """.trimIndent()
+    val result = parser.parse<WithPropertyFilter>(xml)
+    expect(result.compressionType).toEqual(null)
+    expect(result.mimeType).toEqual("text/xml")
+  }
+
   @Test fun `parsePathMap with repeating elements and attributes`() {
     @Language("XML") val xml = """
       <root>
