@@ -177,13 +177,13 @@ You can also use the `DataSource` directly to perform queries.
 
 ```kotlin
 // insert all fields of an entity
-db.insert("table", entity.toValues())
+db.insert("table", entity.toDBValues())
 ```
 
 **Querying Data**
 
 ```kotlin
-// basic query from a table
+// basic query from a table (where specified as a list of pairs)
 db.select<MyEntity>("table", "column" to value)
 
 // type-safe query
@@ -194,6 +194,9 @@ db.select("table", MyEntity::column gte 123, MyEntity::other to something)
 
 // combine conditions with OR
 db.select("table", or(MyEntity::column gte 123, MyEntity::other to something))
+
+// use raw sql where
+db.select("table", sql("json->>field = ?", value), sql("exists(subselect here...)"))
 
 // more advanced query with joins and custom mapping
 db.select("table1 left join table2 on table1.id = table2.megaId", "table2.field" to value) {
@@ -217,14 +220,15 @@ You can register dependencies in the server configuration:
 
 ```kotlin
 Server().apply {
-  register(UserRepository(instanceOf()))
-  // ...
+  register<SomeInterface>(Implementation::class)
+  // don't need to register singleton classes, they are auto-created
 }
 ```
 
 ## 8. Error Handling
 
-Klite has built-in error handling. You can register custom error handlers for specific exceptions.
+Klite has built-in error handling. Standard exceptions are mapped to HTTP status codes by default.
+You can register custom error handlers for specific exceptions.
 
 ```kotlin
 Server().apply {
@@ -245,13 +249,12 @@ class Email(value: String): StringValue(value) {
 }
 ```
 
+Phone, Email, Password are already provided by Klite.
+
 ## 10. Sample Project
 
-The `sample` project in the Klite repository is a great resource for learning how to use the framework. To run it:
-
-1.  Clone the Klite repository.
-2.  Open the project in IntelliJ IDEA.
-3.  Run the `main` function in `sample/src/Launcher.kt`.
+The `sample` project in the Klite repository is a great resource for learning how to use the framework.
+Start with `sample/src/Launcher.kt`.
 
 The sample project demonstrates many of the features of Klite, including:
 
