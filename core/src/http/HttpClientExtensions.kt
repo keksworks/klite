@@ -15,6 +15,7 @@ import java.net.http.HttpResponse.BodyHandler
 import java.net.http.HttpResponse.BodyHandlers.ofInputStream
 import java.net.http.HttpResponse.BodyHandlers.ofString
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -34,7 +35,7 @@ private val log = logger<HttpClient>()
 
 fun <R> HttpClient.request(url: URI, bodyHandler: BodyHandler<R>, modifier: RequestModifier = { this }): HttpResponse<R> {
   val start = currentTimeMillis()
-  val req = HttpRequest.newBuilder().uri(url).timeout(10.seconds).modifier().build()
+  val req = HttpRequest.newBuilder().uri(url).timeout(1.minutes).modifier().build()
   try {
     val res = send(req, bodyHandler)
     log.info("${req.method()} $url in ${currentTimeMillis() - start}ms - ${res.statusCode()}")

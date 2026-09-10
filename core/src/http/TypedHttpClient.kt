@@ -17,6 +17,8 @@ import java.net.http.HttpResponse.BodyHandlers
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -45,7 +47,7 @@ open class TypedHttpClient(
 
   private fun buildReq(urlSuffix: String) = HttpRequest.newBuilder().uri(URI("$baseUrl$urlSuffix"))
     .contentType("application/json; charset=UTF-8").accept("application/json")
-    .timeout(10.seconds).reqModifier()
+    .timeout(1.minutes).reqModifier()
 
   private fun <T> requestJson(urlSuffix: String, type: KType, payload: String? = null, modifier: RequestModifier): T =
     parse(request(urlSuffix, payload, BodyHandlers.ofString(), modifier).trim(), type)
@@ -95,7 +97,7 @@ open class TypedHttpClient(
   inline fun <reified T> get(urlSuffix: String, noinline modifier: RequestModifier? = null): T = get(urlSuffix, typeOf<T>(), modifier)
 
   fun <T> getSSE(urlSuffix: String, type: KType, eventName: String? = null, modifier: RequestModifier? = null): Sequence<T> =
-    requestStream(urlSuffix) { GET().accept("text/event-stream").apply(modifier) }.parseSSE().parseEvents(eventName, type)
+    requestStream(urlSuffix) { GET().timeout(1.days).accept("text/event-stream").apply(modifier) }.parseSSE().parseEvents(eventName, type)
 
   inline fun <reified T> getSSE(urlSuffix: String, eventName: String? = null, noinline modifier: RequestModifier? = null): Sequence<T> =
     getSSE(urlSuffix, typeOf<T>(), eventName, modifier)
@@ -106,7 +108,7 @@ open class TypedHttpClient(
   inline fun <reified T> post(urlSuffix: String, o: Any?, noinline modifier: RequestModifier? = null): T = post(urlSuffix, o, typeOf<T>(), modifier)
 
   fun <T> postSSE(urlSuffix: String, o: Any?, type: KType, eventName: String? = null, modifier: RequestModifier? = null): Sequence<T> =
-    render(o).let { requestStream(urlSuffix, it) { POST(ofString(it)).accept("text/event-stream").apply(modifier) } }.parseSSE().parseEvents(eventName, type)
+    render(o).let { requestStream(urlSuffix, it) { POST(ofString(it)).timeout(1.days).accept("text/event-stream").apply(modifier) } }.parseSSE().parseEvents(eventName, type)
 
   inline fun <reified T> postSSE(urlSuffix: String, o: Any?, eventName: String? = null, noinline modifier: RequestModifier? = null): Sequence<T> =
     postSSE(urlSuffix, o, typeOf<T>(), eventName, modifier)
