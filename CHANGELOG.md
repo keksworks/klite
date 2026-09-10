@@ -2,6 +2,7 @@
 * xml: @XmlPath now supports attribute predicates to filter elements by attribute value, e.g. `item[@type=something]`
 * core: creation of StatusCode is now supported by Converter by default
 * ai: DataExtractor/PDFExtractor now support nested and collection types by providing full JSON schema to the LLM
+* core: more SSE helpers: HttpClient.getSSE/postSSE
 
 # 2.0.6
 * jdbc: all extensions can now be used on either a DataSource or an existing Connection

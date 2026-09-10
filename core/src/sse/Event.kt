@@ -1,10 +1,22 @@
 package klite.sse
 
+import klite.http.RequestModifier
+import klite.http.bodyOrThrow
+import klite.http.getStreaming
+import klite.http.postStreaming
 import klite.max
 import java.io.InputStream
+import java.net.URI
+import java.net.http.HttpClient
 
 /** Server-Sent Event */
 data class Event(val data: Any? = "", val name: String? = null, val id: Any? = null)
+
+fun HttpClient.getSSE(url: URI, modifier: RequestModifier = { this }): Sequence<Event> =
+  getStreaming(url) { modifier().header("Accept", "text/event-stream") }.bodyOrThrow().parseSSE()
+
+fun HttpClient.postSSE(url: URI, data: Any?, modifier: RequestModifier = { this }): Sequence<Event> =
+  postStreaming(url, data) { modifier().header("Accept", "text/event-stream") }.bodyOrThrow().parseSSE()
 
 fun InputStream.parseSSE(): Sequence<Event> = sequence {
   reader().useLines { lines ->
