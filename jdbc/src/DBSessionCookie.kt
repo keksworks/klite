@@ -21,6 +21,10 @@ open class DBSessionCookie(
 ) : SessionStore {
   private val sessionIds = WeakHashMap<Session, String>()
 
+  init {
+    require(table.matches(Regex("[A-Za-z_][A-Za-z0-9_]*"))) { "Invalid session table name: $table" }
+  }
+
   override fun load(exchange: HttpExchange): Session {
     val id = exchange.cookie(cookie.name) ?: return Session()
     val data = db.select(table, "id" to id) { getString("data") }.firstOrNull() ?: return Session()
