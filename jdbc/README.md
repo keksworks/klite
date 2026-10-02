@@ -19,6 +19,9 @@ Registration with Server instance:
   use<RequestTransactionHandler>() // to enable per-request transactions
 ```
 
+For database-backed sessions, include `DBSessionCookie.changeSetFile` in your
+DBMigrator changesets and register it as the server's `SessionStore`.
+
 Stand-alone usage without [klite-server](../server) is also possible:
 ```kotlin
   val db = PooledDataSource(...) // or ConfigDataSource / HikariDataSource
