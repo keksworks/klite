@@ -1,5 +1,6 @@
 package klite.ai
 
+import klite.nodes.Node
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.text.PDFTextStripper
 import java.io.InputStream
@@ -15,11 +16,11 @@ class PDFExtractor(private val extractor: DataExtractor) {
     return Loader.loadPDF(bytes).use { textStripper.getText(it) }
   }
 
-  inline fun <reified T: Any> extractData(pdf: InputStream, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = ""): T =
-    extractData(pdf, typeOf<T>(), provided, extraPrompt)
+  inline fun <reified T: Any> extractData(pdf: InputStream, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = "", params: Node = emptyMap(), numAttempts: Int = 3): T =
+    extractData(pdf, typeOf<T>(), provided, extraPrompt, params, numAttempts)
 
-  fun <T: Any> extractData(pdf: InputStream, type: KType, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = "", numAttempts: Int = 3): T {
+  fun <T: Any> extractData(pdf: InputStream, type: KType, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), extraPrompt: String = "", params: Node = emptyMap(), numAttempts: Int = 3): T {
     val text = extractText(pdf) + "\n" + extraPrompt
-    return extractor.extract(text, type, provided = provided, numAttempts = numAttempts)
+    return extractor.extract(text, type, provided = provided, params = params, numAttempts = numAttempts)
   }
 }

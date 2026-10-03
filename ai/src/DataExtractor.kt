@@ -5,6 +5,7 @@ import klite.http.HttpException
 import klite.json.JsonMapper
 import klite.json.toJsonSchema
 import klite.logger
+import klite.nodes.Node
 import klite.warn
 import java.net.URI
 import kotlin.reflect.KProperty1
@@ -17,18 +18,17 @@ class DataExtractor(
 ) {
   private val log = logger()
 
-  inline fun <reified T: Any> extract(text: String = "", vararg fileUrl: URI, provided: Map<KProperty1<*, *>, Any?> = emptyMap()): T =
-    extract(text, typeOf<T>(), *fileUrl, provided = provided)
+  inline fun <reified T: Any> extract(text: String = "", vararg fileUrl: URI, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), params: Node = emptyMap(), numAttempts: Int = 3): T =
+    extract(text, typeOf<T>(), *fileUrl, provided = provided, params = params, numAttempts = numAttempts)
 
-  fun <T: Any> extract(text: String, type: KType, vararg fileUrl: URI, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), numAttempts: Int = 3): T {
+  fun <T: Any> extract(text: String, type: KType, vararg fileUrl: URI, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), params: Node = emptyMap(), numAttempts: Int = 3): T {
     val providedText = if (provided.isNotEmpty()) ", use these provided values: " + provided.entries.joinToString { "${it.key.name}=${it.value}" } else ""
     var prompt = "Extract $type data as plain json, schema ${type.toJsonSchema()}, skip 'id' and non-required fields if not available:\n$text\n$providedText"
     var response: AIClient.Response? = null
     repeat(numAttempts) {
       try {
-        response = aiClient.query(prompt, *fileUrl, prevResponseId = response?.id)
+        response = aiClient.query(prompt, *fileUrl, prevResponseId = response?.id, params = params)
         val jsonStr = response.text.stripMarkdown()
-        if (provided.isEmpty()) return json.parse(jsonStr, type)
         return json.parse(jsonStr, type)
       } catch (e: Exception) {
         if ((e as? HttpException)?.statusCode == TooManyRequests || it == numAttempts - 1) throw e
