@@ -30,18 +30,30 @@ class SessionTest {
     // the plain getter stringifies, which for a TSID means its base36 toString
     expect(session["i"]).toEqual("42")
     expect(session["t"]).toEqual(tsid.toString())
+
+    // a value stored as a plain number is wrapped into the inline class when that is what is requested
+    session["n"] = 1234L
+    expect(session.get<TSID<Any>>("n")).toEqual(TSID<Any>(1234L))
+    expect(session.get<Long>("n")).toEqual(1234L)
+    // a small number can also arrive as an Int, e.g. from a JSON parser, and is still wrapped
+    session["small"] = 1234
+    expect(session.get<TSID<Any>>("small")).toEqual(TSID<Any>(1234L))
   }
 
   @Test fun `stores session in the cookie and loads it back`() {
+    val tsid = TSID<Any>(11_111_101_234_567_890L)
     val exchange = newExchange()
     val session = store.load(exchange)
     expect(session.isNew).toEqual(true)
     session["userId"] = "123"
+    session["tsid"] = tsid
     store.save(exchange, session)
 
     val loaded = store.load(newExchange(cookie = savedCookieValue!!))
     expect(loaded.isNew).toEqual(false)
     expect(loaded["userId"]).toEqual("123")
+    // a cookie stores a TSID as its base36 toString, which is converted back
+    expect(loaded.get<TSID<Any>>("tsid")).toEqual(tsid)
   }
 
   @Test fun `does not touch the cookie when session is unchanged`() {

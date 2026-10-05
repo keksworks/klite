@@ -48,7 +48,7 @@ class DBSessionStoreJoinTest: DBTest() {
     override fun load(id: UUID, exchange: HttpExchange): MutableMap<String, Comparable<*>?>? {
       return db.query("select s.params, u.* from $table s left join users u on u.id::text = s.params->>'userId'", listOf("s.id" to id)) {
         exchange.attrPut(create<User>())
-        getJson<MutableMap<String, Comparable<*>?>>("params").toMutableMap()
+        getJson<MutableMap<String, Any?>>("params").toMutableMap() as MutableMap<String, Comparable<*>?>
       }.firstOrNull()
     }
   }

@@ -6,15 +6,11 @@ import ch.tutteli.atrium.api.verbs.expect
 import com.sun.net.httpserver.Headers
 import io.mockk.every
 import io.mockk.mockk
-import klite.HttpExchange
-import klite.OriginalHttpExchange
-import klite.RouterConfig
-import klite.TSID
+import klite.*
 import klite.jdbc.*
 import klite.sample.DBTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.util.*
 import java.util.UUID.randomUUID
 
 class DBSessionStoreTest: DBTest() {
@@ -37,7 +33,7 @@ class DBSessionStoreTest: DBTest() {
     store.save(exchange, session)
 
     val id = savedId!!
-    expect(runCatching { UUID.fromString(id) }.isSuccess).toEqual(true)
+    expect(runCatching { id.uuid }.isSuccess).toEqual(true)
     val loaded = store.load(newExchange(cookie = id))
     expect(loaded.isNew).toEqual(false)
     expect(loaded["userId"]).toEqual("123")
@@ -69,19 +65,24 @@ class DBSessionStoreTest: DBTest() {
     session["i"] = 42
     session["l"] = 11_111_101_234_567_890L
     session["t"] = TSID<Any>(11_111_101_234_567_890L)
+    // a small TSID comes back as an Int, a big one as a Long, both must wrap
+    session["small"] = TSID<Any>(1234L)
     store.save(exchange, session)
 
     val loaded = store.load(newExchange(cookie = savedId!!))
-    // jsonb values come back as their text form, just like CookieSessionStore stores them, so get() converts them
+    // jsonb numbers are read back as numbers, which get() converts or wraps into the requested type
     expect(loaded.params["s"]).toEqual("text")
-    expect(loaded.params["i"]).toEqual("42")
-    expect(loaded.params["l"]).toEqual("11111101234567890")
+    expect(loaded.params["i"]).toEqual(42)
+    expect(loaded.params["l"]).toEqual(11_111_101_234_567_890L)
     expect(loaded.get<String>("s")).toEqual("text")
     expect(loaded.get<Int>("i")).toEqual(42)
     expect(loaded.get<Long>("l")).toEqual(11_111_101_234_567_890L)
-    // a TSID is written as a jsonb number, so its value survives exactly, but it is not read back as a TSID
-    expect(loaded.params["t"]).toEqual("11111101234567890")
+    // a TSID is written as a jsonb number and read back as that number, which get() wraps into a TSID again
+    expect(loaded.params["t"]).toEqual(11_111_101_234_567_890L)
     expect(loaded.get<Long>("t")).toEqual(11_111_101_234_567_890L)
+    expect(loaded.get<TSID<Any>>("t")).toEqual(TSID(11_111_101_234_567_890L))
+    expect(loaded.params["small"]).toEqual(1234)
+    expect(loaded.get<TSID<Any>>("small")).toEqual(TSID(1234L))
   }
 
   @Test fun `does not store an unchanged session`() {
