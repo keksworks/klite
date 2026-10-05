@@ -160,14 +160,16 @@ class XmlParser(
       }
     }
     reader.close()
-    return root!!
+    return root ?: error("No root element")
   }
 
   private fun buildObject(element: XmlElement, type: KType): Any? {
-    // TODO: better null handling
     val cls = type.classifier as KClass<*>
     if (cls == String::class) return values.from(element.text)
-    else if (Converter.supports(cls)) return values.from(Converter.from(element.text!!, cls))
+    else if (Converter.supports(cls)) {
+      val text = element.text ?: return if (type.isMarkedNullable) null else error("Value not found in <${element.name}>")
+      return values.from(Converter.from(text, cls))
+    }
     if (cls == Map::class) return toNode(element)
     val converted = values.from(element.text, type)
     if (converted != element.text) return converted

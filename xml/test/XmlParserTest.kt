@@ -1,6 +1,8 @@
 package klite.xml
 
+import ch.tutteli.atrium.api.fluent.en_GB.message
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
+import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
 import klite.SnakeCase
 import klite.ValueConverter
@@ -414,6 +416,29 @@ class XmlParserTest {
 
     val all = parser.parsePathMap(xml)
     expect(all.containsKey("/root/population")).toEqual(true)
+  }
+
+  @Test fun `missing required attribute value`() {
+    data class Item(@XmlPath("@id") val id: Int)
+    expect { parser.parse<Item>("<root/>") }.toThrow<IllegalStateException>()
+      .message.toEqual("Value not found in <@id>")
+  }
+
+  @Test fun `missing required element value`() {
+    data class Item(val id: Int)
+    expect { parser.parse<Item>("<root><id/></root>") }.toThrow<IllegalStateException>()
+      .message.toEqual("Value not found in <id>")
+  }
+
+  @Test fun `nullable value stays null when missing`() {
+    data class Item(@XmlPath("@id") val id: Int?, val count: Int?)
+    expect(parser.parse<Item>("<root><count/></root>")).toEqual(Item(null, null))
+  }
+
+  @Test fun `missing required node`() {
+    data class Item(val id: Int, val name: String)
+    expect { parser.parse<Item>("<root><id>1</id></root>") }.toThrow<IllegalArgumentException>()
+      .message.toEqual("Cannot create Item from {id=1}: missing name")
   }
 
   data class WithNode(@XmlPath("name") val name: String, @XmlPath("data") val data: XmlNode?)
