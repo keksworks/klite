@@ -34,18 +34,20 @@ class OAuthRoutesTest {
   val routes = OAuthRoutes(userProvder, registry)
 
   @Test fun `accept user`() {
+    // a real Session, as Session.get() cannot be stubbed on a mock: it is overloaded by the reified getter
+    val session = Session(mutableMapOf<String, Comparable<*>?>("oauth_123" to "/path"))
+    every { exchange.session } returns session
     every { userProvder.provide(any(), any(), any()) } returns user
     every { userProvder.initSession(any(), any()) } answers { callOriginal() }
-    every { exchange.session["oauth_123"] } returns "/path"
 
     expect { runBlocking { routes.accept("code", "123", exchange) } }.toThrow<RedirectException>()
 
     verify {
       userProvder.provide(user.copy(locale = Locale.ENGLISH), token, exchange)
       userProvder.initSession(user, exchange)
-      exchange.session["userId"] = "uid"
       exchange.redirect(URI("/path"))
     }
+    expect(session["userId"]).toEqual("uid")
   }
 
   @Test fun `safeRedirectParam allows path-absolute`() {

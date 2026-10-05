@@ -2,11 +2,10 @@ package klite
 
 import klite.crypto.KeyCipher
 import klite.crypto.KeyGenerator
-import java.io.Serializable
 import kotlin.time.Duration
 
 class Session(
-  val params: MutableMap<String, Serializable?> = mutableMapOf(),
+  val params: MutableMap<String, Comparable<*>?> = mutableMapOf(),
   isNew: Boolean = true
 ) {
   /** true until the session is loaded from a store, and true again after [clear], so that a store knows it has no stored content */
@@ -15,7 +14,7 @@ class Session(
 
   operator fun get(key: String): String? = params[key]?.toString()
   inline operator fun <reified T> get(key: String): T? = params[key]?.let { if (it is T) it else Converter.from(it.toString()) }
-  operator fun set(key: String, value: Serializable?) = params.put(key, value).also { changed = true }
+  operator fun set(key: String, value: Comparable<*>?) = params.put(key, value).also { changed = true }
   fun clear() = params.clear().also { changed = true; isNew = true }
 }
 
@@ -39,7 +38,7 @@ open class CookieSessionStore(
 
   override fun load(exchange: HttpExchange) = exchange.cookie(cookie.name)?.let {
     try {
-      Session(urlDecodeParams(keyCipher.decrypt(it)) as MutableMap<String, Serializable?>, isNew = false)
+      Session(urlDecodeParams(keyCipher.decrypt(it)) as MutableMap<String, Comparable<*>?>, isNew = false)
     } catch (e: Exception) {
       log.info("Failed to decrypt session cookie: $e"); null
     }

@@ -19,6 +19,13 @@ class TSIDTest {
     expect(Id("1y2p0ij32e8e7")).toEqual(maxValue)
   }
 
+  @Test fun comparable() {
+    // Comparable is required for a TSID to be storable in a Session, which holds Comparables
+    expect(Id(1) < Id(2)).toEqual(true)
+    expect(Id(2) > Id(1)).toEqual(true)
+    expect(Id(2).compareTo(Id(2))).toEqual(0)
+  }
+
   @Test fun converter() {
     expect(Converter.from<Id>(maxValue.toString())).toEqual(maxValue)
   }

@@ -9,6 +9,7 @@ import io.mockk.mockk
 import klite.HttpExchange
 import klite.OriginalHttpExchange
 import klite.RouterConfig
+import klite.TSID
 import klite.jdbc.*
 import klite.sample.DBTest
 import org.junit.jupiter.api.BeforeEach
@@ -60,6 +61,28 @@ class DBSessionStoreTest: DBTest() {
     expect(reloaded["b"]).toEqual("2")
   }
 
+
+  @Test fun `keeps non-string attributes`() {
+    val exchange = newExchange()
+    val session = store.load(exchange)
+    session["s"] = "text"
+    session["i"] = 42
+    session["l"] = 11_111_101_234_567_890L
+    session["t"] = TSID<Any>(11_111_101_234_567_890L)
+    store.save(exchange, session)
+
+    val loaded = store.load(newExchange(cookie = savedId!!))
+    // jsonb values come back as their text form, just like CookieSessionStore stores them, so get() converts them
+    expect(loaded.params["s"]).toEqual("text")
+    expect(loaded.params["i"]).toEqual("42")
+    expect(loaded.params["l"]).toEqual("11111101234567890")
+    expect(loaded.get<String>("s")).toEqual("text")
+    expect(loaded.get<Int>("i")).toEqual(42)
+    expect(loaded.get<Long>("l")).toEqual(11_111_101_234_567_890L)
+    // a TSID is written as a jsonb number, so its value survives exactly, but it is not read back as a TSID
+    expect(loaded.params["t"]).toEqual("11111101234567890")
+    expect(loaded.get<Long>("t")).toEqual(11_111_101_234_567_890L)
+  }
 
   @Test fun `does not store an unchanged session`() {
     store.save(newExchange(), store.load(newExchange()))

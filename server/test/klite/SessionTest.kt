@@ -15,6 +15,23 @@ class SessionTest {
   val requestHeaders = Headers()
   val responseHeaders = Headers()
 
+  @Test fun `holds non-string values`() {
+    val tsid = TSID<Any>(11_111_101_234_567_890L)
+    val session = Session()
+    session["s"] = "text"
+    session["i"] = 42
+    session["l"] = 11_111_101_234_567_890L
+    session["t"] = tsid
+
+    expect(session.get<String>("s")).toEqual("text")
+    expect(session.get<Int>("i")).toEqual(42)
+    expect(session.get<Long>("l")).toEqual(11_111_101_234_567_890L)
+    expect(session.get<TSID<Any>>("t")).toEqual(tsid)
+    // the plain getter stringifies, which for a TSID means its base36 toString
+    expect(session["i"]).toEqual("42")
+    expect(session["t"]).toEqual(tsid.toString())
+  }
+
   @Test fun `stores session in the cookie and loads it back`() {
     val exchange = newExchange()
     val session = store.load(exchange)
