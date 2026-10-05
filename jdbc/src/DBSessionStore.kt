@@ -25,15 +25,18 @@ import kotlin.time.toJavaDuration
  * Rows of sessions that are simply abandoned are not deleted, remove them periodically using [deleteOlderThan].
  */
 open class DBSessionStore(
-  private val db: DataSource,
+  protected val db: DataSource,
   val table: String = "db_sessions",
   val cookie: Cookie = Cookie("S", "", path = "/", httpOnly = true)
 ): SessionStore {
   override fun load(exchange: HttpExchange): Session {
     val id = exchange.sessionId ?: return Session()
-    val params = db.query("select params from ${q(table)}", listOf("id" to id)) { getJsonOrNull<Map<String, String?>>("params") }.firstOrNull()
-    return params?.let { Session(it.toMutableMap(), isNew = false) } ?: Session()
+    val params = load(id, exchange)
+    return params?.let { Session(it, isNew = false) } ?: Session()
   }
+
+  protected open fun load(id: UUID, exchange: HttpExchange): MutableMap<String, String?>? =
+    db.query("select params from ${q(table)}", "id" to id) { getJsonOrNull<MutableMap<String, String?>>("params") }.firstOrNull()
 
   override fun save(exchange: HttpExchange, session: Session) {
     if (!session.changed) return
