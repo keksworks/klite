@@ -31,14 +31,13 @@ open class DBSessionStore(
 ): SessionStore {
   override fun load(exchange: HttpExchange): Session {
     val id = exchange.sessionId ?: return Session()
-    val params = load(id, exchange)
+    val params = load(id, exchange) as MutableMap<String, Comparable<*>?>?
     return params?.let { Session(it, isNew = false) } ?: Session()
   }
 
   @Suppress("UNCHECKED_CAST")
-  protected open fun load(id: UUID, exchange: HttpExchange): MutableMap<String, Comparable<*>?>? =
-    db.query("select params from ${q(table)}", "id" to id) { getJsonOrNull<MutableMap<String, Any?>>("params") }
-      .firstOrNull() as MutableMap<String, Comparable<*>?>?
+  protected open fun load(id: UUID, exchange: HttpExchange): MutableMap<String, Any>? =
+    db.query("select params from ${q(table)}", "id" to id) { getJsonOrNull<MutableMap<String, Any>>("params") }.firstOrNull()
 
   override fun save(exchange: HttpExchange, session: Session) {
     if (!session.changed) return

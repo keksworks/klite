@@ -45,10 +45,10 @@ class DBSessionStoreJoinTest: DBTest() {
 
   /** the app's own DataSource has to be kept, as DBSessionStore does not expose its own */
   class JoinedSessionStore(db: DataSource, table: String): DBSessionStore(db, table) {
-    override fun load(id: UUID, exchange: HttpExchange): MutableMap<String, Comparable<*>?>? {
+    override fun load(id: UUID, exchange: HttpExchange): MutableMap<String, Any>? {
       return db.query("select s.params, u.* from $table s left join users u on u.id::text = s.params->>'userId'", listOf("s.id" to id)) {
         exchange.attrPut(create<User>())
-        getJson<MutableMap<String, Any?>>("params").toMutableMap() as MutableMap<String, Comparable<*>?>
+        getJson<MutableMap<String, Any>>("params")
       }.firstOrNull()
     }
   }
