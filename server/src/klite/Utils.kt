@@ -9,6 +9,9 @@ import java.util.*
 fun String.urlDecode() = URLDecoder.decode(this, Charsets.UTF_8)!!
 fun String.urlEncode() = URLEncoder.encode(this, Charsets.UTF_8).replace("+", "%20")
 
+/** Escapes a value for the quoted-string part of an HTTP header: quotes/backslashes escaped, control chars (incl. CR/LF) dropped */
+fun String.escapeQuoted() = filter { it >= ' ' && it != '\u007f' }.replace("\\", "\\\\").replace("\"", "\\\"")
+
 fun ByteArray.base64Encode() = Base64.getEncoder().encodeToString(this)!!
 fun String.base64Encode() = toByteArray().base64Encode()
 fun ByteArray.base64UrlEncode() = base64Encode().replace('+', '-').replace('/', '_').trimEnd('=')

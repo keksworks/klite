@@ -1,5 +1,6 @@
 package klite
 
+import ch.tutteli.atrium.api.fluent.en_GB.toContain
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import org.junit.jupiter.api.Test
@@ -35,5 +36,17 @@ class MultipartRendererTest {
       --MyBoundary--
 
     """.trimIndent().replace("\n", "\r\n"))
+  }
+
+  @Test fun `name and filename are escaped`() {
+    val output = ByteArrayOutputStream()
+    MultipartRenderer(boundary = "B").render(output, mapOf(
+      "a\"b\r\nInjected: 1" to FileUpload("c\"d\r\ne.txt", stream = "".byteInputStream()),
+      "plain" to "value"
+    ))
+    val rendered = output.toString()
+    expect(rendered).toContain("""name="a\"bInjected: 1"""")
+    expect(rendered).toContain("""filename="c\"de.txt"""")
+    expect(rendered).toContain("""name="plain"""")
   }
 }

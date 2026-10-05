@@ -39,4 +39,13 @@ class UtilsTest {
     expect("hellöu".base64UrlEncode()).toEqual("aGVsbMO2dQ")
     expect("aGVsbMO2dQ".base64UrlDecode().decodeToString()).toEqual("hellöu")
   }
+
+  @Test fun escapeQuoted() {
+    expect("plain".escapeQuoted()).toEqual("plain")
+    expect("a\"b".escapeQuoted()).toEqual("a\\\"b")
+    expect("a\\b".escapeQuoted()).toEqual("a\\\\b")
+    expect("a\r\nb".escapeQuoted()).toEqual("ab")
+    expect("a\u0000b\u007fc".escapeQuoted()).toEqual("abc")
+    expect("hellö".escapeQuoted()).toEqual("hellö")
+  }
 }

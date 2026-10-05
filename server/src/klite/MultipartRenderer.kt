@@ -18,10 +18,10 @@ class MultipartRenderer(
       if (v == null) return@forEach
       out.write(boundary)
       out.writecrlf()
-      out.write("Content-Disposition: form-data; name=\"$k\"")
+      out.write("Content-Disposition: form-data; name=\"${k.escapeQuoted()}\"")
       when (v) {
         is FileUpload -> {
-          out.writecrlf("; filename=\"${v.fileName}\"")
+          out.writecrlf("; filename=\"${v.fileName.escapeQuoted()}\"")
           out.writecrlf("Content-Type: ${MimeTypes.withCharset(v.contentType ?: MimeTypes.unknown)}")
           out.writecrlf()
           out.flush()

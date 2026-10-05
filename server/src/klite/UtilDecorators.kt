@@ -31,7 +31,7 @@ fun RouterConfig.basicAuth(realm: String = "Auth", userProvider: (name: String, 
     e.attrPut(it)
     return@before
   }
-  e.header("WWW-Authenticate", "Basic realm=\"${realm.quoted()}\"")
+  e.header("WWW-Authenticate", "Basic realm=\"${realm.escapeQuoted()}\"")
   throw UnauthorizedException()
 }
 
@@ -48,9 +48,6 @@ private fun HttpExchange.basicAuthCredentials(): Pair<String, Password>? {
   val separator = decoded.indexOf(':')
   return if (separator < 0) null else decoded.substring(0, separator) to Password(decoded.substring(separator + 1))
 }
-
-/** Escapes a quoted-string per RFC 7230, so a realm can't break out of the `WWW-Authenticate` header value */
-private fun String.quoted() = replace("\\", "\\\\").replace("\"", "\\\"")
 
 fun RouterConfig.useHashCodeAsETag() = decorator { e, handler ->
   e.handler()?.also { if (e.method == GET && e.statusCode == OK && it != Unit) e.checkETagHashCode(it) }
