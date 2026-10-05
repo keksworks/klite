@@ -5,18 +5,21 @@
 * jdbc: `rs.getString("alias.field")` for joined tables now works on all databases and with tables without an id column
 * jdbc: remove auto-fallback to `docker-compose` from `docker compose`, use `DOCKER_COMPOSE` env var to override
 * jdbc: DBMigrator skips unchanged .sql files via a combined stamp + contexts stored in db_changelog comment (jar CRC-32 or lastModified)
-* ai: AIClient can now accept multiple image or document files as an input
-* i18n: added `Lang.translateOrNull()`
+* jdbc: DBSessionStore introduced as alternative to CookieSessionStore for storing sessions in the database, useful when guaranteed logout is needed
+* server: `Session.cleared` is set by `clear()`, so that an id-based `SessionStore` can invalidate the stored session
+* server: CookieSessionStore now expires the cookie when the session is cleared, so logout removes it
 * email: EmailContent.bodyHtml support added
 * email: ImapEmailReader introduced for reading incoming mail over IMAP
 * smtp: module was renamed to *email*, update references
 * server: slightly faster request routing
-* server: `Server.httpExchangeCreator` is now a lambda for better performance
+* server: `Server.httpExchangeCreator` is now a lambda for better performance (small code change needed)
 * server: `urlEncode()` is now path-safe (avoids +, uses %20 instead)
 * server: `CorsHandler.allowedCredentials` now defaults to false unless specific `allowedOrigins` are provided, to avoid sending cookies to all origins
 * server: `HttpExchange.query` now returns still encoded string value that can be safely appended to redirected URLs
 * server: read multipart boundary from Content-Type header instead of body for correctness
 * oauth: reject logins if we get `email_verified=false` from the provider, to avoid unverified emails in the system
+* i18n: added `Lang.translateOrNull()`
+* ai: AIClient can now accept multiple image or document files as an input
 
 # 2.0.7
 * xml: @XmlPath now supports attribute predicates to filter elements by attribute value, e.g. `item[@type=something]`

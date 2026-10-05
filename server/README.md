@@ -105,7 +105,7 @@ Session support can be enabled by providing a [SessionStore](src/klite/Session.k
 
 The included [CookieSessionStore](src/klite/Session.kt) stores sessions in an encrypted cookie, which doesn't require any synchronization between multiple server nodes. It requires a `Config["SESSION_SECRET"]` to be available to derive an encryption key. Make sure it is different in all your environments.
 
-You can implement your own store if you want sessions to be stored in e.g. a database.
+If you want sessions to be stored in a database instead, use [DBSessionStore](../jdbc/src/DBSessionStore.kt) from the [jdbc module](../jdbc/README.md), which keeps the attributes in a table and only a session id in the cookie, so sessions can also be invalidated server-side. You can also implement your own store.
 
 ## (SSE) Server-Sent Events
 
