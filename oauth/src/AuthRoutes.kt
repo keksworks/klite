@@ -14,8 +14,8 @@ open class AuthRoutes {
 
 fun HttpExchange.initSession(user: OAuthUser) {
   session.clear()
-  session["userId"] = user.id.toString()
-  session["started"] = currentTimeMillis().toString()
+  session["userId"] = user.id as Comparable<Any>
+  session["started"] = currentTimeMillis()
   attr("user", user)
   attrPut(user)
 }
