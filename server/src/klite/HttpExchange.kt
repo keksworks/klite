@@ -28,7 +28,7 @@ open class HttpExchange(
   lateinit var route: Route
   val method = RequestMethod.valueOf(original.requestMethod)
   open val remoteAddress: String get() = original.remoteAddress.address.hostAddress
-  open val host: String get() = header("Host")!!
+  open val host: String get() = header("Host")?.checkHost() ?: throw BadRequestException("Host header is required")
   open val isSecure: Boolean get() = original is HttpsExchange
   open val protocol: String get() = if (isSecure) "https" else "http"
 
@@ -156,3 +156,7 @@ internal fun String.checkHeaderValue() = also {
   require(none { c -> c in "\r\n\u0000" }) { "Invalid header value" }
 }
 
+/** Validates a `host[:port]` authority (incl. IPv6) so it can't inject userinfo, path, query or control chars into URLs built from it */
+private val hostRegex = Regex("""(?:\[[0-9A-Fa-f:.]{2,45}]|[\w.-]+)(?::\d{1,5})?""")
+
+internal fun String.checkHost() = also { require(hostRegex.matches(it)) { "Invalid Host" } }

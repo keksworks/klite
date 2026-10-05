@@ -63,11 +63,26 @@ class HttpExchangeTest {
   }
 
   @Test fun fullUrl() {
-    every { exchange.host } returns "localhost:8080"
+    every { exchange.header("Host") } returns "localhost:8080"
     expect(exchange.fullUrl).toEqual(URI("http://localhost:8080/hello?hello=world"))
 
-    every { exchange.host } returns "host.domain"
+    every { exchange.header("Host") } returns "host.domain"
     expect(exchange.fullUrl("/some/page")).toEqual(URI("http://host.domain/some/page"))
+  }
+
+  @Test fun `host is validated`() {
+    for (host in listOf("good.com", "good.com:8080", "127.0.0.1:80", "sub.domain.co.uk", "[::1]:8080", "[2001:db8::1]")) {
+      every { exchange.header("Host") } returns host
+      expect(exchange.host).toEqual(host)
+    }
+
+    for (host in listOf("", "evil.com/path", "user@evil.com", "evil.com?q=1", "evil.com#f", "good.com\u0000", "a b", "good.com\r\nX: y")) {
+      every { exchange.header("Host") } returns host
+      assertThrows<IllegalArgumentException> { exchange.host }
+    }
+
+    every { exchange.header("Host") } returns null
+    assertThrows<BadRequestException> { exchange.host }
   }
 
   @Test fun `request cookies`() {

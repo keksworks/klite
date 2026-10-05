@@ -7,7 +7,7 @@ open class XForwardedHttpExchange(original: OriginalHttpExchange, config: Router
     private val forwardedIPIndexFromEnd = Config.optional("XFORWARDED_IP_FROM_END", "1").toInt()
   }
   override val remoteAddress get() = header("X-Forwarded-For")?.split(", ")?.let { it.getOrNull(it.size - forwardedIPIndexFromEnd) } ?: super.remoteAddress
-  override val host get() = header("X-Forwarded-Host") ?: super.host
+  override val host get() = header("X-Forwarded-Host")?.checkHost() ?: super.host
   override val protocol get() = header("X-Forwarded-Proto") ?: "http"
   override val isSecure get() = protocol == "https"
 }
