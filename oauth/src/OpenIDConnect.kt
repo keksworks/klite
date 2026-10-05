@@ -1,12 +1,9 @@
 package klite.oauth
 
-import klite.HttpExchange
-import klite.info
+import klite.*
 import klite.json.parse
-import klite.logger
 import klite.nodes.textOrNull
 import klite.oauth.JWT.Companion.jsonMapper
-import klite.plus
 import java.net.URI
 import java.net.http.HttpClient
 
@@ -37,10 +34,14 @@ class OIDCConfig(
     jwksUri.toString(),
     httpClient
   ) {
+    override fun startAuthUrl(state: String?, redirectUrl: URI, lang: String) =
+      super.startAuthUrl(state, redirectUrl, lang) + mapOfNotNull("nonce" to state)
+
     override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
       val jwt = token.idToken ?: error("id_token is required for OpenID Connect")
       if (keys == null) fetchKeys()
       jwt.verify(keys!!)
+      jwt.checkOidc(issuer = this@OIDCConfig.issuer, audience = clientId, nonce = exchange.attr(OIDC_STATE) ?: error("Missing OAuth state"))
       return UserProfile(provider, jwt.payload.subject, jwt.payload.email!!,
         jwt.payload.textOrNull("givenName") ?: jwt.payload.name!!.substringBefore(" "),
         jwt.payload.textOrNull("familyName") ?: jwt.payload.name!!.substringAfter(" "),

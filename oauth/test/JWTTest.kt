@@ -64,4 +64,24 @@ class JWTTest {
     val signed = jwt.sign(kp1.private)
     assertThrows<IllegalArgumentException> { signed.verify(kp2.public) }
   }
+
+  @Test fun `checkOidc binds iss, aud and nonce`() {
+    val payload = JWT.Payload(mapOf(
+      "iss" to "https://issuer", "aud" to "client-1", "nonce" to "n1", "sub" to "u", "exp" to Instant.now().epochSecond + 60
+    ))
+    payload.hasAudience("client-1").let { expect(it).toEqual(true) }
+    payload.hasAudience("other").let { expect(it).toEqual(false) }
+    JWT(Header(mapOf("alg" to "HS256", "typ" to "JWT")), payload).checkOidc("https://issuer", "client-1", "n1")
+    assertThrows<IllegalArgumentException> { JWT(Header(mapOf("alg" to "HS256", "typ" to "JWT")), payload).checkOidc("https://other", "client-1", "n1") }
+    assertThrows<IllegalArgumentException> { JWT(Header(mapOf("alg" to "HS256", "typ" to "JWT")), payload).checkOidc("https://issuer", "client-2", "n1") }
+    assertThrows<IllegalArgumentException> { JWT(Header(mapOf("alg" to "HS256", "typ" to "JWT")), payload).checkOidc("https://issuer", "client-1", "n2") }
+  }
+
+  @Test fun `checkOidc accepts aud array and iss template`() {
+    val payload = JWT.Payload(mapOf(
+      "iss" to "https://login.microsoftonline.com/tid/v2.0", "aud" to listOf("client-1", "other"), "sub" to "u"
+    ))
+    JWT(Header(mapOf("alg" to "HS256", "typ" to "JWT")), payload)
+      .checkOidc("https://login.microsoftonline.com/{tenantid}/v2.0", "client-1")
+  }
 }

@@ -7,10 +7,12 @@ import klite.annotations.POST
 import klite.annotations.PathParam
 import klite.i18n.lang
 import java.net.URI
+import java.security.SecureRandom
 import java.util.*
 
 open class OAuthRoutes(private val userProvider: OAuthUserProvider, registry: Registry) {
   private val clients = registry.requireAll<OAuthClient>().associateBy { it.provider }
+  private val random = SecureRandom()
 
   private fun client(provider: String?) = (if (provider == null) clients.values.firstOrNull() else clients[provider.uppercase()]) ?:
     error("No ${provider ?: ""}OAuthClient registered")
@@ -21,7 +23,7 @@ open class OAuthRoutes(private val userProvider: OAuthUserProvider, registry: Re
     if (e.query("error_message") != null) e.redirectToLogin(null, "oauthProviderRefused")
     else if (e.query("state") != null) accept(provider, e.query("code"), e.query("state")!!, e)
     else {
-      val nonce = Math.random().toString().substringAfter(".")
+      val nonce = ByteArray(16).also { random.nextBytes(it) }.base64UrlEncode()
       e.session["oauth_$nonce"] = e.safeRedirectParam?.toString() ?: "/"
       e.redirect(client(provider).startAuthUrl(nonce, e.fullUrl(e.path), e.lang))
     }
@@ -32,6 +34,7 @@ open class OAuthRoutes(private val userProvider: OAuthUserProvider, registry: Re
     val nonceKey = "oauth_$state"
     val originalUrl = e.session[nonceKey]?.let { URI(it) } ?: throw ForbiddenException("Invalid or expired OAuth state")
     e.session[nonceKey] = null
+    e.attr(OIDC_STATE, state)
 
     if (code == null) e.redirectToLogin(originalUrl, "userCancelled")
 
@@ -45,6 +48,8 @@ open class OAuthRoutes(private val userProvider: OAuthUserProvider, registry: Re
     e.redirect(originalUrl)
   }
 }
+
+internal const val OIDC_STATE = "oauthState"
 
 /** Allows only path-absolute same-site redirects; rejects `//host`, `/\host` and header-breaking chars */
 val HttpExchange.safeRedirectParam get() = query("redirect")

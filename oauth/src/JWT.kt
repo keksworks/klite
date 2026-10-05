@@ -1,7 +1,6 @@
 package klite.oauth
 
 import klite.*
-import klite.SnakeCase
 import klite.json.*
 import klite.oauth.JWT.Companion.jsonMapper
 import java.math.BigInteger
@@ -66,6 +65,14 @@ data class JWT(val headerPart: String, val payloadPart: String, val signaturePar
   /** Checks only expiry without signature verification, e.g. for tokens verified by external provider */
   fun verify() = checkExpiry()
 
+  /** Call after signature verification to bind an OIDC id_token to this client and login request */
+  fun checkOidc(issuer: String, audience: String, nonce: String? = null) {
+    val iss = payload.issuer ?: error("Missing iss in JWT")
+    require(iss == issuer || issuer.isIssuerTemplateFor(iss)) { "Unexpected issuer: $iss" }
+    require(payload.hasAudience(audience)) { "Unexpected audience for $audience" }
+    if (nonce != null) require(payload.nonce == nonce) { "Invalid nonce" }
+  }
+
   fun sign(privateKey: PrivateKey): JWT {
     require(signaturePart == null) { "Already signed" }
     val sig = Signature.getInstance(pkiAlgorithms[header.alg]).apply {
@@ -87,14 +94,26 @@ data class JWT(val headerPart: String, val payloadPart: String, val signaturePar
   data class Payload(val claims: JsonNode): JsonNode by claims {
     val subject get() = getString("sub")
     val audience get() = getString("aud")
+    fun hasAudience(id: String) = when (val aud = getOrNull<Any>("aud")) {
+      is String -> aud == id
+      is Collection<*> -> id in aud
+      else -> false
+    }
     val issuedAt get() = getOrNull<Number>("iat")?.let { Instant.ofEpochSecond(it.toLong()) }
     val issuer get() = getOrNull<String>("iss")
     val expiresAt get() = getOrNull<Number>("exp")?.let { Instant.ofEpochSecond(it.toLong()) }
+    val nonce get() = getOrNull<String>("nonce")
     val name get() = getOrNull<String>("name")
     val email get() = getOrNull<String>("email")?.let { Email(it) }
     val emailVerified get() = getOrNull<Boolean>("email_verified")
     val locale get() = getOrNull<String>("locale")?.let { Locale.forLanguageTag(it) }
   }
+}
+
+/** discovery `issuer` may be a template like `https://login.microsoftonline.com/{tenantid}/v2.0` */
+private fun String.isIssuerTemplateFor(iss: String): Boolean {
+  val parts = split("{tenantid}")
+  return parts.size == 2 && iss.startsWith(parts[0]) && iss.endsWith(parts[1]) && iss.length > parts[0].length + parts[1].length
 }
 
 private fun ByteArray.padTo(n: Int) = when {
