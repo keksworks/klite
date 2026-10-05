@@ -11,8 +11,8 @@ import kotlin.time.Duration.Companion.days
  */
 open class CorsHandler(
   val maxAge: Duration = 7.days,
-  val allowCredentials: Boolean = true,
   val allowedOrigins: Set<String>? = null,
+  val allowCredentials: Boolean = allowedOrigins != null,
   val allowedMethods: Set<RequestMethod> = setOf(GET, POST, PUT, PATCH, DELETE),
   val allowedHeaders: Set<String>? = null
 ): Before {
