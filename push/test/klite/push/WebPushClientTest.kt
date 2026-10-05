@@ -45,29 +45,14 @@ class WebPushClientTest {
   }
 
   @Test fun `encrypts payload in aes128gcm format`() {
-    val subKeyPair = generateTestKeyPair()
-    val subPub = subKeyPair.public as ECPublicKey
-    val x = subPub.w.affineX.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
-    val y = subPub.w.affineY.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
-    val p256dh = Base64.getUrlEncoder().withoutPadding().encodeToString(byteArrayOf(0x04) + x + y)
-    val auth = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(16) { it.toByte() })
-    val sub = PushSubscription(URI.create("https://example.com/push"), SubscriptionKeys(p256dh, auth))
     val plaintext = "Hello, World!".toByteArray()
-    val encrypted = client.encrypt(plaintext, sub.keys)
+    val encrypted = client.encrypt(plaintext, testSubscription())
     // salt(16) + rs(4) + idlen(1) + pubKey(65) + (plaintext + 0x02 delimiter) + gcm_tag(16)
-    val expectedSize = 16 + 4 + 1 + 65 + plaintext.size + 1 + 16
-    expect(encrypted.size).toEqual(expectedSize)
+    expect(encrypted.size).toEqual(16 + 4 + 1 + 65 + plaintext.size + 1 + 16)
   }
 
   @Test fun `encrypted message header has correct aes128gcm format`() {
-    val subKeyPair = generateTestKeyPair()
-    val subPub = subKeyPair.public as ECPublicKey
-    val x = subPub.w.affineX.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
-    val y = subPub.w.affineY.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
-    val p256dh = Base64.getUrlEncoder().withoutPadding().encodeToString(byteArrayOf(0x04) + x + y)
-    val auth = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(16) { it.toByte() })
-    val sub = PushSubscription(URI.create("https://example.com/push"), SubscriptionKeys(p256dh, auth))
-    val encrypted = client.encrypt("test".toByteArray(), sub.keys)
+    val encrypted = client.encrypt("test".toByteArray(), testSubscription())
 
     // salt(16) + rs(4) + idlen(1) + keyid(65) + ciphertext + tag(16)
     expect(encrypted.size > 16 + 4 + 1 + 65).toEqual(true)
@@ -79,6 +64,25 @@ class WebPushClientTest {
     expect(encrypted[21].toInt()).toEqual(0x04)
     val senderPubRaw = Base64.getUrlDecoder().decode(keyPair.publicKey)
     expect(encrypted.copyOfRange(21, 86).contentEquals(senderPubRaw)).toEqual(true)
+  }
+
+  @Test fun `salt is random per message`() {
+    val keys = testSubscription()
+    val plaintext = "same".toByteArray()
+    val first = client.encrypt(plaintext, keys)
+    val second = client.encrypt(plaintext, keys)
+    // a repeated salt would reuse the AES-GCM key and nonce for the same sender and subscription
+    expect(first.copyOfRange(0, 16).contentEquals(second.copyOfRange(0, 16))).toEqual(false)
+    expect(first.contentEquals(second)).toEqual(false)
+  }
+
+  private fun testSubscription(): SubscriptionKeys {
+    val subPub = generateTestKeyPair().public as ECPublicKey
+    val x = subPub.w.affineX.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
+    val y = subPub.w.affineY.toByteArray().let { if (it.size > 32) it.copyOfRange(1, 33) else it }
+    val p256dh = Base64.getUrlEncoder().withoutPadding().encodeToString(byteArrayOf(0x04) + x + y)
+    val auth = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(16) { it.toByte() })
+    return SubscriptionKeys(p256dh, auth)
   }
 
   private fun generateTestKeyPair(): java.security.KeyPair {

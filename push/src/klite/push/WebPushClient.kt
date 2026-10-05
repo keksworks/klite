@@ -14,6 +14,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpResponse
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
+import java.security.SecureRandom
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
@@ -21,7 +22,6 @@ import java.security.spec.ECParameterSpec
 import java.security.spec.ECPoint
 import java.security.spec.ECPublicKeySpec
 import java.time.Instant
-import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.Mac
@@ -40,6 +40,8 @@ class WebPushClient(
   private val ttl: Duration = 24.hours,
   private val jwtSub: String = Config.optional("WEB_PUSH_SUB", "mailto:push@klite.dev"),
 ) {
+  private val random = SecureRandom()
+
   companion object {
     private val P256_PARAMS: ECParameterSpec by lazy {
       val dummyKpg = KeyPairGenerator.getInstance("EC")
@@ -83,7 +85,7 @@ class WebPushClient(
   }
 
   internal fun encrypt(plaintext: ByteArray, keys: SubscriptionKeys): ByteArray {
-    val salt = ByteArray(16).also { Random().nextBytes(it) }
+    val salt = ByteArray(16).also { random.nextBytes(it) }
     val browserPubRaw = keys.p256dh.base64UrlDecode()
     val browserPub = decodeEcPublicKey(browserPubRaw)
     val senderPubRaw = vapidKeyPair.publicKey.base64UrlDecode()
