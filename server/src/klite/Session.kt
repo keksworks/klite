@@ -6,16 +6,15 @@ import kotlin.time.Duration
 
 class Session(
   val params: MutableMap<String, String?> = mutableMapOf(),
-  val isNew: Boolean = true
+  isNew: Boolean = true
 ) {
+  /** true until the session is loaded from a store, and true again after [clear], so that a store knows it has no stored content */
+  var isNew = isNew; private set
   var changed = false; private set
-
-  /** set by [clear], so that a store can invalidate the stored session, e.g. delete its row and issue a new id */
-  var cleared = false; private set
 
   operator fun get(key: String) = params[key]
   operator fun set(key: String, value: String?) = params.put(key, value).also { changed = true }
-  fun clear() = params.clear().also { changed = true; cleared = true }
+  fun clear() = params.clear().also { changed = true; isNew = true }
 }
 
 interface SessionStore {
@@ -47,7 +46,7 @@ open class CookieSessionStore(
   override fun save(exchange: HttpExchange, session: Session) {
     if (!session.changed) return
     val sessionCookie = cookie.copy(secure = exchange.isSecure)
-    exchange += if (session.cleared && session.params.isEmpty())
+    exchange += if (session.params.isEmpty())
       sessionCookie.copy(value = "", maxAge = Duration.ZERO)
     else
       sessionCookie.copy(value = keyCipher.encrypt(urlEncodeParams(session.params)))

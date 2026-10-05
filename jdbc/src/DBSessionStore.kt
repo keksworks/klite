@@ -39,12 +39,18 @@ open class DBSessionStore(
   override fun save(exchange: HttpExchange, session: Session) {
     if (!session.changed) return
     val presentedId = sessionId(exchange)
-    if (session.cleared) presentedId?.let { db.delete(table, "id" to it) }
-    if (session.params.isEmpty()) return
-    val id = presentedId?.takeIf { !session.cleared && exists(it) } ?: randomUUID()
+    if (session.params.isEmpty()) {
+      presentedId?.let { db.delete(table, "id" to it) }
+      return
+    }
+    val id = presentedId?.takeIf { !session.isNew && exists(it) } ?: randomUUID()
+    if (id != presentedId) {
+      // a new session replaces the old one, which happens when a cleared session is written again, e.g. on login
+      presentedId?.let { db.delete(table, "id" to it) }
+      exchange += cookie.copy(value = id.toString(), secure = exchange.isSecure)
+    }
     db.upsert(table, mapOf("id" to id, "params" to jsonb(session.params),
       "updatedAt" to SqlComputed("current_timestamp")), setOf("id"))
-    if (id != presentedId) exchange += cookie.copy(value = id.toString(), secure = exchange.isSecure)
   }
 
   private fun exists(id: UUID) = db.query("select 1 from ${q(table)}", listOf("id" to id)) { 1 }.isNotEmpty()
