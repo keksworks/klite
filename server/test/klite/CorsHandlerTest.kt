@@ -64,4 +64,25 @@ class CorsHandlerTest {
       exchange.send(OK)
     }
   }
+
+  @Test fun `preflight without requested method`() {
+    every { exchange.method } returns OPTIONS
+    every { exchange.header("Origin") } returns "my.origin"
+    every { exchange.header("Access-Control-Request-Method") } returns null
+    runBlocking { assertThrows<BadRequestException> { cors.before(exchange) } }
+  }
+
+  @Test fun `preflight with invalid requested method`() {
+    every { exchange.method } returns OPTIONS
+    every { exchange.header("Origin") } returns "my.origin"
+    every { exchange.header("Access-Control-Request-Method") } returns "FLY"
+    runBlocking { assertThrows<BadRequestException> { cors.before(exchange) } }
+  }
+
+  @Test fun `preflight with disallowed method`() {
+    every { exchange.method } returns OPTIONS
+    every { exchange.header("Origin") } returns "my.origin"
+    every { exchange.header("Access-Control-Request-Method") } returns "HEAD"
+    runBlocking { assertThrows<ForbiddenException> { cors.before(exchange) } }
+  }
 }

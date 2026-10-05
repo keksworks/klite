@@ -26,22 +26,31 @@ fun RouterConfig.enforceCanonicalHost(host: String) = before { e ->
 }
 
 fun RouterConfig.basicAuth(realm: String = "Auth", userProvider: (name: String, password: Password) -> Any?) = before { e ->
-  val auth = e.header("Authorization")
-  if (auth?.startsWith("Basic ") == true) {
-    val (name, password) = String(auth.substringAfter(" ").base64Decode()).split(':', limit = 2)
-    userProvider(name, Password(password))?.let {
-      e.attr("user", it)
-      e.attrPut(it)
-      return@before
-    }
+  e.basicAuthCredentials()?.let { (name, password) -> userProvider(name, password) }?.let {
+    e.attr("user", it)
+    e.attrPut(it)
+    return@before
   }
-  e.header("WWW-Authenticate", "Basic realm=\"$realm\"")
+  e.header("WWW-Authenticate", "Basic realm=\"${realm.quoted()}\"")
   throw UnauthorizedException()
 }
 
 fun RouterConfig.basicAuth(users: Map<String, Password>, realm: String = "Auth") = basicAuth(realm) { name, password ->
   if (users[name] == password) name else null
 }
+
+/** Parses `Authorization: Basic` credentials, null for anything malformed, so it can't fail the request */
+private fun HttpExchange.basicAuthCredentials(): Pair<String, Password>? {
+  val auth = header("Authorization") ?: return null
+  if (!auth.startsWith("Basic ")) return null
+  val credentials = auth.removePrefix("Basic ").base64DecodeOrNull() ?: return null
+  val decoded = String(credentials)
+  val separator = decoded.indexOf(':')
+  return if (separator < 0) null else decoded.substring(0, separator) to Password(decoded.substring(separator + 1))
+}
+
+/** Escapes a quoted-string per RFC 7230, so a realm can't break out of the `WWW-Authenticate` header value */
+private fun String.quoted() = replace("\\", "\\\\").replace("\"", "\\\"")
 
 fun RouterConfig.useHashCodeAsETag() = decorator { e, handler ->
   e.handler()?.also { if (e.method == GET && e.statusCode == OK && it != Unit) e.checkETagHashCode(it) }

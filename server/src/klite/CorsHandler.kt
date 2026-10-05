@@ -31,9 +31,11 @@ open class CorsHandler(
     if (exchange.method == OPTIONS) {
       exchange.header("Access-Control-Max-Age", maxAge.inWholeSeconds.toString())
 
-      val requestedMethod = RequestMethod.valueOf(exchange.header("Access-Control-Request-Method")!!)
-      if (!allowedMethods.contains(requestedMethod)) throw ForbiddenException()
-      else exchange.header("Access-Control-Allow-Methods", allowedMethods.joinToString())
+      val requestedMethod = exchange.header("Access-Control-Request-Method")
+        ?.let { name -> RequestMethod.entries.find { it.name == name } }
+        ?: throw BadRequestException("Invalid or missing Access-Control-Request-Method")
+      if (requestedMethod !in allowedMethods) throw ForbiddenException()
+      exchange.header("Access-Control-Allow-Methods", allowedMethods.joinToString())
 
       exchange.send(OK)
     }

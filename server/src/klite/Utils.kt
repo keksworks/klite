@@ -14,6 +14,7 @@ fun String.base64Encode() = toByteArray().base64Encode()
 fun ByteArray.base64UrlEncode() = base64Encode().replace('+', '-').replace('/', '_').trimEnd('=')
 fun String.base64UrlEncode() = toByteArray().base64UrlEncode()
 fun String.base64Decode() = Base64.getDecoder().decode(this)!!
+fun String.base64DecodeOrNull() = try { base64Decode() } catch (e: IllegalArgumentException) { null }
 fun String.base64UrlDecode() = replace('-', '+').replace('_', '/').base64Decode()
 
 fun ByteArray.toBase64Url(mimeType: String) = URI("data:$mimeType;base64,${base64Encode()}")

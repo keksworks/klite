@@ -26,4 +26,19 @@ class TypesTest {
   @Test fun `invalid phone`() {
     expect { Phone("blah") }.toThrow<IllegalArgumentException>()
   }
+
+  @Test fun password() {
+    expect(Password("Secret")).toEqual(Password("Secret"))
+    expect(Password("Secret").hashCode()).toEqual(Password("Secret").hashCode())
+    expect(Password("Secret") == Password("Other")).toEqual(false)
+    expect(Password("Secret") == Password("")).toEqual(false)
+    expect(Password("Secret") == null).toEqual(false)
+    expect(Password("Secret").equals("Secret")).toEqual(false)
+    expect(Password("Secret").toString()).toEqual("Password<***>")
+  }
+
+  @Test fun `password comparison is constant-time`() {
+    // must not fall back to the short-circuiting StringValue.equals
+    expect(Password::class.java.getMethod("equals", Any::class.java).declaringClass).toEqual(Password::class.java)
+  }
 }

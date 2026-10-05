@@ -1,5 +1,7 @@
 package klite
 
+import java.security.MessageDigest
+
 /** Base class for String-based normalized value types, handled automatically by [Converter] */
 abstract class StringValue(val value: String) {
   override fun toString() = value
@@ -24,5 +26,9 @@ class Phone(phone: String): StringValue(phone.replace(removeChars, "")) {
 }
 
 class Password(value: String): StringValue(value) {
+  /** constant-time comparison, so that password checks don't leak the value via timing */
+  override fun equals(other: Any?) =
+    other is Password && MessageDigest.isEqual(value.toByteArray(), other.value.toByteArray())
+
   override fun toString() = "Password<***>"
 }
