@@ -10,6 +10,12 @@ data class Cookie(val name: String, val value: String, val expires: Instant? = n
                   val httpOnly: Boolean = false, val secure: Boolean = false, val sameSite: SameSite? = null) {
   enum class SameSite { Lax, Strict, None }
 
+  init {
+    require(name.isNotEmpty() && name.none { it in ";= " }) { "Invalid cookie name" }
+    path?.let { require(';' !in it) { "Invalid cookie path" } }
+    domain?.let { require(';' !in it) { "Invalid cookie domain" } }
+  }
+
   override fun toString() = "$name=${value.urlEncode()}" + (sequenceOf(
     expires?.let { "Expires=" + RFC_1123_DATE_TIME.format(it.atOffset(UTC)) },
     maxAge?.let { "Max-Age=${it.inWholeSeconds}" },

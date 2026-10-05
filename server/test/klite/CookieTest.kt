@@ -4,6 +4,7 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import klite.Cookie.SameSite.None
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.time.Instant.ofEpochSecond
 import kotlin.time.Duration.Companion.seconds
 
@@ -31,5 +32,14 @@ class CookieTest {
 
   @Test fun attrs() {
     expect(Cookie("Hello", "World", path = null, httpOnly = true, secure = true, sameSite = None).toString()).toEqual("Hello=World; HttpOnly; Secure; SameSite=None")
+  }
+
+  @Test fun `rejects injection in name path domain`() {
+    assertThrows<IllegalArgumentException> { Cookie("a\r\nSet-Cookie: x=1", "v") }
+    assertThrows<IllegalArgumentException> { Cookie("a=b", "v") }
+    assertThrows<IllegalArgumentException> { Cookie("a;b", "v") }
+    assertThrows<IllegalArgumentException> { Cookie("a", "v", path = "/p; HttpOnly") }
+    assertThrows<IllegalArgumentException> { Cookie("a", "v", domain = "x.com; Domain=evil.com") }
+    expect(Cookie("a", "v").toString()).toEqual("a=v; Path=/")
   }
 }
