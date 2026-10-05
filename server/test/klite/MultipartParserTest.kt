@@ -97,7 +97,20 @@ class MultipartParserTest {
     expect(parser.parse(body.byteInputStream(), "${MimeTypes.formData}; boundary=B")[""]).toEqual("x")
   }
 
+  @Test fun `quoted values may contain semicolons`() {
+    val body = "--B\r\nContent-Disposition: form-data; name=\"a;b\"; filename=\"c;d.txt\"\r\nContent-Type: text/plain\r\n\r\nx\r\n--B--\r\n"
+    val file = parser.parse(body.byteInputStream(), "${MimeTypes.formData}; boundary=B")["a;b"] as FileUpload
+    expect(file.fileName).toEqual("c;d.txt")
+  }
+
+  @Test fun `semicolons inside a quoted value can't inject parameters`() {
+    val body = "--B\r\nContent-Disposition: form-data; name=\"f\"; filename=\"a\\\"; name=admin\"\r\nContent-Type: text/plain\r\n\r\nx\r\n--B--\r\n"
+    val result = parser.parse(body.byteInputStream(), "${MimeTypes.formData}; boundary=B")
+    expect(result.keys).toEqual(setOf("f"))
+  }
+
   @Test fun `filename is sanitized`() {
+    expect(fileName("C:\\dir\\a.txt")).toEqual("a.txt")
     expect(fileName("a.txt")).toEqual("a.txt")
     expect(fileName("../../etc/passwd")).toEqual("passwd")
     expect(fileName("/etc/passwd")).toEqual("passwd")

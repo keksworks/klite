@@ -40,6 +40,25 @@ class UtilsTest {
     expect("aGVsbMO2dQ".base64UrlDecode().decodeToString()).toEqual("hellöu")
   }
 
+  @Test fun headerParams() {
+    expect("form-data; name=\"a;b\"; filename=\"c.txt\"".headerParams())
+      .toEqual(mapOf("name" to "a;b", "filename" to "c.txt"))
+    expect("multipart/form-data; boundary=B".headerParams()).toEqual(mapOf("boundary" to "B"))
+    expect("multipart/form-data; BOUNDARY=B".headerParams()).toEqual(mapOf("boundary" to "B"))
+    expect("token; name = \"x\"".headerParams()).toEqual(mapOf("name" to "x"))
+    expect("form-data; name=".headerParams()).toEqual(mapOf("name" to ""))
+    expect("no-params".headerParams()).toBeEmpty()
+    expect("windows; filename=\"C:\\dir\\a.txt\"".headerParams()).toEqual(mapOf("filename" to """C:\dir\a.txt"""))
+  }
+
+  @Test fun `headerParams keeps quoted semicolons in the value`() {
+    // `\"` inside quotes is not a terminator, so the ; stays in the value and no extra parameter is created,
+    // while the backslash itself is left as is, as it delimits Windows-style paths
+    val params = "form-data; name=\"a\\\"; b\"".headerParams()
+    expect(params.keys).toEqual(setOf("name"))
+    expect(params["name"]).toEqual("""a\"; b""")
+  }
+
   @Test fun escapeQuoted() {
     expect("plain".escapeQuoted()).toEqual("plain")
     expect("a\"b".escapeQuoted()).toEqual("a\\\"b")

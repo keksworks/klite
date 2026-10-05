@@ -40,7 +40,7 @@ class MultipartParser(
         if (header.equals("content-type", ignoreCase = true)) {
           state.contentType = value
         } else if (header.equals("content-disposition", ignoreCase = true)) {
-          val params = value.split(';').associate(::keyValue)
+          val params = value.headerParams()
           state.name = params["name"]
           state.fileName = params["filename"]?.safeFileName()
         } else if (header.equals(nameHeader, ignoreCase = true)) {
@@ -84,8 +84,6 @@ class MultipartParser(
     return buf
   }
 
-  private fun keyValue(s: String) = s.split('=', limit = 2).let { it[0].trim() to it.getOrNull(1)?.trim('"') }
-
   private class State {
     var readingHeaders: Boolean = true
     var name: String? = null
@@ -97,9 +95,7 @@ class MultipartParser(
 }
 
 /** Extracts the `boundary` parameter of a multipart Content-Type header */
-private fun String.multipartBoundary(): String? = split(';').map { it.trim() }
-  .find { it.startsWith("boundary=", ignoreCase = true) }
-  ?.substringAfter('=')?.trim()?.trim('"')?.takeIf { it.isNotEmpty() }
+private fun String.multipartBoundary() = headerParams()["boundary"]?.takeIf { it.isNotEmpty() }
 
 /** Keeps only the base name without unsafe characters, so a crafted `filename` can't traverse paths */
 private fun String.safeFileName() = replace('\\', '/').substringAfterLast('/')

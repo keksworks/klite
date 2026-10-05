@@ -12,6 +12,30 @@ fun String.urlEncode() = URLEncoder.encode(this, Charsets.UTF_8).replace("+", "%
 /** Escapes a value for the quoted-string part of an HTTP header: quotes/backslashes escaped, control chars (incl. CR/LF) dropped */
 fun String.escapeQuoted() = filter { it >= ' ' && it != '\u007f' }.replace("\\", "\\\\").replace("\"", "\\\"")
 
+/** Parses `;`-separated header parameters such as `form-data; name="a;b"`. Names are case-insensitive (lowercased), valueless parameters are dropped */
+fun String.headerParams(): Map<String, String> = splitHeaderParams().mapNotNull { part ->
+  val separator = part.indexOf('=')
+  if (separator < 0) null else part.substring(0, separator).trim().lowercase() to part.substring(separator + 1).trim().trim('"')
+}.toMap()
+
+/** Splits on `;`, but not inside quoted values, where `;` and `\"` are literal */
+private fun String.splitHeaderParams(): List<String> {
+  val parts = mutableListOf<String>()
+  var start = 0
+  var quoted = false
+  var i = 0
+  while (i < length) {
+    val c = this[i]
+    when {
+      quoted && c == '\\' -> i++
+      c == '"' -> quoted = !quoted
+      c == ';' && !quoted -> { parts += substring(start, i); start = i + 1 }
+    }
+    i++
+  }
+  return parts + substring(start)
+}
+
 fun ByteArray.base64Encode() = Base64.getEncoder().encodeToString(this)!!
 fun String.base64Encode() = toByteArray().base64Encode()
 fun ByteArray.base64UrlEncode() = base64Encode().replace('+', '-').replace('/', '_').trimEnd('=')
