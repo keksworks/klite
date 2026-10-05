@@ -17,8 +17,8 @@ class UtilsTest {
   }
 
   @Test fun plus() {
-    expect(URI("http://example.com") + mapOf("hello" to "world 123")).toEqual(URI("http://example.com?hello=world+123"))
-    expect(URI("http://example.com?world=hello") + mapOf("hello" to "world 123")).toEqual(URI("http://example.com?world=hello&hello=world+123"))
+    expect(URI("http://example.com") + mapOf("hello" to "world 123")).toEqual(URI("http://example.com?hello=world%20123"))
+    expect(URI("http://example.com?world=hello") + mapOf("hello" to "world 123")).toEqual(URI("http://example.com?world=hello&hello=world%20123"))
     expect(URI("https://example.com/#ref") + mapOf("hello" to "world")).toEqual(URI("https://example.com/?hello=world#ref"))
     expect(URI("https://example.com/?x=y#ref") + mapOf("hello" to "world")).toEqual(URI("https://example.com/?x=y&hello=world#ref"))
   }
