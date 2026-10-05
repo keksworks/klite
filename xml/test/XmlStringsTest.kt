@@ -1,6 +1,7 @@
 package klite.xml
 
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
+import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
@@ -40,5 +41,20 @@ class XmlStringsTest {
   @Test fun extractRootTagAlreadyWithNamespace() {
     @Language("xml") val xml = "<root xmlns:udt=\"UDT:NS\"><udt:content>Blah</udt:content></root>"
     expect(xml.extractXmlTag("root", setOf("UDT:NS"))).toEqual(xml)
+  }
+
+  @Test fun `tag name is treated literally, not as a regex`() {
+    @Language("xml") val xml = "<root><axb>wild</axb><content>Hello</content></root>"
+    expect(xml.extractXmlTag("content")).toEqual("<content>Hello</content>")
+    // `.` must not act as a wildcard, `|` must not alternate, and quantifiers must not apply
+    expect { xml.extractXmlTag("a.b") }.toThrow<IllegalStateException>()
+    expect { xml.extractXmlTag("content|axb") }.toThrow<IllegalStateException>()
+    expect { xml.extractXmlTag(".*") }.toThrow<IllegalStateException>()
+    expect { xml.extractXmlTag("(a+)+") }.toThrow<IllegalStateException>()
+  }
+
+  @Test fun `a literal dot still matches a dotted tag name`() {
+    @Language("xml") val xml = "<root><a.b>dot</a.b></root>"
+    expect(xml.extractXmlTag("a.b")).toEqual("<a.b>dot</a.b>")
   }
 }
