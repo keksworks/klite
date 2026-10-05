@@ -15,6 +15,10 @@ subprojects {
   apply(plugin = "maven-publish")
   apply(plugin = "signing")
 
+  repositories {
+    mavenCentral()
+  }
+
   dependencies {
     val libs = rootProject.libs
     testImplementation(libs.junit)
