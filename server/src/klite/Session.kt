@@ -20,11 +20,9 @@ class Session(
 
   fun <T> get(key: String, type: KType): T? = params[key]?.let { v ->
     val cls = type.jvmErasure
-    when {
-      cls.isInstance(v) -> v
-      v is Number && cls.isValue -> cls.primaryConstructor?.call(v)
-      else -> Converter.from(v.toString(), type)
-    } as T?
+    if (cls.isInstance(v)) return v as T
+    else if (cls.isValue) runCatching { cls.primaryConstructor?.call(v) }.getOrNull()?.let { return it as T }
+    Converter.from(v.toString(), type)
   }
 
   inline operator fun <reified T> get(key: String): T? = get(key, typeOf<T>())

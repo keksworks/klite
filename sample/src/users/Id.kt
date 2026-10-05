@@ -13,10 +13,11 @@ import javax.sql.DataSource
  * Beware: Mockk's any() matcher has [trouble with inline classes](https://github.com/mockk/mockk/issues/847).
  * Workaround: `fun <T> MockKMatcherScope.anyId(): Id<T> = Id(ofType(UUID::class))`
  */
-@JvmInline value class Id<T>(val uuid: UUID) {
+@JvmInline value class Id<T>(val uuid: UUID): Comparable<Id<T>> {
   constructor(): this(UUID.randomUUID())
   constructor(uuid: String): this(uuid.uuid)
   override fun toString() = uuid.toString()
+  override fun compareTo(other: Id<T>) = uuid.compareTo(other.uuid)
 }
 
 fun <T> String.toId(): Id<T> = Id(uuid)

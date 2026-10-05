@@ -7,7 +7,7 @@ interface OAuthUser {
   val email: Email
   val firstName: String
   val lastName: String
-  val id: Any?
+  val id: Comparable<*>?
 }
 
 interface OAuthUserProvider {
