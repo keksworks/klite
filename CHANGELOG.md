@@ -15,6 +15,7 @@
 * server: `urlEncode()` is now path-safe (avoids +, uses %20 instead)
 * server: `CorsHandler.allowedCredentials` now defaults to false unless specific `allowedOrigins` are provided, to avoid sending cookies to all origins
 * server: `HttpExchange.query` now returns still encoded string value that can be safely appended to redirected URLs
+* server: read multipart boundary from Content-Type header instead of body for correctness
 * oauth: reject logins if we get `email_verified=false` from the provider, to avoid unverified emails in the system
 
 # 2.0.7
