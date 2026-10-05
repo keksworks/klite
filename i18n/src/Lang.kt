@@ -16,18 +16,18 @@ object Lang {
 
   val available: List<String> = load("langs.json")
   private val translations by lazy { loadTranslations() }
-  private val log = logger()
+  internal val log = logger()
 
   fun takeIfAvailable(lang: String?) = lang?.takeIf { available.contains(it) }
   fun ensureAvailable(requestedLang: String?) = takeIfAvailable(requestedLang) ?: available.first()
 
   fun translations(requestedLang: String?): Translations = translations[ensureAvailable(requestedLang)]!!
 
-  fun translateOrNull(lang: String, key: String, substitutions: Map<String, String> = emptyMap()) =
-    translations(lang).invoke(key, substitutions)
+  fun translateOrNull(lang: String, key: String, substitutions: Map<String, String>? = null) =
+    (translations(lang).resolve(key) as? String)?.substitute(substitutions)
 
   fun translate(lang: String, key: String, substitutions: Map<String, String> = emptyMap()) =
-    translateOrNull(lang, key, substitutions) ?: key.also { log.warn("Missing translation for '$key' in '$lang'") }
+    translations(lang).invoke(key, substitutions)
 
   private fun loadTranslations(): Map<String, Translations> {
     val loaded = available.associateWith { lang -> mutableMapOf<String, Any>().also {
@@ -53,17 +53,18 @@ object Lang {
     javaClass.getResourceAsStream("/$filePath") ?: error("$filePath not found in classpath"))
 }
 
-private fun Translations.resolve(key: String) =
+private fun Translations.resolve(key: String, substitutions: Map<String, String>? = null) =
   key.split('.').fold(this) { more: Any?, k -> (more as? Map<*, *>)?.get(k) }
 
 @Suppress("UNCHECKED_CAST")
 fun Translations.getMany(key: String) = resolve(key) as? Map<String, String> ?: emptyMap()
-operator fun Translations.invoke(key: String) = resolve(key) as? String?
-operator fun Translations.invoke(key: String, substitutions: Map<String, String> = emptyMap()): String? {
-  var result = invoke(key)
-  substitutions.forEach { result = result?.replace("{${it.key}}", it.value) }
-  return result
+operator fun Translations.invoke(key: String, substitutions: Map<String, String>? = null): String {
+  val result = resolve(key) as? String? ?: return key.also { Lang.log.warn("Missing translation for '$key'") }
+  return result.substitute(substitutions)
 }
+
+private fun String.substitute(substitutions: Map<String, String>?) =
+  substitutions?.entries?.fold(this) { str, (key, value) -> str.replace("{$key}", value) } ?: this
 
 var HttpExchange.lang: String
   get() = Lang.ensureAvailable(cookie(Lang.COOKIE))
