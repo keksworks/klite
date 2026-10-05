@@ -5,8 +5,6 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.time.Duration.Companion.milliseconds
@@ -21,20 +19,20 @@ class CacheTest {
     expect(cache.isEmpty()).toEqual(false)
 
     expect(cache["key"]).toBeTheInstance(data)
-    Thread.sleep(12)
+    sleep(12.milliseconds)
     expect(cache["key"]).toEqual(null)
-    Thread.sleep(9)
+    sleep(9.milliseconds)
     expect(cache.isEmpty()).toEqual(true)
 
     expect(cache.getOrSet("key") { data }).toBeTheInstance(data)
-    runTest { expect(cache.getOrSet("key") { delay(20); data }).toBeTheInstance(data) }
-//  expect(cache["key"]).toBeTheInstance(data) - this line is flaky in Github Actions
+    expect(cache.getOrSet("key") { sleep(20.milliseconds); data }).toBeTheInstance(data)
+    expect(cache["key"]).toBeTheInstance(data)
   }}
 
   @Test fun `getOrSet recomputes expired`() { Cache<String, LocalDate>(10.milliseconds, autoRemoveExpired = false).use { cache ->
     cache["key"] = data
     expect(cache.getOrSet("key") { LocalDate.MAX }).toBeTheInstance(data)
-    Thread.sleep(12)
+    sleep(12.milliseconds)
     expect(cache.getOrSet("key") { LocalDate.MAX }).toBeTheInstance(LocalDate.MAX)
   }}
 
