@@ -7,6 +7,7 @@ import com.sun.net.httpserver.Headers
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Test
+import kotlin.reflect.typeOf
 
 class SessionTest {
   abstract class MockableExchange: OriginalHttpExchange()
@@ -38,6 +39,9 @@ class SessionTest {
     // a small number can also arrive as an Int, e.g. from a JSON parser, and is still wrapped
     session["small"] = 1234
     expect(session.get<TSID<Any>>("small")).toEqual(TSID<Any>(1234L))
+    // the same, when the type is only known as a KType, e.g. from an annotated route parameter
+    expect(session.get<TSID<Any>>("small", typeOf<TSID<Any>>())).toEqual(TSID<Any>(1234L))
+    expect(session.get<String>("s", typeOf<String>())).toEqual("text")
   }
 
   @Test fun `stores session in the cookie and loads it back`() {

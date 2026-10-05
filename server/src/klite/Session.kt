@@ -2,8 +2,10 @@ package klite
 
 import klite.crypto.KeyCipher
 import klite.crypto.KeyGenerator
-import kotlin.reflect.KClass
+import kotlin.reflect.KType
 import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.jvm.jvmErasure
+import kotlin.reflect.typeOf
 import kotlin.time.Duration
 
 class Session(
@@ -16,11 +18,16 @@ class Session(
 
   operator fun get(key: String): String? = params[key]?.toString()
 
-  inline operator fun <reified T> get(key: String): T? = params[key]?.let { when (it) {
-    is T -> it
-    is Number if T::class.isValue -> (T::class as KClass<*>).primaryConstructor?.call(it) as T
-    else -> Converter.from(it.toString())
-  } }
+  fun <T> get(key: String, type: KType): T? = params[key]?.let { v ->
+    val cls = type.jvmErasure
+    when {
+      cls.isInstance(v) -> v
+      v is Number && cls.isValue -> cls.primaryConstructor?.call(v)
+      else -> Converter.from(v.toString(), type)
+    } as T?
+  }
+
+  inline operator fun <reified T> get(key: String): T? = get(key, typeOf<T>())
 
   operator fun set(key: String, value: Comparable<*>?) = params.put(key, value).also { changed = true }
 

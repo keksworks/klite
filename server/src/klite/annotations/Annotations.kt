@@ -95,7 +95,7 @@ class Param(val p: KParameter) {
         }
         is HeaderParam -> e.header(name)?.toType()
         is CookieParam -> e.cookie(name)?.toType()
-        is SessionParam -> e.session[name]?.toType()
+        is SessionParam -> e.session.get(name, p.type)
         is AttrParam -> e.attr(name) ?: e.attr(cls)
         is BodyParam -> e.body<Any?>(name)?.let { if (it is String) it.trimToNull()?.toType() else it }
         else -> e.body(p.type)
