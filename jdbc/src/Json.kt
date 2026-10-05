@@ -18,7 +18,7 @@ var dbJsonMapper = JsonMapper(values = object: ValueConverter<Any?>() {
 fun jsonb(value: String?) = SqlComputed("?::jsonb", value)
 fun jsonb(value: Any?) = jsonb(value?.let { dbJsonMapper.render(it) })
 
-fun <T> ResultSet.getJsonOrNull(column: String, type: kotlin.reflect.KType): T? =
+fun <T> ResultSet.getJsonOrNull(column: String, type: KType): T? =
   getString(column)?.let { dbJsonMapper.parse(it, type) as T }
 
 inline fun <reified T: Any> ResultSet.getJsonOrNull(column: String): T? = getJsonOrNull<T>(column, typeOf<T>())
