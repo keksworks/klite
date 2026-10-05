@@ -1,5 +1,6 @@
 package klite.oauth
 
+import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
 import io.mockk.coEvery
@@ -44,6 +45,22 @@ class OAuthRoutesTest {
       userProvder.initSession(user, exchange)
       exchange.session["userId"] = "uid"
       exchange.redirect(URI("/path"))
+    }
+  }
+
+  @Test fun `safeRedirectParam allows path-absolute`() {
+    every { exchange.query("redirect") } returns "/path?a=1"
+    expect(exchange.safeRedirectParam).toEqual(URI("/path?a=1"))
+    every { exchange.query("redirect") } returns "/"
+    expect(exchange.safeRedirectParam).toEqual(URI("/"))
+  }
+
+  @Test fun `safeRedirectParam rejects open redirects`() {
+    every { exchange.query("redirect") } returns null
+    expect(exchange.safeRedirectParam).toEqual(null)
+    for (bad in listOf("//evil.com", "/\\evil.com", "https://evil.com", "http://host/ok", "/path\r\nSet-Cookie: x", "\\/evil.com")) {
+      every { exchange.query("redirect") } returns bad
+      expect(exchange.safeRedirectParam).toEqual(null)
     }
   }
 }

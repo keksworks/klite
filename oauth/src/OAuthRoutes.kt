@@ -46,7 +46,10 @@ open class OAuthRoutes(private val userProvider: OAuthUserProvider, registry: Re
   }
 }
 
-val HttpExchange.safeRedirectParam get() = query("redirect")?.takeIf { it.startsWith("/") || it.startsWith(fullUrl("/").toString()) }?.let { URI(it) }
+/** Allows only path-absolute same-site redirects; rejects `//host`, `/\host` and header-breaking chars */
+val HttpExchange.safeRedirectParam get() = query("redirect")
+  ?.takeIf { it.startsWith("/") && !it.startsWith("//") && it.none { c -> c in "\\\r\n" } }
+  ?.let { URI(it) }
 
 private fun HttpExchange.redirectToLogin(originalUrl: URI? = fullUrl, errorKey: String? = null): Nothing =
   redirect(fullUrl(contextPath) + mapOfNotNull("redirect" to originalUrl, "errorKey" to errorKey))
