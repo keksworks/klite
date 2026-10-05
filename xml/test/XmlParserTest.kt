@@ -430,6 +430,18 @@ class XmlParserTest {
       .message.toEqual("Value not found in <id>")
   }
 
+  @Test fun `missing required string value`() {
+    data class Item(val name: String)
+    expect { parser.parse<Item>("<root><name/></root>") }.toThrow<IllegalStateException>()
+      .message.toEqual("Value not found in <name>")
+  }
+
+  @Test fun `missing required string attribute`() {
+    data class Item(@XmlPath("@id") val id: String)
+    expect { parser.parse<Item>("<root/>") }.toThrow<IllegalStateException>()
+      .message.toEqual("Value not found in <@id>")
+  }
+
   @Test fun `nullable value stays null when missing`() {
     data class Item(@XmlPath("@id") val id: Int?, val count: Int?)
     expect(parser.parse<Item>("<root><count/></root>")).toEqual(Item(null, null))

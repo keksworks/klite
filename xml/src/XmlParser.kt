@@ -165,10 +165,9 @@ class XmlParser(
 
   private fun buildObject(element: XmlElement, type: KType): Any? {
     val cls = type.classifier as KClass<*>
-    if (cls == String::class) return values.from(element.text)
-    else if (Converter.supports(cls)) {
+    if (cls == String::class || Converter.supports(cls)) {
       val text = element.text ?: return if (type.isMarkedNullable) null else error("Value not found in <${element.name}>")
-      return values.from(Converter.from(text, cls))
+      return values.from(if (cls == String::class) text else Converter.from(text, cls))
     }
     if (cls == Map::class) return toNode(element)
     val converted = values.from(element.text, type)
