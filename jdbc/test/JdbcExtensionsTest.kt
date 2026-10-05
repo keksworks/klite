@@ -1,10 +1,18 @@
 package klite.jdbc
 
+import ch.tutteli.atrium.api.fluent.en_GB.toContain
 import ch.tutteli.atrium.api.fluent.en_GB.toContainExactly
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
 import klite.d
 import org.junit.jupiter.api.Test
+import java.sql.Connection
+import java.sql.DatabaseMetaData
+import java.sql.PreparedStatement
+import java.util.UUID.randomUUID
 
 class JdbcExtensionsTest {
   val db = ConfigDataSource("jdbc:postgres")
@@ -47,5 +55,28 @@ class JdbcExtensionsTest {
     expect(db.whereValues(where).toList()).toEqual(listOf<Any?>(listOf(1, 2, 3), listOf("a", "b")))
     expect(otherDb.whereExpr(where)).toEqual(" where array in (?, ?, ?) and excluded not in (?, ?)")
     expect(otherDb.whereValues(where).toList()).toEqual(listOf<Any?>(1, 2, 3, "a", "b"))
+  }
+
+  @Test fun `upsert quotes keyword identifiers`() {
+    val sql = generatedUpsertSql("jdbc:postgresql://localhost/test", listOf("hello" to "h"))
+    expect(sql).toContain("""insert into "limit" """)
+    expect(sql).toContain("""on conflict ("group")""")
+    expect(sql).toContain("""where "limit".hello=?""")
+  }
+
+  @Test fun `upsert merge quotes keyword identifiers`() {
+    val sql = generatedUpsertSql("jdbc:h2:mem:test")
+    expect(sql).toContain("""merge into "limit" """)
+    expect(sql).toContain("""on "limit"."group" = excluded."group"""")
+  }
+
+  private fun generatedUpsertSql(jdbcUrl: String, where: Where = emptyList()): String {
+    val md = mockk<DatabaseMetaData> { every { url } returns jdbcUrl }
+    val conn = mockk<Connection>(relaxed = true)
+    every { conn.metaData } returns md
+    val sql = slot<String>()
+    every { conn.prepareStatement(capture(sql), any<Int>()) } returns mockk<PreparedStatement>(relaxed = true)
+    conn.upsertBatch("limit", listOf(mapOf("id" to randomUUID(), "group" to "g", "hello" to "h")), setOf("group"), where)
+    return sql.captured
   }
 }

@@ -88,6 +88,19 @@ open class JdbcExtensionsTest: TempTableDBTest() {
     expect(loaded).toEqual(data)
   }
 
+  @Test fun `count with keyword table name`() {
+    db.exec("""create table "limit"(id uuid primary key, hello varchar)""")
+    db.insert("limit", mapOf("id" to randomUUID(), "hello" to "Hello"))
+    expect(db.count("limit")).toEqual(1L)
+  }
+
+  @Test fun `upsert with keyword identifiers`() {
+    db.exec("""create table "limit"(id uuid primary key, "group" varchar unique, hello varchar)""")
+    expect(db.upsert("limit", mapOf("id" to randomUUID(), "group" to "g", "hello" to "h1"), setOf("group"))).toEqual(1)
+    expect(db.upsert("limit", mapOf("id" to randomUUID(), "group" to "g", "hello" to "h2"), setOf("group"))).toEqual(1)
+    expect(db.select("limit", "group" to "g") { getString("hello") }).toContainExactly("h2")
+  }
+
   @Test fun upsertWithKeysOnly() {
     db.exec("create table only_id(id text primary key)")
     expect(db.upsert("only_id", OnlyId().toDBValues())).toEqual(1)

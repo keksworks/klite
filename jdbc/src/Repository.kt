@@ -47,7 +47,7 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
   protected open val idProp = entityClass.publicProperties[BaseEntity<*>::id.name]!!
   protected open val updatedAtProp = entityClass.publicProperties[UpdatableEntity::updatedAt.name]
 
-  override val orderAsc get() = "order by $table.createdAt"
+  override val orderAsc get() = "order by ${q(table)}.createdAt"
   open val defaultOrder get() = orderDesc
   open val selectFrom @Language("SQL", prefix = "select * from ") get() = table
 
@@ -56,7 +56,7 @@ abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: 
   /** Override to customize how table columns are being converted to entity properties during inserts/updates */
   protected open fun E.persister(): Map<out ColName, Any?> = toDBValues()
 
-  open fun get(id: ID, forUpdate: Boolean = false): E = db.select(selectFrom, id, "$table." + idProp.colName,
+  open fun get(id: ID, forUpdate: Boolean = false): E = db.select(selectFrom, id, "${q(table)}." + idProp.colName,
     if (forUpdate) (if (db.isPostgres) "for no key update" else "for update") else "") { mapper() }
 
   open fun list(vararg where: PropValue<E, *>?, @Language("SQL", prefix = selectFromTable) suffix: String = defaultOrder): List<E> =
