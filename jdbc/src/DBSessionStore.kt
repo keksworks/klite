@@ -1,6 +1,7 @@
 package klite.jdbc
 
 import klite.*
+import java.io.Serializable
 import java.time.Instant
 import java.util.*
 import java.util.UUID.randomUUID
@@ -35,8 +36,8 @@ open class DBSessionStore(
     return params?.let { Session(it, isNew = false) } ?: Session()
   }
 
-  protected open fun load(id: UUID, exchange: HttpExchange): MutableMap<String, String?>? =
-    db.query("select params from ${q(table)}", "id" to id) { getJsonOrNull<MutableMap<String, String?>>("params") }.firstOrNull()
+  protected open fun load(id: UUID, exchange: HttpExchange): MutableMap<String, Serializable?>? =
+    db.query("select params from ${q(table)}", "id" to id) { getJsonOrNull<MutableMap<String, Serializable?>>("params") }.firstOrNull()
 
   override fun save(exchange: HttpExchange, session: Session) {
     if (!session.changed) return

@@ -87,7 +87,7 @@ open class HttpExchange(
   operator fun plusAssign(cookie: Cookie) = cookie(cookie)
 
   val session: Session by lazy(NONE) { sessionStore?.load(this) ?: error("No sessionStore defined") }
-  inline fun <reified T: Any> session(key: String): T? = session[key]?.let { Converter.from<T>(it) }
+  inline fun <reified T: Any> session(key: String): T? = session.get<T>(key)
 
   val statusCode: StatusCode? get() = StatusCode(original.responseCode).takeIf { isResponseStarted }
   val isResponseStarted get() = original.responseCode >= 0

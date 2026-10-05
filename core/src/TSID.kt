@@ -1,5 +1,6 @@
 package klite
 
+import java.io.Serializable
 import java.lang.System.currentTimeMillis
 import java.security.SecureRandom
 import java.time.Instant
@@ -10,7 +11,7 @@ import java.util.concurrent.atomic.AtomicLong
  * Time-Sorted unique ID, a more compact and DB index-friendly alternative to UUID.
  * Add a `typealias Id<T> = TSID<T>` or `Id = TSID<Any>` in your own project.
  */
-@JvmInline value class TSID<T>(val value: Long) {
+@JvmInline value class TSID<T>(val value: Long): Serializable {
   companion object: TSIDGenerator() {
     init {
       Converter.use { TSID<Any>(it) }

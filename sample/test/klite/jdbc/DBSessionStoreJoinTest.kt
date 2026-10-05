@@ -13,6 +13,7 @@ import klite.sample.DBTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import users.User
+import java.io.Serializable
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.util.*
@@ -45,10 +46,10 @@ class DBSessionStoreJoinTest: DBTest() {
 
   /** the app's own DataSource has to be kept, as DBSessionStore does not expose its own */
   class JoinedSessionStore(db: DataSource, table: String): DBSessionStore(db, table) {
-    override fun load(id: UUID, exchange: HttpExchange): MutableMap<String, String?>? {
+    override fun load(id: UUID, exchange: HttpExchange): MutableMap<String, Serializable?>? {
       return db.query("select s.params, u.* from $table s left join users u on u.id::text = s.params->>'userId'", listOf("s.id" to id)) {
         exchange.attrPut(create<User>())
-        getJson<MutableMap<String, String?>>("params").toMutableMap()
+        getJson<MutableMap<String, Serializable?>>("params").toMutableMap()
       }.firstOrNull()
     }
   }
