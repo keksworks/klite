@@ -7,7 +7,7 @@ import org.intellij.lang.annotations.Language
 @Language("html")
 fun <T> Iterable<T>.each(transform: (IndexedValue<T>) -> String) = withIndex().joinToString(separator = "", transform = transform)
 
-fun String.escapeHtml() = replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+fun String.escapeHtml() = replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;")
 fun String.escapeJs() = replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("<", "\\u003c")
 
 /** Usage: """${+dataToBeEscaped}""" */

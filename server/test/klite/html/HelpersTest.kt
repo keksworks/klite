@@ -18,6 +18,6 @@ class HelpersTest {
   }
 
   @Test fun escapeHtml() {
-    expect("<b>&\"'</b>".escapeHtml()).toEqual("&lt;b&gt;&amp;\"'&lt;/b&gt;")
+    expect("<b>&\"'</b>".escapeHtml()).toEqual("&lt;b&gt;&amp;&quot;&#39;&lt;/b&gt;")
   }
 }
