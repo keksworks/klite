@@ -4,6 +4,7 @@ import klite.Converter
 import klite.base64UrlDecode
 import klite.oauth.JWT
 import klite.oauth.JWT.Header
+import klite.oauth.requireVerifiedEmail
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.security.KeyPairGenerator
@@ -83,5 +84,11 @@ class JWTTest {
     ))
     JWT(Header(mapOf("alg" to "HS256", "typ" to "JWT")), payload)
       .checkOidc("https://login.microsoftonline.com/{tenantid}/v2.0", "client-1")
+  }
+
+  @Test fun `requireVerifiedEmail rejects only explicit false`() {
+    requireVerifiedEmail(null)
+    requireVerifiedEmail(true)
+    assertThrows<IllegalStateException> { requireVerifiedEmail(false) }
   }
 }

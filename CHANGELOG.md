@@ -14,6 +14,7 @@
 * server: `Server.httpExchangeCreator` is now a lambda for better performance
 * server: `urlEncode()` is now path-safe (avoids +, uses %20 instead)
 * server: `CorsHandler.allowedCredentials` now defaults to false unless specific `allowedOrigins` are provided, to avoid sending cookies to all origins
+* oauth: reject logins if we get `email_verified=false` from the provider, to avoid unverified emails in the system
 
 # 2.0.7
 * xml: @XmlPath now supports attribute predicates to filter elements by attribute value, e.g. `item[@type=something]`

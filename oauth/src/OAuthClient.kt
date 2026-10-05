@@ -52,6 +52,8 @@ abstract class OAuthClient(provider: String? = null, scope: String? = null, auth
 
   protected fun fetchProfileResponse(token: OAuthTokenResponse): JsonNode = http.get(profileUrl!!) { authBearer(token.accessToken) }
 
+  protected fun JsonNode.emailVerified() = getOrNull<Boolean>("email_verified") ?: getOrNull<Boolean>("verified_email")
+
   abstract fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile
 
   protected fun JsonNode.getLocale(key: String = "locale") = textOrNull(key)?.let { Locale.forLanguageTag(it) }
@@ -74,6 +76,7 @@ class GoogleOAuthClient(httpClient: HttpClient): OAuthClient(
 ) {
   override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val res = fetchProfileResponse(token)
+    requireVerifiedEmail(res.emailVerified())
     val email = Email(res.getString("email"))
     return UserProfile(provider, res.getString("id"), email,
       res.textOrNull("givenName") ?: email.value.substringBefore("@").capitalize(), res.textOrNull("familyName") ?: "",
@@ -92,6 +95,7 @@ class MicrosoftOAuthClient(httpClient: HttpClient): OAuthClient(
 ) {
   override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val res = fetchProfileResponse(token)
+    requireVerifiedEmail(res.emailVerified() ?: token.idToken?.payload?.emailVerified)
     val email = res.textOrNull("mail") ?: res.textOrNull("userPrincipalName") ?: error("Cannot obtain user's email")
     return UserProfile(provider, res.getString("id"), Email(email), res.textOrNull("givenName") ?: email.substringBefore("@").capitalize(), res.textOrNull("surname") ?: "",
       locale = res.getLocale("preferredLanguage"))
@@ -109,6 +113,7 @@ class FacebookOAuthClient(httpClient: HttpClient): OAuthClient(
 ) {
   override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
     val res = fetchProfileResponse(token)
+    requireVerifiedEmail(res.emailVerified())
     val avatarData = res.getOrNull<JsonNode>("picture")?.getOrNull<JsonNode>("data")
     val avatarExists = avatarData?.getOrNull<Boolean>("is_silhouette") != true
     val email = Email(res.getString("email"))
@@ -128,9 +133,11 @@ class AppleOAuthClient(httpClient: HttpClient): OAuthClient(
   httpClient = httpClient
 ) {
   override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
-    val email = token.idToken!!.payload.email!!
+    val payload = token.idToken!!.payload
+    requireVerifiedEmail(payload.emailVerified)
+    val email = payload.email!!
     val user = exchange.bodyParams["user"]?.let { http.json.parse<AppleUserProfile>(it.toString()) }
-    return UserProfile(provider, token.idToken.payload.subject, email, user?.name?.firstName ?: email.value.substringBefore("@").capitalize(), user?.name?.lastName ?: "")
+    return UserProfile(provider, payload.subject, email, user?.name?.firstName ?: email.value.substringBefore("@").capitalize(), user?.name?.lastName ?: "")
   }
 
   data class AppleUserProfile(val name: AppleUserName, val email: Email)
@@ -139,3 +146,8 @@ class AppleOAuthClient(httpClient: HttpClient): OAuthClient(
 
 data class OAuthTokenResponse(val accessToken: String, val expiresIn: Int, val scope: String? = null, val tokenType: String? = null, val idToken: JWT? = null, val refreshToken: String? = null)
 data class UserProfile(val provider: String, override val id: String, override val email: Email, override val firstName: String, override val lastName: String, val avatarUrl: URI? = null, val locale: Locale? = null): OAuthUser
+
+/** Rejects login only when the provider explicitly reports the email as unverified */
+fun requireVerifiedEmail(verified: Boolean?) {
+  if (verified == false) error("Email is not verified by OAuth provider")
+}

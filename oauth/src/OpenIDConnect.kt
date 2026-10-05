@@ -42,6 +42,7 @@ class OIDCConfig(
       if (keys == null) fetchKeys()
       jwt.verify(keys!!)
       jwt.checkOidc(issuer = this@OIDCConfig.issuer, audience = clientId, nonce = exchange.attr(OIDC_STATE) ?: error("Missing OAuth state"))
+      requireVerifiedEmail(jwt.payload.emailVerified)
       return UserProfile(provider, jwt.payload.subject, jwt.payload.email!!,
         jwt.payload.textOrNull("givenName") ?: jwt.payload.name!!.substringBefore(" "),
         jwt.payload.textOrNull("familyName") ?: jwt.payload.name!!.substringAfter(" "),
