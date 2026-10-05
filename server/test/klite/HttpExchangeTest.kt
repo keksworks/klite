@@ -44,6 +44,19 @@ class HttpExchangeTest {
     expect(exchange.queryParams).toEqual(mapOf("hello" to "world"))
   }
 
+  @Test fun `query is not decoded`() {
+    every { original.requestURI } returns URI("/hello?x=%0d%0aSet-Cookie:%20x=1")
+    expect(exchange.query).toEqual("?x=%0d%0aSet-Cookie:%20x=1")
+  }
+
+  @Test fun `response header rejects CRLF`() {
+    assertThrows<IllegalArgumentException> { exchange.header("X-Test", "ok\r\nSet-Cookie: x=1") }
+    assertThrows<IllegalArgumentException> { exchange.header("X-Test", "ok\nX: y") }
+    assertThrows<IllegalArgumentException> { exchange.header("X-Test", "ok\u0000") }
+    exchange.header("X-Test", "ok")
+    verify { original.responseHeaders.set("X-Test", "ok") }
+  }
+
   @Test fun rawBody() {
     expect(exchange.rawBody).toEqual("Input")
     expect(exchange.rawBody).toEqual(exchange.rawBody)

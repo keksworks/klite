@@ -20,7 +20,17 @@ class CorsHandlerTest {
     verify(exactly = 0) { exchange.header(any(), any()) }
   }
 
-  @Test fun `allow any origin`() {
+  @Test fun `allow any origin without credentials`() {
+    every { exchange.header("Origin") } returns "my.origin"
+    runBlocking { cors.before(exchange) }
+    verify {
+      exchange.header("Access-Control-Allow-Origin", "my.origin")
+    }
+    verify(exactly = 0) { exchange.header("Access-Control-Allow-Credentials", any()) }
+  }
+
+  @Test fun `allow credentials only with explicit origins`() {
+    val cors = CorsHandler(allowedOrigins = setOf("my.origin"))
     every { exchange.header("Origin") } returns "my.origin"
     runBlocking { cors.before(exchange) }
     verify {

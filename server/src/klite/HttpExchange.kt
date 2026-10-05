@@ -16,7 +16,7 @@ import kotlin.reflect.typeOf
 typealias OriginalHttpExchange = com.sun.net.httpserver.HttpExchange
 
 typealias Headers = com.sun.net.httpserver.Headers
-operator fun Headers.plusAssign(headers: Map<String, String>) = headers.forEach { (k, v) -> set(k, v) }
+operator fun Headers.plusAssign(headers: Map<String, String>) = headers.forEach { (k, v) -> set(k, v.checkHeaderValue()) }
 
 @Suppress("UNCHECKED_CAST")
 open class HttpExchange(
@@ -38,7 +38,8 @@ open class HttpExchange(
   fun path(param: String): String? = pathParams[param]
   inline fun <reified T: Any> path(param: String): T? = path(param)?.let { Converter.from<T>(it) }
 
-  val query: String get() = original.requestURI.query?.let { "?$it" } ?: ""
+  /** raw (still percent-encoded) query string including `?`, safe for redirects/headers */
+  val query: String get() = original.requestURI.rawQuery?.let { "?$it" } ?: ""
   val queryParams: Params by lazy { original.requestURI.queryParams }
   fun query(param: String): String? = queryParams[param]
   fun queryList(param: String) = (queryParams[param] as Any?).asList<String>()
@@ -73,13 +74,16 @@ open class HttpExchange(
   fun header(key: String): String? = headers.getFirst(key)
 
   val responseHeaders: Headers get() = original.responseHeaders
-  fun header(key: String, value: String) { responseHeaders[key] = value }
+  fun header(key: String, value: String) {
+    require(key.isNotEmpty() && key.none { it in "\r\n\u0000" }) { "Invalid header name" }
+    responseHeaders[key] = value.checkHeaderValue()
+  }
 
   val cookies: Params by lazy(NONE) { decodeCookies(header("Cookie")) }
   fun cookie(key: String) = cookies[key]
 
   fun cookie(key: String, value: String, expires: Instant? = null) = cookie(Cookie(key, value, expires, secure = isSecure))
-  fun cookie(cookie: Cookie) = responseHeaders.add("Set-Cookie", cookie.toString())
+  fun cookie(cookie: Cookie) = responseHeaders.add("Set-Cookie", cookie.toString().checkHeaderValue())
   operator fun plusAssign(cookie: Cookie) = cookie(cookie)
 
   val session: Session by lazy(NONE) { sessionStore?.load(this) ?: error("No sessionStore defined") }
@@ -146,5 +150,9 @@ open class HttpExchange(
   }
 
   override fun toString() = "$method ${original.requestURI}"
+}
+
+internal fun String.checkHeaderValue() = also {
+  require(none { c -> c in "\r\n\u0000" }) { "Invalid header value" }
 }
 
