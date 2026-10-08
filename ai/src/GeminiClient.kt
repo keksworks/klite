@@ -36,9 +36,7 @@ open class GeminiClient(
   private fun toInput(input: String, fileUrl: Array<out URI>): Any = if (fileUrl.isNotEmpty()) listOf(
     Content("text", input)
   ) + fileUrl.map {
-    val mimeType = MimeTypes.typeFor(it.path)!!
-    val isImage = mimeType.contains("image")
-    Content(if (isImage) "image" else "document", data = it.toURL().readBytes().base64Encode(), mimeType = mimeType)
+    Content(if (it.isImage) "image" else "document", data = it.toURL().readBytes().base64Encode(), mimeType = MimeTypes.typeFor(it.path))
   } else input
 
   fun query(input: Any /* String | List<Content | Step> */, params: Node = emptyMap(), prevInteractionId: String? = null): Response =

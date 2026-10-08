@@ -39,8 +39,7 @@ open class OpenAIClient(
     Content(text = input, type = "input_text")
   ) + fileUrl.map {
     val url = if (it.scheme == "file") File(it.path).toBase64Url() else it
-    val isImage = url.toString().contains("image")
-    if (isImage) Content(imageUrl = url, type = "input_image") else Content(fileData = url, filename = "unknown", type = "input_file")
+    if (url.isImage) Content(imageUrl = url, type = "input_image") else Content(fileData = url, filename = "unknown", type = "input_file")
   })) else input
 
   // TODO: try structured output with "text": {"format": {"type": "json_schema"}}}
