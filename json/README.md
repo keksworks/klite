@@ -7,6 +7,7 @@ No magic type coercion by default (e.g. empty string into 0), but can be overrid
 Useful default options for web development in JsonMapper:
 * `trimToNull = true` - trim string values and convert empty strings to nulls - reduces boilerplate of checking for blank values in routes and frontend code
 * `renderNulls = false` - don't render null values in json output to save bandwidth and make output more concise
+* `fieldsOnly = false` - skip computed properties (without a backing field) when rendering, e.g. for DB storage
 
 Supports Kotlin data and inline/value classes (unlike jackson), reuses type conversion from Klite's core [Converter](../core/src/Converter.kt).
 

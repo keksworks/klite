@@ -21,6 +21,7 @@ const val bufSize = 8192
 data class JsonMapper(
   val trimToNull: Boolean = true,
   val renderNulls: Boolean = false,
+  val fieldsOnly: Boolean = false,
   val keys: KeyConverter = KeyConverter(),
   val values: ValueConverter<Any?> = ValueConverter()
 ) {

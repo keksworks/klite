@@ -10,10 +10,16 @@ class JsonTest {
   val tsid = TSID<Any>(11_111_101_234_567_890)
   val value = tsid.value.toString()
 
-  data class Holder(val id: TSID<Any>, val name: String)
+  data class Holder(val id: TSID<Any>, val name: String) {
+    val computed get() = name.uppercase()
+  }
 
   @Test fun `TSID is rendered as a number`() {
     expect(dbJsonMapper.render(tsid)).toEqual(value)
+    expect(dbJsonMapper.render(Holder(tsid, "x"))).toEqual("""{"id":$value,"name":"x"}""")
+  }
+
+  @Test fun `computed properties are not stored`() {
     expect(dbJsonMapper.render(Holder(tsid, "x"))).toEqual("""{"id":$value,"name":"x"}""")
   }
 

@@ -8,6 +8,7 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.superclasses
+import kotlin.reflect.jvm.javaField
 
 class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoCloseable {
   private val buf = StringBuilder(bufSize)
@@ -62,7 +63,8 @@ class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoC
   }
 
   private fun writeObject(o: Any, prop: KProperty1<*, *>? = null) {
-    var entries = o.publicProperties.notIgnored.map { SimpleImmutableEntry(it, it.valueOf(o)) } as Sequence<Map.Entry<Any, Any?>>
+    var entries = o.publicProperties.notIgnored.let { if (opts.fieldsOnly) it.filter { p -> p.javaField != null } else it }
+      .map { SimpleImmutableEntry(it, it.valueOf(o)) } as Sequence<Map.Entry<Any, Any?>>
     var subTypes = prop?.findAnnotation<JsonSubTypes>()
     if (subTypes == null && (o::class.isSealed || o::class.superclasses.any { it.isSealed })) subTypes = JsonSubTypes()
     if (subTypes != null)

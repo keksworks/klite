@@ -72,6 +72,11 @@ class JsonRendererTest {
     expect(mapper.render(o.toJsonValues())).toEqual(mapper.render(o))
   }
 
+  @Test fun fieldsOnly() {
+    val o = Hello("", uuid, LocalDate.parse("2022-10-21"), Instant.parse("2022-10-21T10:55:00Z"), Nested(567.toBigDecimal()), listOf(Nested(), Nested()))
+    expect(JsonMapper(fieldsOnly = true).render(o)).toEqual(/*language=JSON*/ """{"array":[{"x":0,"y":123},{"x":0,"y":123}],"date":"2022-10-21","hellou":"","id":"b8ca58ec-ab15-11ed-93cc-8fdb43988a14","instant":"2022-10-21T10:55:00Z","isBoolean":true,"map":{},"nested":{"x":567,"y":123},"readOnly":true}""")
+  }
+
   @Test fun `snake case`() {
     val mapper = JsonMapper(keys = SnakeCase)
     expect(mapper.render(mapOf("snakeCase" to 123))).toEqual("""{"snake_case":123}""")

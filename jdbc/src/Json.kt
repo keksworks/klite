@@ -7,7 +7,7 @@ import java.sql.ResultSet
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-var dbJsonMapper = JsonMapper(values = object: ValueConverter<Any?>() {
+var dbJsonMapper = JsonMapper(fieldsOnly = true, values = object: ValueConverter<Any?>() {
   override fun to(o: Any?) = (o as? TSID<*>)?.value ?: o
   override fun from(o: Any?, type: KType?) = if (type?.classifier == TSID::class && o !is TSID<*>) {
     val decimal = (o as? Number)?.toLong() ?: o?.toString()?.toLongOrNull()

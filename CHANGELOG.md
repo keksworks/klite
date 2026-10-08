@@ -2,6 +2,8 @@
 * core/http: simplify RequestModifier usage
 * json: `toJsonSchema()` now describes Map key/value types using propertyNames/additionalProperties
 * json: support for ByteArray in TSGenerator test data generation
+* json: `JsonMapper.fieldsOnly` to skip computed properties (no backing field) when rendering
+* jdbc: `dbJsonMapper` now stores only field-backed properties in jsonb (skips computed ones)
 * jdbc: serialize TSID as bigint in jsonb to make it compatible with Postgres bigint type (TSID is stored as bigint)
 * jdbc: `rs.getString("alias.field")` for joined tables now works on all databases and with tables without an id column
 * jdbc: remove auto-fallback to `docker-compose` from `docker compose`, use `DOCKER_COMPOSE` env var to override
