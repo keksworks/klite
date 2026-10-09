@@ -1,4 +1,4 @@
-# Unreleased
+# Unreleased 2.1.0
 * core/http: simplify RequestModifier usage
 * json: `toJsonSchema()` now describes Map key/value types using propertyNames/additionalProperties
 * json: support for ByteArray in TSGenerator test data generation
