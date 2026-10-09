@@ -11,7 +11,8 @@ class OpenAIClientTest {
   @Test fun `remote document is referenced by url`() {
     val url = URI("https://files.pixit.vet/p1/visit/report.pdf")
 
-    expect(url.toOpenAIContent()).toEqual(OpenAIClient.Content(type = "input_file", fileUrl = url, filename = "report.pdf"))
+    // OpenAI rejects filename together with file_url as mutually exclusive parameters
+    expect(url.toOpenAIContent()).toEqual(OpenAIClient.Content(type = "input_file", fileUrl = url))
   }
 
   @Test fun `remote image is referenced by url`() {

@@ -54,7 +54,7 @@ open class OpenAIClient(
 
 internal fun URI.toOpenAIContent(): OpenAIClient.Content = when {
   isImage -> OpenAIClient.Content(imageUrl = if (scheme == "file") File(path).toBase64Url() else this, type = "input_image")
-  scheme == "http" || scheme == "https" -> OpenAIClient.Content(fileUrl = this, filename = fileName, type = "input_file")
+  scheme == "http" || scheme == "https" -> OpenAIClient.Content(fileUrl = this, type = "input_file")
   else -> OpenAIClient.Content(fileData = if (scheme == "file") File(path).toBase64Url() else this, filename = fileName, type = "input_file")
 }
 
