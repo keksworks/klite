@@ -67,7 +67,7 @@ open class HttpExchange(
   val attrs: MutableMap<Any, Any?> = mutableMapOf()
   fun <T> attr(key: Any): T = attrs[key] as T
   fun attr(key: Any, value: Any?) = attrs.put(key, value)
-  inline fun <reified T: Any> attr(): T = attr(T::class)
+  inline fun <reified T> attr(): T = attr(T::class)
   inline fun <reified T: Any> attrPut(value: T) = attr(T::class, value)
 
   val headers: Headers get() = original.requestHeaders
