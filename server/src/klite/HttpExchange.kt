@@ -146,7 +146,9 @@ open class HttpExchange(
 
   override fun close() {
     original.close()
-    onCompleteHandlers.forEach { it.run() }
+    onCompleteHandlers.forEach {
+      runCatching { it.run() }.onFailure { logger().error("Error in onComplete handler", it) }
+    }
   }
 
   override fun toString() = "$method ${original.requestURI}"
