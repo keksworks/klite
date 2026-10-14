@@ -1,6 +1,7 @@
 # Unreleased 2.1.0
 * core/http: simplify RequestModifier usage
 * json: `toJsonSchema()` now describes Map key/value types using propertyNames/additionalProperties
+* json: `@JsonIgnore` can now be applied to a whole class to exclude it (and properties referencing it) from generated TypeScript types
 * json: support for ByteArray in TSGenerator test data generation
 * json: `JsonMapper.fieldsOnly` to skip computed properties (no backing field) when rendering
 * jdbc: `dbJsonMapper` now stores only field-backed properties in jsonb (skips computed ones)

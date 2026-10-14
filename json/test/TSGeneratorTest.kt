@@ -55,6 +55,11 @@ class TSGeneratorTest {
       "interface FieldRule<T> {field: keyof Hello; limits: Record<any, number>}")
   }
 
+  @Test fun `class level JsonIgnore`() {
+    expect(ts.render(Ignored::class)).toEqual(null)
+    expect(ts.render(ReferencesIgnored::class)).toEqual(/* language=TypeScript */ "interface ReferencesIgnored {name: string}")
+  }
+
   @Test fun `sealed classes`() {
     expect(ts.render(Shape::class)).toEqual(/* language=TypeScript */ """
       export type Shape = ShapeCircle | ShapeRect
