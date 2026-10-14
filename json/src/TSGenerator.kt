@@ -101,11 +101,17 @@ open class TSGenerator(
   }
 
   @Language("TypeScript") open fun render(cls: KClass<*>) =
-    if (cls.isData || cls.java.isInterface && !cls.java.isAnnotation) renderInterface(cls)
+    if (cls.hasAnnotation<JsonIgnore>()) null
+    else if (cls.isData || cls.java.isInterface && !cls.java.isAnnotation) renderInterface(cls)
     else if (cls.isValue) renderInline(cls)
     else if (cls.isSubclassOf(Enum::class)) renderEnum(cls)
     else if (cls.hasAnnotation<JsonSubTypes>() || cls.isSealed) renderSealed(cls)
     else null
+
+  protected open fun isIgnored(type: KType?): Boolean {
+    val cls = type?.classifier as? KClass<*> ?: return false
+    return cls.hasAnnotation<JsonIgnore>() || type.arguments.any { isIgnored(it.type) }
+  }
 
   protected open fun <E: Any> renderEnum(cls: KClass<E>): String {
     val propNames = cls.primaryConstructor?.parameters?.mapNotNull { it.name }?.toSet() ?: emptySet()
@@ -130,7 +136,9 @@ open class TSGenerator(
     " = " + tsType(cls.primaryConstructor?.parameters?.first()?.type)
 
   protected open fun renderSealed(cls: KClass<*>): String? {
-    val types = cls.findAnnotation<JsonSubTypes>()?.types?.takeIf { it.isNotEmpty() }?.map { it.type } ?: cls.sealedSubclasses
+    val types = (cls.findAnnotation<JsonSubTypes>()?.types?.takeIf { it.isNotEmpty() }?.map { it.type } ?: cls.sealedSubclasses)
+      .filterNot { it.hasAnnotation<JsonIgnore>() }
+    if (types.isEmpty()) return null
     return "${typePrefix}type ${tsName(cls)} = ${types.joinToString(" | ") { tsName(it) }}\n" +
       types.joinToString(separator = "\n") { typePrefix + renderInterface(it).toString() }
   }
@@ -140,7 +148,8 @@ open class TSGenerator(
 
   @Suppress("UNCHECKED_CAST")
   protected open fun renderInterface(cls: KClass<*>): String? = StringBuilder().apply {
-    val props = (cls.publicProperties.values.asSequence() as Sequence<KProperty1<Any, *>>).notIgnored.iterator()
+    val props = (cls.publicProperties.values.asSequence() as Sequence<KProperty1<Any, *>>).notIgnored
+      .filterNot { isIgnored(it.returnType) }.iterator()
     if (!props.hasNext()) return null
     append("interface ").append(tsName(cls)).append(typeParams(cls)).append(" {")
     props.iterator().forEach { p ->
@@ -154,6 +163,7 @@ open class TSGenerator(
 
   protected open fun tsType(type: KType?): String {
     val cls = type?.classifier as? KClass<*>
+    if (cls?.hasAnnotation<JsonIgnore>() == true) return "any"
     val args = type?.arguments ?: emptyList()
     val customType = listOf(type?.toString(), type?.jvmErasure?.qualifiedName).find { it in customTypes }
     val ts = customType?.also { usedCustomTypes += it }?.substringAfterLast(".") ?: when {

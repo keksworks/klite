@@ -21,6 +21,11 @@ data class Nullable(val x: String? = null)
 
 data class Nested(val x: BigDecimal = ZERO, val y: Int = 123)
 
+@JsonIgnore
+data class Ignored(val secret: String)
+
+data class ReferencesIgnored(val name: String, val ignored: Ignored, val ignoredList: List<Ignored> = emptyList())
+
 data class TypedData<T>(val list: List<T>, val map: Map<String, T> = emptyMap())
 
 data class FieldRule<T: Comparable<T>>(val field: KProperty1<out Hello, T>, val limits: Ranges<T> = emptyMap())
