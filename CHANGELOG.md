@@ -5,6 +5,7 @@
 * jdbc: `jsonb()` now returns `JsonValue` (serialized JSON bound as an untyped parameter) instead of ?::jsonb casts
 * ai: introduce `DataExtractor.extractResponse()` that also returns the RawResponse with `TokenUsage`
 * email: add Reply-To support for incoming emails
+* json: TSGenerator `-r` option now works properly without scanning other classes in classpath
 
 # 2.1.0
 * core/http: simplify RequestModifier usage
