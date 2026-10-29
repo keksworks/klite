@@ -41,7 +41,7 @@ object Config {
       val line = it.trim()
       if (line.isNotEmpty() && !line.startsWith('#'))
         line.split('=', limit = 2).let { (key, value) ->
-          val interpolated = interpolatedRegex.replace(value) { optional(it.groupValues[1]) ?: it.value }
+          val interpolated = interpolatedRegex.replace(value) { required(it.groupValues[1]) }
           if (force || optional(key) == null) set(key, interpolated)
         }
     }
