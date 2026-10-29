@@ -1,6 +1,5 @@
 package klite
 
-import klite.Config.useEnvFile
 import java.io.File
 
 /**
@@ -32,7 +31,7 @@ object Config {
   }
 
   /**
-   * Use this as the first thing in your app before creating a Server instance.
+   * Use this as the first thing in your `main()` before creating a Server instance.
    * @param force use to override already set env vars
    */
   fun useEnvFile(name: String = ".env", force: Boolean = false) = useEnvFile(File(name), force)
@@ -42,10 +41,13 @@ object Config {
       val line = it.trim()
       if (line.isNotEmpty() && !line.startsWith('#'))
         line.split('=', limit = 2).let { (key, value) ->
-          if (force || optional(key) == null) set(key, value)
+          val interpolated = interpolatedRegex.replace(value) { optional(it.groupValues[1]) ?: it.value }
+          if (force || optional(key) == null) set(key, interpolated)
         }
     }
   }
+
+  private val interpolatedRegex = Regex("\\$\\{([^}]+)}")
 }
 
 val Config.isDev get() = isActive("dev")

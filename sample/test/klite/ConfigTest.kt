@@ -5,6 +5,7 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
 import org.junit.jupiter.api.Test
+import kotlin.io.path.createTempFile
 
 class ConfigTest {
   init {
@@ -40,5 +41,13 @@ class ConfigTest {
 
     Config.overridable("TEST_SOMETHING2", "VALUE2")
     expect(Config["TEST_SOMETHING2"]).toEqual("VALUE2")
+  }
+
+  @Test fun envFileInterpolation() {
+    val file = createTempFile().toFile()
+    file.writeText("TEST_INTERPOLATION_BASE=BASE\nTEST_INTERPOLATION=\${TEST_INTERPOLATION_BASE}/VALUE\n")
+    Config.useEnvFile(file)
+    file.delete()
+    expect(Config["TEST_INTERPOLATION"]).toEqual("BASE/VALUE")
   }
 }

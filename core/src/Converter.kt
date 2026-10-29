@@ -36,6 +36,7 @@ object Converter {
 
   operator fun <T: Any> set(type: KClass<T>, converter: FromStringConverter<T>) { converters[type] = converter }
   inline fun <reified T: Any> use(noinline converter: FromStringConverter<T>) = set(T::class, converter)
+  // TODO: add boolean option to return null on failure instead of throwing exception
 
   fun supports(cls: KClass<*>) = of(cls = cls) !is NoConverter
   fun forEach(block: (type: KClass<*>, converter: FromStringConverter<*>) -> Unit) = converters.forEach { block(it.key, it.value) }
