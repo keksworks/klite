@@ -47,18 +47,29 @@ class Server(
   private val requestsActive = AtomicInteger().also { Metrics.register("requestsActive") { it.get() } }
 
   val address: InetSocketAddress get() = http.address ?: error("Server not started")
+  @Volatile private var shutdownHook: Thread? = null
 
   fun start(gracefulStopDelaySec: Int = 3, socketBacklog: Int = 2048) {
     http.bind(listen, socketBacklog)
     log.info("Listening on http://${if (address.address.isAnyLocalAddress) "localhost" else address.hostString}:${address.port}")
     http.start()
-    if (gracefulStopDelaySec >= 0) getRuntime().addShutdownHook(thread(start = false) { stop(gracefulStopDelaySec) })
+    if (gracefulStopDelaySec >= 0) {
+      val hook = thread(start = false) { stop(gracefulStopDelaySec) }
+      shutdownHook = hook
+      getRuntime().addShutdownHook(hook)
+    }
   }
 
   private val onStopHandlers = mutableListOf<Runnable>()
   fun onStop(handler: Runnable) { onStopHandlers += handler }
 
   fun stop(delaySec: Int = 1) {
+    val hook = shutdownHook
+    if (hook != null && hook !== currentThread()) {
+      shutdownHook = null
+      runCatching { getRuntime().removeShutdownHook(hook) }
+    }
+
     log.info("Stopping gracefully")
     http.stop(if (requestsActive.get() == 0) 0 else delaySec)
     workerPool.shutdownNow()

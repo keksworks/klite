@@ -12,6 +12,7 @@
             <option value="$PROJECT_DIR$/ai" />
             <option value="$PROJECT_DIR$/core" />
             <option value="$PROJECT_DIR$/csv" />
+            <option value="$PROJECT_DIR$/dev" />
             <option value="$PROJECT_DIR$/email" />
             <option value="$PROJECT_DIR$/i18n" />
             <option value="$PROJECT_DIR$/jackson" />

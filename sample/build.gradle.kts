@@ -1,6 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val mainClassName = "LauncherKt"
+val devImplementation = configurations.create("devImplementation") {
+  isCanBeConsumed = false
+  isCanBeResolved = true
+}
 
 dependencies {
   implementation(project(":server"))
@@ -11,6 +15,7 @@ dependencies {
   implementation(project(":oauth"))
   implementation(project(":openapi"))
   implementation(libs.postgresql)
+  add("devImplementation", project(":dev"))
   testImplementation(project(":jdbc-test"))
 }
 
@@ -40,6 +45,13 @@ tasks.jar {
 tasks.register<JavaExec>("run") {
   mainClass.set(mainClassName)
   classpath = sourceSets.main.get().runtimeClasspath
+}
+
+/** Runs the app behind a disposable classloader from the dev-only :dev module */
+tasks.register<JavaExec>("dev") {
+  mainClass.set("klite.dev.HotReloadLauncherKt")
+  classpath = sourceSets.main.get().runtimeClasspath + devImplementation
+  args(mainClassName, "createServer")
 }
 
 tasks.register<JavaExec>("types.ts") {

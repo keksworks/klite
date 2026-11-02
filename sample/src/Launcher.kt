@@ -13,8 +13,11 @@ import java.nio.file.Path
 import kotlin.time.Duration.Companion.seconds
 
 fun main() {
-  sampleServer().start()
+  createServer().start()
 }
+
+/** Also used by the dev launcher, keep it a static no-arg factory. */
+fun createServer(): Server = sampleServer()
 
 fun sampleServer(port: Int = Config.port): Server {
   Config.useEnvFile()

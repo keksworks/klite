@@ -72,6 +72,7 @@ See the [Tutorial](TUTORIAL.md) to grasp the basics quickly.
 
 * [core](core) - some reusable classes, e.g. Config. Don't depend on it directly.
 * [server](server) - the main server module. See [it's documentation](server). Zero external dependencies.
+* [dev](dev) - dev-only tooling, currently hot reloading application classes. Not needed in production.
 * [json](json) - lightweight and easily configurable json parsing/rendering (usable *standalone*)
 * [xml](xml) - fast and lightweight xml parsing into data classes (usable *standalone*)
 * [csv](csv) - simple CSV parsing/generation (usable *standalone*)

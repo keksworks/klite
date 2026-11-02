@@ -50,6 +50,7 @@ dependencyResolutionManagement {
 include(
   "core",
   "server",
+  "dev",
   "json",
   "csv",
   "xml",
