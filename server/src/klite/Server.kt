@@ -61,6 +61,7 @@ class Server(
   fun stop(delaySec: Int = 1) {
     log.info("Stopping gracefully")
     http.stop(if (requestsActive.get() == 0) 0 else delaySec)
+    workerPool.shutdownNow()
     onStopHandlers.reversed().forEach { it.run() }
   }
 
