@@ -60,8 +60,7 @@ abstract class McpRoutes(
     return ToolCallResult(listOf(ToolContent(text = json)))
   }
 
-  open fun convertValue(value: Any, targetType: KType): Any? = when (value) {
-    is String -> Converter.from(value, targetType)
-    else -> value
-  }
+  open fun convertValue(value: Any, targetType: KType): Any? =
+    if (value is String) Converter.from(value, targetType)
+    else jsonMapper.parse<Any?>(jsonMapper.render(value), targetType)
 }

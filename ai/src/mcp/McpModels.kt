@@ -1,12 +1,9 @@
 package klite.ai.mcp
 
 import klite.Config
-import kotlin.reflect.KClass
+import klite.json.toJsonSchema
 import kotlin.reflect.KFunction
-import kotlin.reflect.KType
-import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.valueParameters
-import kotlin.reflect.jvm.jvmErasure
 
 data class JsonRpcResponse(val jsonrpc: String = "2.0", val id: Any?, val result: Any? = null, val error: JsonRpcError? = null)
 
@@ -24,7 +21,7 @@ data class ToolsListResult(val tools: List<Tool>)
 
 data class Tool(val name: String, val description: String, val inputSchema: ToolSchema)
 
-data class ToolSchema(val type: String = "object", val properties: Map<String, Any>, val required: List<String> = emptyList())
+data class ToolSchema(val type: String = "object", val properties: Map<String, Any?>, val required: List<String> = emptyList())
 
 data class ToolCallResult(val content: List<ToolContent>)
 
@@ -37,24 +34,9 @@ data class JsonRpcRequest(val jsonrpc: String = "2.0", val id: Any? = null, val 
 fun Pair<KFunction<*>, String>.toTool(): Tool {
   val (f, description) = this
   val params = f.valueParameters.drop(1) // skip context parameter
-  val required = mutableListOf<String>()
-  val properties = mutableMapOf<String, Any>()
-  for (param in params) {
-    val name = param.name!!
-    if (!param.type.isMarkedNullable) required += name
-    val prop = mutableMapOf<String, Any>("type" to param.type.toJsonSchemaType())
-    param.type.jvmErasure.enumValues()?.let { prop["enum"] = it }
-    properties[name] = prop
+  val required = params.filter { !it.isOptional && !it.type.isMarkedNullable }.map { it.name!! }
+  val properties = params.associate { param ->
+    param.name!! to (param.type.toJsonSchema() ?: mapOf("type" to "string"))
   }
   return Tool(f.name, description, ToolSchema(properties = properties, required = required))
-}
-
-private fun KClass<*>.enumValues(): List<String>? =
-  if (isSubclassOf(Enum::class)) java.enumConstants.map { (it as Enum<*>).name } else null
-
-private fun KType.toJsonSchemaType(): String = when (classifier) {
-  Long::class, Int::class, Short::class, Byte::class -> "number"
-  Double::class, Float::class -> "number"
-  Boolean::class -> "boolean"
-  else -> "string"
 }

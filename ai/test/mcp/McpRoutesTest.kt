@@ -12,6 +12,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class McpRoutesTest {
+  enum class Status { NEW, DONE }
+  data class Item(val name: String, val status: Status, val tags: List<String> = emptyList())
+
   val exchange = mockk<HttpExchange>(relaxed = true)
 
   class TestMcpRoutes(info: ServerInfo = ServerInfo()): McpRoutes(info) {
@@ -20,12 +23,14 @@ class McpRoutesTest {
       this::greet to "Greet someone",
       this::add to "Add two numbers",
       this::nullableTool to "Nullable tool",
+      this::items to "Echo items",
     )
     override fun authenticate(exchange: HttpExchange): Any? = authenticatedUser
 
     fun greet(context: String, name: String): String = "Hello, $name! (from $context)"
     fun add(context: String, a: Int, b: Int): Int = a + b
     fun nullableTool(context: String, value: String? = null): String = value ?: "default"
+    fun items(context: String, ids: List<String>, items: List<Item>, limit: Int = 10): List<Item> = items.take(limit)
   }
 
   val routes = TestMcpRoutes()
@@ -71,11 +76,16 @@ class McpRoutesTest {
   @Test fun `handleRequest tools_list returns ToolsListResult`() {
     val result = routes.handleRequest("ctx", "tools/list", emptyMap())
     val tools = (result as ToolsListResult).tools
-    expect(tools.size).toEqual(3)
+    expect(tools.size).toEqual(4)
     expect(tools[0].name).toEqual("greet")
     expect(tools[0].description).toEqual("Greet someone")
     expect(tools[1].name).toEqual("add")
     expect(tools[1].description).toEqual("Add two numbers")
+  }
+
+  @Test fun `handleRequest tools_list does not require params with defaults`() {
+    val tools = (routes.handleRequest("ctx", "tools/list", emptyMap()) as ToolsListResult).tools
+    expect(tools.first { it.name == "items" }.inputSchema.required).toEqual(listOf("ids", "items"))
   }
 
   @Test fun `handleRequest resources_list returns empty ResourcesListResult`() {
@@ -117,5 +127,13 @@ class McpRoutesTest {
     val params = mapOf<String, Any?>("name" to "nullableTool")
     val result = routes.handleToolCall("ctx", params)
     expect(result.content[0].text).toEqual("\"default\"")
+  }
+
+  @Test fun `handleToolCall converts nested object arguments`() {
+    val params = mapOf("name" to "items", "arguments" to mapOf(
+      "ids" to listOf("A"),
+      "items" to listOf(mapOf("name" to "x", "status" to "DONE", "tags" to listOf("t")))))
+    val result = routes.handleToolCall("ctx", params)
+    expect(result.content[0].text).toEqual("""[{"name":"x","status":"DONE","tags":["t"]}]""")
   }
 }
