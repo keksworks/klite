@@ -6,6 +6,7 @@ import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
 import org.junit.jupiter.api.Test
+import kotlin.reflect.typeOf
 
 class ValuesTest {
   @Test fun toValues() {
@@ -42,6 +43,17 @@ class ValuesTest {
       .message.toEqual("Cannot create SomeData from {world=34}: missing hello")
   }
 
+  @Test fun `convert nested values`() {
+    val values = mapOf(
+      "ids" to listOf("A", "B"),
+      "items" to listOf(mapOf("name" to "x", "status" to "DONE", "tags" to listOf("t"))),
+      "counts" to mapOf("x" to "5"))
+    expect(typeOf<Order>().convertFrom(values)).toEqual(Order(setOf("A", "B"), listOf(Item("x", Status.DONE, listOf("t"))), mapOf("x" to 5)))
+  }
+
   data class SomeData(val hello: String, val world: Int, val nullable: String? = "default", val list: List<Int> = listOf(1, 2))
   data class AnotherData(val hello: String?)
+  enum class Status { NEW, DONE }
+  data class Item(val name: String, val status: Status, val tags: List<String> = emptyList())
+  data class Order(val ids: Set<String>, val items: List<Item>, val counts: Map<String, Int> = emptyMap())
 }

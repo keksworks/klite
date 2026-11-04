@@ -5,6 +5,7 @@ import java.lang.reflect.InvocationTargetException
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.*
 import kotlin.reflect.KVisibility.PUBLIC
+import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.javaField
@@ -70,3 +71,34 @@ fun <T: Any> KClass<T>.createFrom(values: Map<out Any, Any?>) = create {
 }
 
 object AbsentValue
+
+/** Converts a tree of parsed values (nested maps, collections and scalars, e.g. from JSON) into this type */
+fun KType.convertFrom(value: Any?): Any? = when {
+  value == null -> null
+  value is String -> Converter.from(value, this)
+  value is Map<*, *> -> convertMap(value)
+  value is Iterable<*> -> convertCollection(value)
+  else -> value
+}
+
+private fun KType.convertMap(values: Map<*, *>): Any {
+  val cls = classifier as? KClass<*> ?: return values
+  return when {
+    cls == Any::class -> values
+    cls.isSubclassOf(Map::class) -> {
+      val keyType = arguments.getOrNull(0)?.type
+      val valueType = arguments.getOrNull(1)?.type
+      values.entries.associate { (k, v) -> (keyType?.convertFrom(k) ?: k) to (valueType?.convertFrom(v) ?: v) }
+    }
+    cls.primaryConstructor != null -> cls.createFrom(values.entries.filter { it.key != null }.associate { (k, v) ->
+      (k as Any) to (cls.publicProperties[k as? String]?.returnType?.convertFrom(v) ?: v)
+    })
+    else -> values
+  }
+}
+
+private fun KType.convertCollection(values: Iterable<*>): Collection<*> {
+  val itemType = arguments.firstOrNull()?.type
+  val items = values.map { itemType?.convertFrom(it) ?: it }
+  return if ((classifier as? KClass<*>)?.isSubclassOf(Set::class) == true) items.toSet() else items
+}
