@@ -23,6 +23,20 @@ class TSGeneratorTest {
     """.trimIndent())
   }
 
+  @Test fun `enum with fields prints referenced enums before it`() {
+    val generator = object: TSGenerator(out = PrintStream(out)) {
+      fun print(cls: KClass<*>) = printClass(cls)
+    }
+    generator.print(EnumWithFields::class)
+    expect(out.toString()).toEqual(/* language=TypeScript */ """
+      // class klite.json.SomeEnum
+      export enum SomeEnum {HELLO = 'HELLO', WORLD = 'WORLD'}
+      // class klite.json.EnumWithFields
+      export enum EnumWithFields {HELLO = 'HELLO', WORLD = 'WORLD'}
+      export const EnumWithFieldsData = {HELLO: {bool: true, num: 1, other: SomeEnum.HELLO}, WORLD: {bool: false, num: 2, other: SomeEnum.WORLD}}
+    """.trimIndent() + "\n")
+  }
+
   @Test fun inline() {
     expect(ts.render(MyId::class)).toEqual(/* language=TypeScript */ "type MyId<T> = string")
     expect(ts.render(CountryCode::class)).toEqual(/* language=TypeScript */ "type CountryCode = string")

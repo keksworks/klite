@@ -62,6 +62,10 @@ open class TSGenerator(
 
   internal open fun printReferencedClasses() {
     if (referencedClasses.isNotEmpty()) out.println("")
+    printPendingReferences()
+  }
+
+  private fun printPendingReferences() {
     while (referencedClasses.isNotEmpty()) {
       val toProcess = referencedClasses.toList()
       referencedClasses.clear()
@@ -94,10 +98,10 @@ open class TSGenerator(
 
   protected open fun printClass(cls: KClass<*>) {
     printedClasses += cls
-    render(cls)?.let {
-      out.println("// $cls")
-      out.println(typePrefix + it)
-    }
+    val rendered = render(cls) ?: return
+    printPendingReferences()
+    out.println("// $cls")
+    out.println(typePrefix + rendered)
   }
 
   @Language("TypeScript") open fun render(cls: KClass<*>) =
@@ -110,6 +114,7 @@ open class TSGenerator(
   protected open fun <E: Any> renderEnum(cls: KClass<E>): String {
     val propNames = cls.primaryConstructor?.parameters?.mapNotNull { it.name }?.toSet() ?: emptySet()
     val props = cls.publicProperties.values.filter { it.name in propNames }
+    props.forEach { tsType(it.returnType) }
     val name = tsName(cls)
     val enumStr = "enum $name {" + cls.java.enumConstants.joinToString { "$it = '$it'" } + "}"
     return if (props.isEmpty()) enumStr
