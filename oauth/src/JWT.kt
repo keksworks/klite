@@ -5,6 +5,7 @@ import klite.json.*
 import klite.oauth.JWT.Companion.jsonMapper
 import java.math.BigInteger
 import java.security.KeyFactory
+import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Signature
@@ -45,7 +46,7 @@ data class JWT(val headerPart: String, val payloadPart: String, val signaturePar
     val mac = Mac.getInstance(jcaAlg)
     mac.init(SecretKeySpec(secret.toByteArray(), jcaAlg))
     val expected = mac.doFinal(signedPart.toByteArray())
-    require(expected.contentEquals(signature)) { "Invalid JWT signature" }
+    require(MessageDigest.isEqual(expected, signature)) { "Invalid JWT signature" }
   }
 
   fun verify(keys: Map<String, JwkKey>) =
