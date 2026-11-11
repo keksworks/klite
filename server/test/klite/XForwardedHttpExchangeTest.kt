@@ -26,6 +26,13 @@ class XForwardedHttpExchangeTest {
     expect(exchange.host).toEqual("host.domain")
   }
 
+  @Test fun `takes last X-Forwarded-For address, with or without spaces after commas`() {
+    every { exchange.header("X-Forwarded-For") } returns "1.1.1.1, 2.2.2.2"
+    expect(exchange.remoteAddress).toEqual("2.2.2.2")
+    every { exchange.header("X-Forwarded-For") } returns "6.6.6.6,1.1.1.1,2.2.2.2"
+    expect(exchange.remoteAddress).toEqual("2.2.2.2")
+  }
+
   @Test fun `validates forwarded host`() {
     every { exchange.header("X-Forwarded-Host") } returns "evil.com/path"
     assertThrows<IllegalArgumentException> { exchange.host }
