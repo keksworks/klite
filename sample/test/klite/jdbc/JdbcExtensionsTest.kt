@@ -51,6 +51,20 @@ open class JdbcExtensionsTest: TempTableDBTest() {
       .toThrow<AlreadyExistsException>().messageToContain("errors.alreadyExists: id=$id2")
   }
 
+  @Test fun `query and select with named parameters`() {
+    val id = randomUUID()
+    db.insert(table, mapOf("id" to id, "hello" to "Hello", "world" to 42))
+    val id2 = randomUUID()
+    db.insert(table, mapOf("id" to id2, "hello" to "World", "world" to 10))
+
+    expect(db.query("select id from $table where hello = :hello or world > :world", ":hello" to "Hello", ":world" to 40) { getUuid() })
+      .toContainExactly(id)
+    expect(db.select(table, "id" to id, ":min" to 40, suffix = "or world >= :min") { getUuid() })
+      .toContainExactly(id)
+    expect(db.select(table, "id" to id2, ":filter" to "Hello", suffix = "or hello = :filter order by hello desc") { getUuid() })
+      .toContainExactly(id2, id)
+  }
+
   @Test fun generatedKey() {
     val generatedKey = GeneratedKey<Int>()
     db.insert(table, mapOf("id" to randomUUID(), "hello" to "Hello", "gen" to generatedKey))

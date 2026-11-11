@@ -67,7 +67,11 @@ Usage:
     create<MyEntity>(MyEntity::other to create<OtherEntity>("table2.")) // you can provide table alias to create
   }.first()
 
-  // or you can write full SQL manually using db.query() and db.exec()
+  // full control over a complex query, with the parameter used in different places
+  db.query("select * from (select * from items where price > :min) t where price < :min * 2", ":min" to 100) { create<Item>() }
+
+  // named parameters in the suffix of a generated select
+  db.select("users", User::status to Status.ACTIVE, ":limit" to 10, suffix = "order by createdAt desc limit :limit") { create<User>() }
 ```
 
 See [all available operations](src/JdbcExtensions.kt) and [comparison operators](src/SqlExpr.kt).
@@ -156,3 +160,9 @@ It's more convenient to treat DB objects as maintainable code, e.g.
 * Backwards-compatible changesets between deploys, allowing for rollback of the app with already updated DB
 * You can add destructive changesets for future right away with some non-existent context, e.g. `context:TODO`
 * Run the same changesets before DB-related unit tests
+
+
+### TODO:
+* call returning a ResultSet
+* include ? in query("")
+*

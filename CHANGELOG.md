@@ -1,6 +1,7 @@
 # Unreleased
 * core: `KType.convertFrom()` introduced to convert a parsed Node (Maps, Iterables, and scalars) into a type-safe object tree
 * ai: McpRoutes now uses a full json schema for more complex input types
+* jdbc: `query`/`select` support named parameters, e.g. `query("... where a = :a", ":a" to 1)`, for complex SQL
 
 # 2.1.1
 * core: `Config.useEnvFile()` can now process `${OTHER_VAR}` interpolations from earlier variables

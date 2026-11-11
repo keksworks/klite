@@ -48,10 +48,18 @@ inline fun <reified R> DB.select(@Language("SQL", prefix = selectFrom) table: St
 inline fun <reified R> DB.select(@Language("SQL", prefix = selectFrom) table: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   select(table, *where, suffix = suffix) { create() }
 
-fun <R, C: MutableCollection<R>> DB.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C =
-  whereConvert(where).let { where ->
-  withStatement("$select${whereExpr(where)} $suffix") {
-    setAll(this@query.whereValues(where))
+fun <R, C: MutableCollection<R>> DB.query(@Language("SQL") select: String, where: Where = emptyList(), @Language("SQL", prefix = selectFromTable) suffix: String = "", into: C, mapper: Mapper<R>): C {
+  val (namedParams, conditions) = where.splitNamedParams()
+  val converted = whereConvert(conditions)
+  var sql = "$select${whereExpr(converted)} $suffix"
+  var values = whereValues(converted)
+  if (namedParams.isNotEmpty()) {
+    val resolved = resolveNamedParams(sql, namedParams, values)
+    sql = resolved.first
+    values = resolved.second
+  }
+  return withStatement(sql) {
+    setAll(values)
     executeQuery().withJoinPrefixes(select).run {
       into.also { process(it::add, mapper) }
     }
