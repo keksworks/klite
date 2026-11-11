@@ -4,6 +4,7 @@
 * jdbc: `query`/`select` support named parameters, e.g. `query("... where a = :a", ":a" to 1)`, for complex SQL
 * server: `XForwardedHttpExchange` splits `X-Forwarded-For` on commas with or without spaces, so clients can't spoof `remoteAddress` behind proxies that don't add spaces
 * jdbc: `DBSessionStore.deleteOlderThan()` now actually deletes older sessions (was matching only the exact timestamp), and the new `maxAge` parameter rejects sessions not updated for longer
+* slf4j: `EcsJsonLogger` and `StackTraceOptimizingJsonLogger` escape backslashes and all control chars, so logged values (e.g. request paths) can't inject JSON fields
 
 # 2.1.1
 * core: `Config.useEnvFile()` can now process `${OTHER_VAR}` interpolations from earlier variables

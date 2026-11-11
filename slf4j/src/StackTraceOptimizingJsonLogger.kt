@@ -20,7 +20,7 @@ open class StackTraceOptimizingJsonLogger(name: String): StackTraceOptimizingLog
 
   protected fun appendJson(sb: StringBuilder, t: Throwable) {
     sb.append("""{"error":"""")
-    sb.append(t.toString().replace("\"", "\\\"").replace("\n", "\\n"))
+    sb.appendJsonEscaped(t.toString())
     sb.append("""","stack":[""")
     val stack = t.stackTrace
     val until = findUsefulStackTraceEnd(stack)
@@ -32,7 +32,7 @@ open class StackTraceOptimizingJsonLogger(name: String): StackTraceOptimizingLog
         val prevPackage = prev.className.substringBeforeLast(".")
         line = line.substringAfter(prevPackage)
       }
-      sb.append("\"").append(line).append("\"")
+      sb.append("\"").appendJsonEscaped(line).append("\"")
       if (i != until) sb.append(",")
     }
     sb.append("]")
@@ -41,5 +41,16 @@ open class StackTraceOptimizingJsonLogger(name: String): StackTraceOptimizingLog
       appendJson(sb, it)
     }
     sb.append("}")
+  }
+}
+
+internal fun StringBuilder.appendJsonEscaped(s: String) = apply {
+  for (c in s) when (c) {
+    '"' -> append("\\\"")
+    '\\' -> append("\\\\")
+    '\n' -> append("\\n")
+    '\r' -> append("\\r")
+    '\t' -> append("\\t")
+    else -> if (c < ' ') append("\\u%04x".format(c.code)) else append(c)
   }
 }

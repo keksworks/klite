@@ -2,6 +2,7 @@ package klite.slf4j
 
 import ch.tutteli.atrium.api.fluent.en_GB.toContain
 import ch.tutteli.atrium.api.fluent.en_GB.toEndWith
+import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toStartWith
 import ch.tutteli.atrium.api.verbs.expect
 import klite.json.JsonMapper
@@ -29,6 +30,13 @@ class EcsJsonLoggerTest {
     expect(json).toStartWith("{\"@timestamp\":\"" + Year.now())
       .toEndWith(""","trace.id":"Test worker","log.level":"warn","log.logger":"hello.MyLogger","message":"Hello\nWorld!","host.hostname":"${InetAddress.getLocalHost().hostName}"}""" + "\n")
     JsonMapper().parse<JsonNode>(json)
+  }
+
+  @Test fun `escapes backslashes and control chars so values can't inject fields`() {
+    logger.print(WARN, "GET /x\\\",\"log.level\":\"info\u0001", null)
+    val json = JsonMapper().parse<JsonNode>(out.toString())
+    expect(json["log.level"] as Any).toEqual("warn")
+    expect(json["message"] as Any).toEqual("GET /x\\\",\"log.level\":\"info\u0001")
   }
 
   @Test fun exception() {

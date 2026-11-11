@@ -35,7 +35,7 @@ open class EcsJsonLogger(name: String): StackTraceOptimizingLogger(name) {
       sb.append("\"error.stack_trace\":\"")
       val stackTrace = t.stackTrace
       for (i in 0..findUsefulStackTraceEnd(stackTrace)) {
-        sb.append(stackTrace[i]).append("\\n")
+        sb.appendJsonEscaped(stackTrace[i].toString()).append("\\n")
       }
       sb.append("\",")
     }
@@ -47,9 +47,9 @@ open class EcsJsonLogger(name: String): StackTraceOptimizingLogger(name) {
   private fun StringBuilder.put(key: String, value: Any?, isLast: Boolean = false) {
     if (value == null) return
     append('"')
-    append(key)
+    appendJsonEscaped(key)
     append("\":\"")
-    append(value.toString().replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\""))
+    appendJsonEscaped(value.toString())
     append('"')
     if (!isLast) append(',')
   }
