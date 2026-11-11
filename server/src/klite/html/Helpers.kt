@@ -8,7 +8,7 @@ import org.intellij.lang.annotations.Language
 fun <T> Iterable<T>.each(transform: (IndexedValue<T>) -> String) = withIndex().joinToString(separator = "", transform = transform)
 
 fun String.escapeHtml() = replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;")
-fun String.escapeJs() = replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("<", "\\u003c")
+fun String.escapeJs() = replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("`", "\\`").replace("$", "\\$").replace("<", "\\u003c")
 
 /** Usage: """${+dataToBeEscaped}""" */
 operator fun Any?.unaryPlus() = this?.toString()?.escapeHtml() ?: ""

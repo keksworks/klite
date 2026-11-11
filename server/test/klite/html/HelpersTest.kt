@@ -13,6 +13,11 @@ class HelpersTest {
     expect("</script>".escapeJs()).toEqual("\\u003c/script>")
   }
 
+  @Test fun `escapeJs cannot break out of or interpolate in template literals`() {
+    expect("x`;alert(1)//".escapeJs()).toEqual("x\\`;alert(1)//")
+    expect("\${alert(1)}".escapeJs()).toEqual("\\\${alert(1)}")
+  }
+
   @Test fun `escapeJs cannot break out of single quotes`() {
     expect("x\\');alert(1)//".escapeJs()).toEqual("x\\\\\\');alert(1)//")
   }

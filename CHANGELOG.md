@@ -6,6 +6,7 @@
 * jdbc: `DBSessionStore.deleteOlderThan()` now actually deletes older sessions (was matching only the exact timestamp), and the new `maxAge` parameter rejects sessions not updated for longer
 * slf4j: `EcsJsonLogger` and `StackTraceOptimizingJsonLogger` escape backslashes and all control chars, so logged values (e.g. request paths) can't inject JSON fields
 * oauth: `JWT.verify(secret)` compares HMAC signatures in constant time
+* server: `escapeJs()` also escapes backticks and `$`, so it is safe inside JS template literals
 
 # 2.1.1
 * core: `Config.useEnvFile()` can now process `${OTHER_VAR}` interpolations from earlier variables
