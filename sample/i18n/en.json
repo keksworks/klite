@@ -3,5 +3,11 @@
   "greeting": {
     "hello": "Hello",
     "helloName": "Hello, {name}!"
+  },
+  "emails": {
+    "welcome": {
+      "subject": "Welcome, {name}",
+      "bodyHtml": "<p>Hello, <b>{name}</b>!</p>"
+    }
   }
 }

@@ -1,6 +1,7 @@
 package klite.email
 
 import klite.MimeTypes
+import klite.html.escapeHtml
 import klite.html.unaryPlus
 import klite.i18n.Lang.translate
 import klite.i18n.Lang.translateOrNull
@@ -18,9 +19,11 @@ open class EmailContent(val lang: String, val labelKey: String, val substitution
 
   open val subject get() = translate(lang, "emails.$labelKey.subject", substitutions)
   open val body get() = translateOrNull(lang, "emails.$labelKey.body", substitutions)
-  open val bodyHtml get() = translateOrNull(lang, "emails.$labelKey.bodyHtml", substitutions)
+  open val bodyHtml get() = translateOrNull(lang, "emails.$labelKey.bodyHtml", htmlSubstitutions)
   open val actionLabel get() = translateOrNull(lang, "emails.$labelKey.action", substitutions)
   open val from: Named? get() = null
+
+  protected open val htmlSubstitutions get() = substitutions.mapValues { it.value.escapeHtml() }
 
   override fun equals(other: Any?) = other is EmailContent && javaClass == other.javaClass && lang == other.lang && labelKey == other.labelKey && substitutions == other.substitutions && actionUrl == other.actionUrl && headers == other.headers
   override fun hashCode() = Objects.hash(lang, labelKey, substitutions, actionUrl, headers)

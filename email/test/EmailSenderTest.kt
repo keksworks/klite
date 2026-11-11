@@ -1,7 +1,9 @@
 package klite.email
 
 import ch.tutteli.atrium.api.fluent.en_GB.toBeAnInstanceOf
+import ch.tutteli.atrium.api.fluent.en_GB.notToContain
 import ch.tutteli.atrium.api.fluent.en_GB.toContain
+import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.verbs.expect
 import io.mockk.spyk
 import io.mockk.verify
@@ -25,6 +27,19 @@ class EmailSenderTest {
     val content = EmailContent("en", "hello", mapOf("name" to "World"))
     sender.send(email, content)
     verify { sender.send(email, content.subject, content.fullHtml(), MimeTypes.html) }
+  }
+
+  @Test fun `substitutions are escaped in bodyHtml`() {
+    val content = EmailContent("en", "welcome", mapOf("name" to "<a href=\"https://evil\">Bob</a>"))
+    expect(content.bodyHtml).toEqual("<p>Hello, <b>&lt;a href=&quot;https://evil&quot;&gt;Bob&lt;/a&gt;</b>!</p>")
+    expect(content.fullHtml()).notToContain("<a href=\"https://evil\"")
+  }
+
+  @Test fun `trusted markup can be substituted by overriding htmlSubstitutions`() {
+    val content = object: EmailContent("en", "welcome", mapOf("name" to "Bob")) {
+      override val htmlSubstitutions get() = mapOf("name" to "<i>Bob</i>")
+    }
+    expect(content.bodyHtml).toEqual("<p>Hello, <b><i>Bob</i></b>!</p>")
   }
 
   @Test fun `arbitrary headers are passed to the message`() {
