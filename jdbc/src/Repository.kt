@@ -8,6 +8,7 @@ import java.time.Instant
 import java.util.*
 import javax.sql.DataSource
 import kotlin.reflect.KClass
+import kotlin.reflect.full.allSupertypes
 import kotlin.reflect.full.primaryConstructor
 
 interface BaseEntity<ID> {
@@ -43,9 +44,14 @@ abstract class CrudRepository<E: Entity>(db: DataSource, table: String): BaseCru
 @MustUseReturnValues
 abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: String): BaseRepository(db, table) {
   @Suppress("UNCHECKED_CAST")
-  protected open val entityClass = this::class.supertypes.first().arguments.first().type!!.classifier as KClass<E>
-  protected open val idProp = entityClass.publicProperties[BaseEntity<*>::id.name]!!
-  protected open val updatedAtProp = entityClass.publicProperties[UpdatableEntity::updatedAt.name]
+  protected open val entityClass: KClass<E> by lazy {
+    val type = this::class.allSupertypes.first { it.classifier == BaseCrudRepository::class }.arguments.first().type
+    type?.classifier as? KClass<E> ?: error("Cannot detect entity class of ${this::class}, please override entityClass")
+  }
+  protected open val idProp by lazy {
+    entityClass.publicProperties[BaseEntity<*>::id.name] ?: error("$entityClass has no public ${BaseEntity<*>::id.name} property")
+  }
+  protected open val updatedAtProp by lazy { entityClass.publicProperties[UpdatableEntity::updatedAt.name] }
 
   override val orderAsc get() = "order by ${q(table)}.createdAt"
   open val defaultOrder get() = orderDesc
