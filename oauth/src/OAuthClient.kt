@@ -94,12 +94,17 @@ class MicrosoftOAuthClient(httpClient: HttpClient): OAuthClient(
   httpClient = httpClient
 ) {
   override fun profile(token: OAuthTokenResponse, exchange: HttpExchange): UserProfile {
+    val email = (token.idToken ?: error("id_token is required for Microsoft")).payload.domainVerifiedEmail()
     val res = fetchProfileResponse(token)
-    requireVerifiedEmail(res.emailVerified() ?: token.idToken?.payload?.emailVerified)
-    val email = res.textOrNull("mail") ?: res.textOrNull("userPrincipalName") ?: error("Cannot obtain user's email")
-    return UserProfile(provider, res.getString("id"), Email(email), res.textOrNull("givenName") ?: email.substringBefore("@").capitalize(), res.textOrNull("surname") ?: "",
+    return UserProfile(provider, res.getString("id"), email, res.textOrNull("givenName") ?: email.value.substringBefore("@").capitalize(), res.textOrNull("surname") ?: "",
       locale = res.getLocale("preferredLanguage"))
   }
+}
+
+internal fun JWT.Payload.domainVerifiedEmail(): Email {
+  val email = email ?: error("Cannot obtain user's email")
+  if (getOrNull<Any>("xms_edov")?.toString() !in setOf("true", "1")) error("Email domain is not verified by Microsoft")
+  return email
 }
 
 /** https://developers.facebook.com/apps/ */

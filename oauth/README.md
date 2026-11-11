@@ -22,6 +22,10 @@ context("/oauth") {
 }
 ```
 
+For `MicrosoftOAuthClient`, add the `email` and `xms_edov` optional claims to the ID token in the Entra app registration
+(Token configuration). Logins are rejected unless `xms_edov` confirms that the email domain is verified, as Graph `mail` and
+`userPrincipalName` can be set to any address by the admin of any tenant.
+
 Then navigate to e.g. `/oauth/google` or `/oauth/google?redirect=/return/path` to start authentication.
 
 If you have only one OAuthClient registered, then you can use just `/oauth`.

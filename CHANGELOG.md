@@ -7,6 +7,7 @@
 * slf4j: `EcsJsonLogger` and `StackTraceOptimizingJsonLogger` escape backslashes and all control chars, so logged values (e.g. request paths) can't inject JSON fields
 * oauth: `JWT.verify(secret)` compares HMAC signatures in constant time
 * server: `escapeJs()` also escapes backticks and `$`, so it is safe inside JS template literals
+* oauth: `MicrosoftOAuthClient` takes the email from the id_token and requires the `xms_edov` claim (configure it in the Entra app registration), instead of trusting Graph `mail`/`userPrincipalName`
 * email: `EmailContent.bodyHtml` HTML-escapes substitutions, so user-supplied values can't inject markup. Override `htmlSubstitutions` to pass trusted HTML
 
 # 2.1.1
