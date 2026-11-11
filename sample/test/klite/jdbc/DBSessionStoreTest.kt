@@ -12,6 +12,7 @@ import klite.sample.DBTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.UUID.randomUUID
+import kotlin.time.Duration.Companion.hours
 
 class DBSessionStoreTest: DBTest() {
   abstract class MockableExchange: OriginalHttpExchange()
@@ -142,6 +143,34 @@ class DBSessionStoreTest: DBTest() {
     expect(db.count("db_sessions")).toEqual(1L)
     expect(store.load(newExchange(cookie = oldId)).isNew).toEqual(true)
     expect(store.load(newExchange(cookie = newId))["userId"]).toEqual("2")
+  }
+
+  @Test fun `deleteOlderThan deletes only sessions older than the given duration`() {
+    val exchange = newExchange()
+    val session = store.load(exchange)
+    session["userId"] = "1"
+    store.save(exchange, session)
+    val id = savedId!!
+    db.exec("update db_sessions set updatedAt = updatedAt - interval '2 hours'")
+
+    expect(store.deleteOlderThan(3.hours)).toEqual(0)
+    expect(store.deleteOlderThan(1.hours)).toEqual(1)
+    expect(store.load(newExchange(cookie = id)).isNew).toEqual(true)
+  }
+
+  @Test fun `maxAge rejects sessions not updated for longer`() {
+    val expiring = DBSessionStore(db, maxAge = 1.hours)
+    val exchange = newExchange()
+    val session = expiring.load(exchange)
+    session["userId"] = "1"
+    expiring.save(exchange, session)
+    val id = savedId!!
+    expect(expiring.load(newExchange(cookie = id))["userId"]).toEqual("1")
+
+    db.exec("update db_sessions set updatedAt = updatedAt - interval '2 hours'")
+    val expired = expiring.load(newExchange(cookie = id))
+    expect(expired.isNew).toEqual(true)
+    expect(expired.params).toBeEmpty()
   }
 
   private val savedId get() = responseHeaders["Set-Cookie"]?.single()?.substringAfter("S=")?.substringBefore(';')

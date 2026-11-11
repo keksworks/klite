@@ -27,7 +27,8 @@ import kotlin.time.toJavaDuration
 open class DBSessionStore(
   protected val db: DataSource,
   val table: String = "db_sessions",
-  val cookie: Cookie = Cookie("S", "", path = "/", httpOnly = true)
+  val cookie: Cookie = Cookie("S", "", path = "/", httpOnly = true),
+  val maxAge: Duration? = null
 ): SessionStore {
   override fun load(exchange: HttpExchange): Session {
     val id = exchange.sessionId ?: return Session()
@@ -37,7 +38,7 @@ open class DBSessionStore(
 
   @Suppress("UNCHECKED_CAST")
   protected open fun load(id: UUID, exchange: HttpExchange): MutableMap<String, Any>? =
-    db.query("select params from ${q(table)}", "id" to id) { getJsonOrNull<MutableMap<String, Any>>("params") }.firstOrNull()
+    db.query("select params from ${q(table)}", "id" to id, notExpired) { getJsonOrNull<MutableMap<String, Any>>("params") }.firstOrNull()
 
   override fun save(exchange: HttpExchange, session: Session) {
     if (!session.changed) return
@@ -56,9 +57,12 @@ open class DBSessionStore(
   }
 
   fun delete(id: UUID): Int = db.delete(table, "id" to id)
-  fun deleteOlderThan(duration: Duration): Int = db.delete(table, "updatedAt" to Instant.now().minus(duration.toJavaDuration()))
+  fun deleteOlderThan(duration: Duration): Int = db.delete(table, "updatedAt" lt cutoff(duration))
 
-  private fun exists(id: UUID) = db.query("select 1 from ${q(table)}", listOf("id" to id)) { 1 }.isNotEmpty()
+  private fun exists(id: UUID) = db.query("select 1 from ${q(table)}", "id" to id, notExpired) { 1 }.isNotEmpty()
+
+  private val notExpired get() = maxAge?.let { "updatedAt" gte cutoff(it) }
+  private fun cutoff(age: Duration) = Instant.now().minus(age.toJavaDuration())
 
   private val HttpExchange.sessionId get() = runCatching { cookie(cookie.name)?.uuid }.getOrNull()
 }
