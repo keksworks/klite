@@ -70,6 +70,15 @@ inline fun <reified R> DB.query(@Language("SQL") select: String, where: Where, @
 inline fun <reified R> DB.query(@Language("SQL") select: String, vararg where: ColValue?, @Language("SQL", prefix = selectFromTable) suffix: String = ""): List<R> =
   query(select, *where, suffix = suffix) { create() }
 
+fun <R> DB.query(sql: SqlExpr, mapper: Mapper<R>): List<R> = withStatement(sql.expr) {
+  setAll(sql.values(this@query).flatValues())
+  executeQuery().withJoinPrefixes(sql.expr).run {
+    mutableListOf<R>().also { process(it::add, mapper) }
+  }
+}
+
+inline fun <reified R> DB.query(sql: SqlExpr): List<R> = query(sql) { create() }
+
 fun DB.count(@Language("SQL", prefix = selectFrom) table: String, where: Where = emptyList()) = query("select count(*) from ${q(table)}", where) { getLong(1) }.first()
 
 internal inline fun <R> ResultSet.process(consumer: (R) -> Unit = {}, mapper: Mapper<R>) {

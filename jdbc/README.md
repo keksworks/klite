@@ -67,7 +67,9 @@ Usage:
     create<MyEntity>(MyEntity::other to create<OtherEntity>("table2.")) // you can provide table alias to create
   }.first()
 
-  // or you can write full SQL manually using db.query() and db.exec()
+  // or you can write full SQL manually using db.query() and db.exec(), with positional ? params
+  db.query(SqlExpr("select a.id, sum(b.x) from a join b on b.aId = a.id where b.date < ? group by a.id", date)) { create<Summary>() }
+  db.exec("update table set hello = ? where world = ?", "Hello", 42)
 ```
 
 See [all available operations](src/JdbcExtensions.kt) and [comparison operators](src/SqlExpr.kt).

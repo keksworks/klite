@@ -51,6 +51,15 @@ open class JdbcExtensionsTest: TempTableDBTest() {
       .toThrow<AlreadyExistsException>().messageToContain("errors.alreadyExists: id=$id2")
   }
 
+  @Test fun `query with positional params`() {
+    val data = SomeData("Positional", 7)
+    db.insert(table, data.toDBValues())
+
+    expect(db.query<SomeData>(SqlExpr("select * from $table where hello = ? and world < ?", "Positional", 10))).toContainExactly(data)
+    expect(db.query(SqlExpr("select ? + ?, ?::int[]", 1, 2, listOf(3, 4))) { getInt(1) }).toContainExactly(3)
+    expect(db.query(SqlExpr("select 1 where false")) { getInt(1) }).toBeEmpty()
+  }
+
   @Test fun generatedKey() {
     val generatedKey = GeneratedKey<Int>()
     db.insert(table, mapOf("id" to randomUUID(), "hello" to "Hello", "gen" to generatedKey))
