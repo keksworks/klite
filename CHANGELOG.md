@@ -1,16 +1,16 @@
-# Unreleased
+# 2.1.2
 * core: `KType.convertFrom()` introduced to convert a parsed Node (Maps, Iterables, and scalars) into a type-safe object tree
 * ai: McpRoutes now uses a full json schema for more complex input types
 * jdbc: `query`/`select` support named parameters, e.g. `query("... where a = :a", ":a" to 1)`, for complex SQL
 * jdbc: `call()` variant introduced to call stored functions returning a cursor/table
 * jdbc: `BaseRepository.entityClass` will now detect the entity class even if the repository is subclassed multiple times
-* server: `XForwardedHttpExchange` splits `X-Forwarded-For` on commas with or without spaces, so clients can't spoof `remoteAddress` behind proxies that don't add spaces
-* jdbc: `DBSessionStore.deleteOlderThan()` now actually deletes older sessions (was matching only the exact timestamp), and the new `maxAge` parameter rejects sessions not updated for longer
-* slf4j: `EcsJsonLogger` and `StackTraceOptimizingJsonLogger` escape backslashes and all control chars, so logged values (e.g. request paths) can't inject JSON fields
-* oauth: `JWT.verify(secret)` compares HMAC signatures in constant time
-* server: `escapeJs()` also escapes backticks and `$`, so it is safe inside JS template literals
-* oauth: `MicrosoftOAuthClient` takes the email from the id_token and requires the `xms_edov` claim (configure it in the Entra app registration), instead of trusting Graph `mail`/`userPrincipalName`
-* email: `EmailContent.bodyHtml` HTML-escapes substitutions, so user-supplied values can't inject markup. Override `htmlSubstitutions` to pass trusted HTML
+* Minor security improvements:
+  * server: `XForwardedHttpExchange` splits `X-Forwarded-For` on commas with or without spaces, so clients can't spoof `remoteAddress` behind proxies that don't add spaces
+  * server: `escapeJs()` also escapes backticks and `$`, so it is safe inside JS template literals
+  * oauth: `JWT.verify(secret)` compares HMAC signatures in constant time
+  * oauth: `MicrosoftOAuthClient` takes the email from the id_token and requires the `xms_edov` claim (configure it in the Entra app registration), instead of trusting Graph `mail`/`userPrincipalName`
+  * email: `EmailContent.bodyHtml` HTML-escapes substitutions, so user-supplied values can't inject markup. Override `htmlSubstitutions` to pass trusted HTML
+  * slf4j: `EcsJsonLogger` and `StackTraceOptimizingJsonLogger` escape backslashes and all control chars, so logged values (e.g. request paths) can't inject JSON fields
 
 # 2.1.1
 * core: `Config.useEnvFile()` can now process `${OTHER_VAR}` interpolations from earlier variables
