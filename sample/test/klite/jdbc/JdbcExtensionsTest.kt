@@ -183,6 +183,7 @@ open class JdbcExtensionsTest: TempTableDBTest() {
       $$ language sql
     """)
 
+    expect(db.call<SomeData>("call_test_rows", 20)).toContainExactly(SomeData("Hello", 42, id = id))
     expect(db.call("call_test_rows", 20) { create<SomeData>() }).toContainExactly(SomeData("Hello", 42, id = id))
     expect(db.call("call_test_rows", listOf(20), mutableListOf()) { getUuid() }).toContainExactly(id)
   }

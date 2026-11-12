@@ -131,8 +131,11 @@ fun <R> DB.withCall(callable: String, parameters: Iterable<Any?>, returnSqlType:
 }
 
 @IgnorableReturnValue
-fun DB.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? =
+fun DB.call(callable: String, vararg parameters: Any?, returnSqlType: Int?): Any? =
   withCall(callable, parameters.asList(), returnSqlType) { returnSqlType?.let { getObject(1) } }
+
+@IgnorableReturnValue
+fun DB.call(callable: String, vararg parameters: Any?) = call(callable, *parameters, returnSqlType = null)
 
 /** Calls a function returning a table or a refcursor, mapping its [ResultSet] with [mapper]. Note that refcursors require an active transaction. */
 fun <R, C: MutableCollection<R>> DB.call(callable: String, parameters: Iterable<Any?>, into: C, mapper: Mapper<R>): C =
@@ -144,6 +147,7 @@ fun <R, C: MutableCollection<R>> DB.call(callable: String, parameters: Iterable<
 inline fun <R> DB.call(callable: String, vararg parameters: Any?, noinline mapper: Mapper<R>): List<R> =
   call(callable, parameters.asList(), mutableListOf(), mapper)
 
+@JvmName("callRows")
 inline fun <reified R: Any> DB.call(callable: String, vararg parameters: Any?): List<R> =
   call(callable, parameters.asList()) { create() }
 
