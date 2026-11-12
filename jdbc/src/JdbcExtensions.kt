@@ -202,11 +202,11 @@ fun DB.upsertBatch(@Language("SQL", prefix = selectFrom) table: String, values: 
   return execBatch(expr, valuesToSet)
 }
 
-internal fun DB.insertExpr(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap) =
+internal fun insertExpr(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap) =
   "insert into ${q(table)} ${columnsExpr(values)} ${valuesExpr(values)}"
 
 internal fun columnsExpr(values: ValueMap) = "(${values.keys.joinToString { q(name(it)) }})"
-internal fun DB.valuesExpr(values: ValueMap) = "values (${values.values.joinToString { placeholder(it) }})"
+internal fun valuesExpr(values: ValueMap) = "values (${values.values.joinToString { placeholder(it) }})"
 
 @IgnorableReturnValue
 inline fun DB.update(@Language("SQL", prefix = selectFrom) table: String, values: ValueMap, vararg where: ColValue?): Int =

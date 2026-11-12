@@ -29,7 +29,7 @@ class JdbcExtensionsTest {
 
   @Test fun insertExpr() {
     listOf(db, otherDb).forEach {
-      expect(it.insertExpr("table", values)).toEqual("insert into \"table\" (hello, nullable, array, emptyArray, date, json, decimal)" +
+      expect(insertExpr("table", values)).toEqual("insert into \"table\" (hello, nullable, array, emptyArray, date, json, decimal)" +
         " values (?, ?, ?, ?, current_date, ?, ?)")
     }
   }
