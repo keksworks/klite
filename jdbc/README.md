@@ -72,6 +72,9 @@ Usage:
 
   // named parameters in the suffix of a generated select
   db.select("users", User::status to Status.ACTIVE, ":limit" to 10, suffix = "order by createdAt desc limit :limit") { create<User>() }
+
+  // or you can write full SQL manually using db.exec(), with positional ? params
+  db.exec("update table set hello = ? where world = ?", "Hello", 42)
 ```
 
 See [all available operations](src/JdbcExtensions.kt) and [comparison operators](src/SqlExpr.kt).
