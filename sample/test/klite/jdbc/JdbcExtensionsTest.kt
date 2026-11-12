@@ -173,6 +173,37 @@ open class JdbcExtensionsTest: TempTableDBTest() {
     expect(db.call("length", "hello", returnSqlType = Types.INTEGER)).toEqual(5)
   }
 
+  @Test fun `call maps function returning table`() {
+    val id = randomUUID()
+    db.insert(table, mapOf("id" to id, "hello" to "Hello", "world" to 42))
+    db.insert(table, mapOf("id" to randomUUID(), "hello" to "World", "world" to 10))
+    db.exec("""
+      create or replace function call_test_rows(min_world int) returns setof $table as $$
+        select * from $table where world >= min_world
+      $$ language sql
+    """)
+
+    expect(db.call("call_test_rows", 20) { create<SomeData>() }).toContainExactly(SomeData("Hello", 42, id = id))
+    expect(db.call("call_test_rows", listOf(20), mutableListOf()) { getUuid() }).toContainExactly(id)
+  }
+
+  @Test fun `call maps function returning cursor`() {
+    val id = randomUUID()
+    db.insert(table, mapOf("id" to id, "hello" to "Hello", "world" to 42))
+    db.insert(table, mapOf("id" to randomUUID(), "hello" to "World", "world" to 10))
+    db.exec("""
+      create or replace function call_test_cursor(min_world int) returns refcursor as $$
+        declare c refcursor;
+        begin
+          open c for select * from $table where world >= min_world;
+          return c;
+        end
+      $$ language plpgsql
+    """)
+
+    expect(db.call("call_test_cursor", 20) { create<SomeData>() }).toContainExactly(SomeData("Hello", 42, id = id))
+  }
+
   data class SomeData(val hello: String, val world: Int?, @JsonColumn val json: Node? = null, val id: UUID = randomUUID())
   data class OnlyId(val id: UUID = randomUUID())
 }

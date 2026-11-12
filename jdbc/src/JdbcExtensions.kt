@@ -119,15 +119,42 @@ fun <R> DB.withStatement(@Language("SQL") sql: String, keys: Int = NO_GENERATED_
   }
 }
 
-@IgnorableReturnValue
-fun DB.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? = withConnection {
-  prepareCall("{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}").use { c ->
+fun <R> DB.withCall(callable: String, parameters: Iterable<Any?>, returnSqlType: Int? = null, block: CallableStatement.() -> R): R = withConnection {
+  val values = parameters.toList()
+  prepareCall(callExpr(callable, values, returnSqlType)).use { c ->
     var i = 1
     returnSqlType?.let { c.registerOutParameter(i++, it) }
-    c.setAll(parameters.toList(), i)
+    c.setAll(values, i)
     c.execute()
-    returnSqlType?.let { c.getObject(1) }
+    c.block()
   }
+}
+
+@IgnorableReturnValue
+fun DB.call(callable: String, vararg parameters: Any?, returnSqlType: Int? = null): Any? =
+  withCall(callable, parameters.asList(), returnSqlType) { returnSqlType?.let { getObject(1) } }
+
+/** Calls a function returning a table or a refcursor, mapping its [ResultSet] with [mapper]. Note that refcursors require an active transaction. */
+fun <R, C: MutableCollection<R>> DB.call(callable: String, parameters: Iterable<Any?>, into: C, mapper: Mapper<R>): C =
+  withCall(callable, parameters) {
+    resultSet?.use { it.mapCallResult(into, mapper) }
+    into
+  }
+
+inline fun <R> DB.call(callable: String, vararg parameters: Any?, noinline mapper: Mapper<R>): List<R> =
+  call(callable, parameters.asList(), mutableListOf(), mapper)
+
+fun <R> DB.call(callable: String, parameters: Iterable<Any?>, mapper: Mapper<R>) =
+  call(callable, parameters, mutableListOf(), mapper) as List<R>
+
+private fun callExpr(callable: String, parameters: Iterable<Any?>, returnSqlType: Int? = null) =
+  "{${returnSqlType?.let { "?=" } ?: ""}call $callable(${parameters.joinToString { placeholder(it) }})}"
+
+/** pgJDBC (in its default `select` escape mode) calls a refcursor-returning function as `select * from fn(...)`, so the outer ResultSet has one refcursor column */
+private fun <R, C: MutableCollection<R>> ResultSet.mapCallResult(into: C, mapper: Mapper<R>) {
+  if (metaData.columnCount == 1 && metaData.getColumnType(1) == Types.REF_CURSOR) {
+    if (next()) (getObject(1) as? ResultSet)?.use { it.process(into::add, mapper) }
+  } else process(into::add, mapper)
 }
 
 // TODO: add insert with mapper that returns the generated keys
