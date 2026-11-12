@@ -69,7 +69,7 @@ open class TSGenerator(
     while (referencedClasses.isNotEmpty()) {
       val toProcess = referencedClasses.toList()
       referencedClasses.clear()
-      toProcess.forEach { cls -> if (cls !in printedClasses) printClass(cls) }
+      toProcess.forEach { printClass(it) }
     }
   }
 
@@ -97,6 +97,7 @@ open class TSGenerator(
   }
 
   protected open fun printClass(cls: KClass<*>) {
+    if (cls in printedClasses) return
     printedClasses += cls
     val rendered = render(cls) ?: return
     printPendingReferences()

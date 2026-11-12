@@ -1,3 +1,6 @@
+# Unreleased
+* json: TSGenerator no longer prints a type twice when it was already printed as a referenced type
+
 # 2.1.2
 * core: `KType.convertFrom()` introduced to convert a parsed Node (Maps, Iterables, and scalars) into a type-safe object tree
 * ai: McpRoutes now uses a full json schema for more complex input types
