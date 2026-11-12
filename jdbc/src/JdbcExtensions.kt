@@ -144,6 +144,9 @@ fun <R, C: MutableCollection<R>> DB.call(callable: String, parameters: Iterable<
 inline fun <R> DB.call(callable: String, vararg parameters: Any?, noinline mapper: Mapper<R>): List<R> =
   call(callable, parameters.asList(), mutableListOf(), mapper)
 
+inline fun <reified R: Any> DB.call(callable: String, vararg parameters: Any?): List<R> =
+  call(callable, parameters.asList()) { create() }
+
 fun <R> DB.call(callable: String, parameters: Iterable<Any?>, mapper: Mapper<R>) =
   call(callable, parameters, mutableListOf(), mapper) as List<R>
 

@@ -73,6 +73,10 @@ Usage:
   // named parameters in the suffix of a generated select
   db.select("users", User::status to Status.ACTIVE, ":limit" to 10, suffix = "order by createdAt desc limit :limit") { create<User>() }
 
+  // use db.call() to call a stored procedure or function
+  db.call("myProc", param1, param2, Types.NUMERIC)
+  db.call<MyEntity>("myProcReturningTable", param1, param2)
+
   // or you can write full SQL manually using db.exec(), with positional ? params
   db.exec("update table set hello = ? where world = ?", "Hello", 42)
 ```
