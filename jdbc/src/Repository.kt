@@ -44,10 +44,10 @@ abstract class CrudRepository<E: Entity>(db: DataSource, table: String): BaseCru
 @MustUseReturnValues
 abstract class BaseCrudRepository<E: BaseEntity<ID>, ID>(db: DataSource, table: String): BaseRepository(db, table) {
   @Suppress("UNCHECKED_CAST")
-  protected open val entityClass = this::class.allSupertypes.first { it.classifier == BaseCrudRepository::class }.arguments.first().type?.classifier as KClass<E>?
-    ?: error("Cannot detect entity class of ${this::class}, override entityClass")
-  protected open val idProp = entityClass.publicProperties[BaseEntity<*>::id.name]
-    ?: error("$entityClass has no public id property, override idProp")
+  protected open val entityClass: KClass<E> by lazy { this::class.allSupertypes.first { it.classifier == BaseCrudRepository::class }.arguments.first().type?.classifier as? KClass<E>
+    ?: error("Cannot detect entity class of ${this::class}, override entityClass") }
+  protected open val idProp by lazy { entityClass.publicProperties[BaseEntity<*>::id.name]
+    ?: error("$entityClass has no public id property, override idProp") }
   protected open val updatedAtProp by lazy { entityClass.publicProperties[UpdatableEntity::updatedAt.name] }
 
   override val orderAsc get() = "order by ${q(table)}.createdAt"
