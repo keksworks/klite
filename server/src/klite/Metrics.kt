@@ -154,7 +154,7 @@ class OpenMetricsRenderer(
   }
 
   private fun render(labels: Map<String, Any?>) =
-    if (labels.isEmpty()) "" else labels.entries.joinToString(",", "{", "}") { (k, v) -> "$k=\"${escape(v.toString())}\"" }
+    labels.filterValues { it != null }.let { if (it.isEmpty()) "" else it.entries.joinToString(",", "{", "}") { (k, v) -> "$k=\"${escape(v.toString())}\"" } }
 
   private fun escape(value: String) = value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
 }

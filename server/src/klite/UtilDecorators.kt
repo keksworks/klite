@@ -74,7 +74,7 @@ fun RouterConfig.rateLimit(limit: Int, window: Duration) {
   val maxTokens = limit.toDouble()
   val log = logger("rateLimit")
   val requestsLimited = AtomicLong()
-  Metrics.register("requestsLimited") { requestsLimited.get() }
+  Metrics.register("http_server_requests_limited_total") { requestsLimited.get() }
 
   decorator { e, handler ->
     val limiter = limits.getOrSet(e.remoteAddress) { RateLimit(maxTokens, System.nanoTime()) }
@@ -103,7 +103,7 @@ fun RouterConfig.securityBan(bannedFor: Duration = 1.hours,
   val banned = Cache<String, Boolean>(expiration = bannedFor)
   val log = logger("securityBan")
   val requestsBanned = AtomicLong()
-  Metrics.register("requestsBanned") { requestsBanned.get() }
+  Metrics.register("http_server_requests_banned_total") { requestsBanned.get() }
 
   before { e ->
     if (banned[e.remoteAddress] == true) {

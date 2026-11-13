@@ -45,7 +45,7 @@ class Server(
   }
 
   private val http = HttpServer.create().apply { executor = workerPool }
-  private val requestsActive = AtomicInteger().also { Metrics.register("requestsActive") { it.get() } }
+  private val requestsActive = AtomicInteger().also { Metrics.register("http_server_requests_active") { it.get() } }
   private val requestMetrics = RequestMetrics(pathParamRegexer)
 
   val address: InetSocketAddress get() = http.address ?: error("Server not started")

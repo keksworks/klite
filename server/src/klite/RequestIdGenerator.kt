@@ -7,8 +7,8 @@ open class RequestIdGenerator(
 ) {
   protected val counter = AtomicLong()
   init {
-    Metrics.register("instanceId") { prefix }
-    Metrics.register("requestsTotal") { counter.get() }
+    Metrics.register("instance") { prefix }
+    Metrics.register("http_server_requests_total") { counter.get() }
   }
 
   open operator fun invoke(headers: Headers) = "$prefix-${counter.incrementAndGet()}"
