@@ -7,7 +7,10 @@ import klite.ai.AIClient.TokenUsage
 import klite.http.timeout
 import klite.json.JsonHttpClient
 import klite.json.JsonMapper
-import klite.nodes.*
+import klite.nodes.Node
+import klite.nodes.atOrNull
+import klite.nodes.childOrNull
+import klite.nodes.text
 import klite.toBase64Url
 import java.io.File
 import java.net.URI
@@ -28,7 +31,7 @@ open class OpenAIClient(
     maxLoggedLen = maxLoggedLen, reqModifier = { header("Authorization", auth).timeout(timeout) })
 
   override fun query(input: String, vararg fileUrl: URI, prevResponseId: String?, params: Node): AIClient.Response =
-    query(toInput(input, fileUrl), params, prevResponseId).toGenericResponse(params)
+    query(toInput(input, fileUrl), params, prevResponseId).toGenericResponse(params).also { it.usage?.let(TokenMetrics::record) }
 
   override fun stream(input: String, vararg fileUrl: URI, params: Node): Sequence<String> =
     http.postSSE<Node>("/responses", mapOf("model" to model, "input" to toInput(input, fileUrl), "stream" to true) + this.params + params).mapNotNull { node ->
@@ -49,9 +52,9 @@ open class OpenAIClient(
                      val fileData: URI? = null, val filename: String? = null, val detail: String? = null)
   data class Response(val id: String, val createdAt: Instant, val status: String, val model: String, val output: List<Output>, val usage: Node? = null) {
     fun toGenericResponse(params: Node = emptyMap()) = AIClient.Response(id, status, model, output.first { it.type == "message" }.content.first().text!!, usage?.let {
-      TokenUsage(model, it.child("inputTokens"), it.child("outputTokens"),
-        it.atOrNull("inputTokensDetails")?.childOrNull<Int>("cachedTokens") ?: 0,
-        it.atOrNull("outputTokensDetails")?.childOrNull<Int>("reasoningTokens") ?: 0,
+      TokenUsage(model, it.tokens("inputTokens"), it.tokens("outputTokens"),
+        it.atOrNull("inputTokensDetails")?.childOrNull<Number>("cachedTokens")?.toLong() ?: 0,
+        it.atOrNull("outputTokensDetails")?.childOrNull<Number>("reasoningTokens")?.toLong() ?: 0,
         params)
     })
   }

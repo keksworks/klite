@@ -8,7 +8,6 @@ import klite.json.JsonHttpClient
 import klite.json.JsonMapper
 import klite.nodes.Node
 import klite.nodes.at
-import klite.nodes.child
 import klite.nodes.textOrNull
 import java.net.URI
 import java.net.http.HttpClient
@@ -26,7 +25,7 @@ open class GeminiClient(
     maxLoggedLen = maxLoggedLen, reqModifier = { timeout(timeout) })
 
   override fun query(input: String, vararg fileUrl: URI, prevResponseId: String?, params: Node): AIClient.Response =
-    query(toInput(input, fileUrl), params, prevResponseId).toGenericResponse(params)
+    query(toInput(input, fileUrl), params, prevResponseId).toGenericResponse(params).also { it.usage?.let(TokenMetrics::record) }
 
   override fun stream(input: String, vararg fileUrl: URI, params: Node): Sequence<String> =
     http.postSSE<Node>("/interactions?key=$apiKey", mapOf("model" to model, "input" to toInput(input, fileUrl), "stream" to true) + this.params + params, eventName = "step.delta").mapNotNull { node ->
@@ -50,7 +49,7 @@ open class GeminiClient(
   data class Content(val type: String, val text: String? = null, val uri: URI? = null, val data: String? = null, val mimeType: String? = null)
   data class Response(val id: String, val status: String, val steps: List<Step>, val usage: Node, val created: Instant, val model: String) {
     fun toGenericResponse(params: Node = emptyMap()) = AIClient.Response(id, status, model, steps.first { it.content != null }.content!!.first().text!!,
-      TokenUsage(model, usage.child("totalInputTokens"), usage.child("totalOutputTokens"), usage.child("totalCachedTokens"), usage.child("totalThoughtTokens"), params))
+      TokenUsage(model, usage.tokens("totalInputTokens"), usage.tokens("totalOutputTokens"), usage.tokens("totalCachedTokens"), usage.tokens("totalThoughtTokens"), params))
   }
 }
 
