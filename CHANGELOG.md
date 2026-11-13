@@ -1,9 +1,8 @@
-# Unreleased
+# 2.1.3
 * server: `metrics()` exposes JVM metrics under standard Micrometer/Prometheus names (e.g. `jvm_memory_used_bytes{area="heap"}`, `process_start_time_seconds`, `jvm_threads_live_threads`), so that pre-defined Grafana JVM dashboards work
 * server: `Labeled` metric values are rendered as OpenMetrics labels (with escaping), `Timer` can be used for custom timing metrics, null metric values and labels are skipped
-* jdbc: `PooledDataSource` metrics renamed to HikariCP-like names under `metricsPrefix` (default `db_pool`), e.g. `db_pool_connections_active`, `db_pool_connections_pending`, `db_pool_connections_timeout_total`, `db_pool_connections_acquire_seconds_*`; use `metricsPrefix = "hikaricp"` for HikariCP dashboards
-* ai: `TokenUsage` fields are now `Long` to avoid overflow when summed
-* ai: `OpenAIClient` and `GeminiClient` accumulate token usage per model in `gen_ai_client_token_usage_total{gen_ai_response_model, gen_ai_token_type}` metrics (Spring AI compatible naming)
+* jdbc: `PooledDataSource` metrics renamed to HikariCP-like names under `metricsPrefix` (default `db_pool`); use `metricsPrefix = "hikaricp"` for HikariCP dashboard compatibility
+* ai: `TokenUsage` fields are now `Long` to avoid overflow when summed and exported as `gen_ai_client_*` metrics (Spring AI compatible naming)
 * jobs: `JobRunner` metrics renamed to standard `executor_*{name="jobs"}`
 * server: `OpenMetricsRenderer` now responds with `application/openmetrics-text` based on the `Accept` header (was checking request `Content-Type`)
 * json: TSGenerator no longer prints a type twice when it was already printed as a referenced type
