@@ -1,5 +1,7 @@
 # 2.1.3
-* server: `metrics()` exposes JVM metrics under standard Micrometer/Prometheus names (e.g. `jvm_memory_used_bytes{area="heap"}`, `process_start_time_seconds`, `jvm_threads_live_threads`), so that pre-defined Grafana JVM dashboards work
+* server: `metrics()` exposes JVM metrics under standard Micrometer/Prometheus names (e.g. `jvm_memory_used_bytes{area="heap"}`, `process_start_time_seconds`, `jvm_threads_live_threads`), so that pre-defined Grafana JVM dashboards work, e.g. [JVM (Micrometer)](https://grafana.com/grafana/dashboards/4701)
+* server: `metrics()` also exposes memory pools, buffer pools, thread states, `process_memory_*_bytes`, `process_threads`
+* server: `metrics()` route now always renders OpenMetrics format, also if Prometheus-compatible scrapers request `text/plain`
 * server: `Labeled` metric values are rendered as OpenMetrics labels (with escaping), `Timer` can be used for custom timing metrics, null metric values and labels are skipped
 * jdbc: `PooledDataSource` metrics renamed to HikariCP-like names under `metricsPrefix` (default `db_pool`); use `metricsPrefix = "hikaricp"` for HikariCP dashboard compatibility
 * ai: `TokenUsage` fields are now `Long` to avoid overflow when summed and exported as `gen_ai_client_*` metrics (Spring AI compatible naming)

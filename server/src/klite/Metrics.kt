@@ -7,7 +7,9 @@ import klite.StatusCode.Companion.OK
 import java.io.File
 import java.io.OutputStream
 import java.lang.System.nanoTime
+import java.lang.management.BufferPoolMXBean
 import java.lang.management.ManagementFactory
+import java.lang.management.MemoryType.HEAP
 import java.lang.management.MemoryUsage
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -83,7 +85,8 @@ fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotation
 
 private fun registerJvmMetrics() {
   val runtime = ManagementFactory.getRuntimeMXBean()
-  val memory = ManagementFactory.getMemoryMXBean()
+  val memoryPools = ManagementFactory.getMemoryPoolMXBeans()
+  val bufferPools = ManagementFactory.getPlatformMXBeans(BufferPoolMXBean::class.java)
   val threads = ManagementFactory.getThreadMXBean()
   val classes = ManagementFactory.getClassLoadingMXBean()
   val gcs = ManagementFactory.getGarbageCollectorMXBeans()
@@ -97,24 +100,37 @@ private fun registerJvmMetrics() {
     Metrics.register("process_files_open_files") { os.openFileDescriptorCount }
     Metrics.register("process_files_max_files") { os.maxFileDescriptorCount }
   }
-  if (linuxSelfStatus != null) Metrics.register("process_resident_memory_bytes") {
-    linuxSelfStatus.readLines().firstOrNull { it.startsWith("VmRSS") }?.substringAfter(":")?.substringBefore("kB")?.trim()?.toLongOrNull()?.times(1024)
+  if (linuxSelfStatus != null) {
+    fun status(key: String) = linuxSelfStatus.readLines().firstOrNull { it.startsWith("$key:") }?.substringAfter(":")?.trim()?.substringBefore(" ")?.toLongOrNull()
+    Metrics.register("process_memory_rss_bytes") { status("VmRSS")?.times(1024) }
+    Metrics.register("process_memory_vss_bytes") { status("VmSize")?.times(1024) }
+    Metrics.register("process_memory_swap_bytes") { status("VmSwap")?.times(1024) }
+    Metrics.register("process_threads") { status("Threads") }
   }
 
   Metrics.register("system_cpu_usage") { os.cpuLoad }
   Metrics.register("system_cpu_count") { os.availableProcessors }
   Metrics.register("system_load_average_1m") { os.systemLoadAverage }
 
-  fun byArea(value: (MemoryUsage) -> Long) = listOf(Labeled(mapOf("area" to "heap"), value(memory.heapMemoryUsage)), Labeled(mapOf("area" to "nonheap"), value(memory.nonHeapMemoryUsage)))
-  Metrics.register("jvm_memory_used_bytes") { byArea { it.used } }
-  Metrics.register("jvm_memory_committed_bytes") { byArea { it.committed } }
-  Metrics.register("jvm_memory_max_bytes") { byArea { it.max } }
+  fun byPool(value: (MemoryUsage) -> Long) = memoryPools.map { Labeled(mapOf("area" to if (it.type == HEAP) "heap" else "nonheap", "id" to it.name), value(it.usage)) }
+  Metrics.register("jvm_memory_used_bytes") { byPool { it.used } }
+  Metrics.register("jvm_memory_committed_bytes") { byPool { it.committed } }
+  Metrics.register("jvm_memory_max_bytes") { byPool { it.max } }
 
-  Metrics.register("jvm_gc_collection_seconds") { gcs.map { Labeled(mapOf("gc" to it.name), mapOf("count" to it.collectionCount, "sum" to it.collectionTime / 1000.0)) } }
+  fun byBuffer(value: (BufferPoolMXBean) -> Long) = bufferPools.map { Labeled(mapOf("id" to it.name), value(it)) }
+  Metrics.register("jvm_buffer_memory_used_bytes") { byBuffer { it.memoryUsed } }
+  Metrics.register("jvm_buffer_total_capacity_bytes") { byBuffer { it.totalCapacity } }
+  Metrics.register("jvm_buffer_count_buffers") { byBuffer { it.count } }
+
+  Metrics.register("jvm_gc_pause_seconds") { gcs.map { Labeled(mapOf("gc" to it.name), mapOf("count" to it.collectionCount, "sum" to it.collectionTime / 1000.0)) } }
 
   Metrics.register("jvm_threads_live_threads") { threads.threadCount }
   Metrics.register("jvm_threads_daemon_threads") { threads.daemonThreadCount }
   Metrics.register("jvm_threads_peak_threads") { threads.peakThreadCount }
+  Metrics.register("jvm_threads_states_threads") {
+    val counts = threads.getThreadInfo(threads.allThreadIds).filterNotNull().groupingBy { it.threadState }.eachCount()
+    Thread.State.entries.map { Labeled(mapOf("state" to it.name.lowercase().replace('_', '-')), counts[it] ?: 0) }
+  }
   Metrics.register("jvm_classes_loaded_classes") { classes.loadedClassCount }
 }
 
