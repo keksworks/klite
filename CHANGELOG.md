@@ -6,6 +6,7 @@
 * jobs: `JobRunner` metrics renamed to standard `executor_*{name="jobs"}`
 * server: `OpenMetricsRenderer` now responds with `application/openmetrics-text` based on the `Accept` header (was checking request `Content-Type`)
 * json: TSGenerator no longer prints a type twice when it was already printed as a referenced type
+* oauth: `OAuthClient` no longer logs request payloads and responses, which contained client secret, tokens and user profile
 
 # 2.1.2
 * core: `KType.convertFrom()` introduced to convert a parsed Node (Maps, Iterables, and scalars) into a type-safe object tree

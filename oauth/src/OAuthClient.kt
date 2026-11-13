@@ -9,7 +9,8 @@ import java.net.http.HttpClient
 import java.util.*
 
 abstract class OAuthClient(provider: String? = null, scope: String? = null, authUrl: String, tokenUrl: String, profileUrl: String? = null, jwkKeysUrl: String? = null, httpClient: HttpClient) {
-  protected open val http = JsonHttpClient(json = JWT.jsonMapper, http = httpClient)
+  /** Payloads and responses are not logged, as they contain client secret, tokens and personal data */
+  protected open val http = JsonHttpClient(json = JWT.jsonMapper, http = httpClient, maxLoggedLen = 0)
   val provider = provider ?: this::class.simpleName!!.substringBefore(OAuthClient::class.simpleName!!).uppercase()
 
   val clientId = configRequired("CLIENT_ID")
