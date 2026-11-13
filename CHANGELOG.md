@@ -1,4 +1,7 @@
 # Unreleased
+* server: `metrics()` exposes JVM metrics under standard Micrometer/Prometheus names (e.g. `jvm_memory_used_bytes{area="heap"}`, `process_start_time_seconds`, `jvm_threads_live_threads`), so that pre-defined Grafana JVM dashboards work. `startedAt` and `heapMb` are replaced
+* server: `Labeled` metric values are rendered as OpenMetrics labels, null metric values are skipped
+* server: `OpenMetricsRenderer` now responds with `application/openmetrics-text` based on the `Accept` header (was checking request `Content-Type`)
 * json: TSGenerator no longer prints a type twice when it was already printed as a referenced type
 
 # 2.1.2
