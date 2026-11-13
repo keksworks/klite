@@ -3,6 +3,7 @@ package klite
 import com.sun.management.OperatingSystemMXBean
 import com.sun.management.UnixOperatingSystemMXBean
 import klite.RequestMethod.GET
+import klite.StatusCode.Companion.OK
 import java.io.File
 import java.io.OutputStream
 import java.lang.System.nanoTime
@@ -16,7 +17,6 @@ object Metrics {
   private val resolvers = ConcurrentHashMap<String, () -> Any?>()
 
   fun register(name: String, value: () -> Any?) {
-    // TODO: check if already exists, e.g. dbPool
     resolvers[name] = value
   }
 
@@ -72,12 +72,12 @@ fun Server.metrics(path: String = "/metrics", befores: Router.() -> Unit = {}) {
   }
 }
 
-context(server: Server)
 fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotations: List<Annotation> = emptyList()) {
   registerJvmMetrics()
-  this.renderers.add(0, OpenMetricsRenderer(keyPrefix = keyPrefix))
-  add(Route(GET, this.pathParamRegexer.from(path), annotations) {
-    Metrics.data
+  val renderer = OpenMetricsRenderer(keyPrefix = keyPrefix)
+  add(Route(GET, pathParamRegexer.from(path), annotations) {
+    if (accept(renderer.contentType) || accept(MimeTypes.text) || accept.isRelaxed) renderer.render(this, OK, Metrics.data)
+    else Metrics.data
   })
 }
 
