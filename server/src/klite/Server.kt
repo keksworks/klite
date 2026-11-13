@@ -7,6 +7,7 @@ import klite.StatusCode.Companion.NotFound
 import klite.StatusCode.Companion.OK
 import kotlinx.coroutines.Runnable
 import java.lang.Runtime.getRuntime
+import java.lang.System.nanoTime
 import java.lang.Thread.currentThread
 import java.net.InetSocketAddress
 import java.util.concurrent.ExecutorService
@@ -45,6 +46,7 @@ class Server(
 
   private val http = HttpServer.create().apply { executor = workerPool }
   private val requestsActive = AtomicInteger().also { Metrics.register("requestsActive") { it.get() } }
+  private val requestMetrics = RequestMetrics(pathParamRegexer)
 
   val address: InetSocketAddress get() = http.address ?: error("Server not started")
 
@@ -71,7 +73,7 @@ class Server(
       val notFoundRoute = NotFoundRoute(prefix, notFoundHandler)
       addContext(prefix, router) {
         val r = router.route(this)
-        runHandler(this, r?.first ?: notFoundRoute, r?.second ?: PathParams.EMPTY)
+        runHandler(this, prefix, r?.first ?: notFoundRoute, r?.second ?: PathParams.EMPTY)
       }
       router.block()
       notFoundRoute.decoratedHandler = router.decorators.wrap(notFoundHandler)
@@ -79,7 +81,7 @@ class Server(
 
   fun assets(prefix: String, handler: AssetsHandler) {
     val route = Route(GET, prefix.toRegex(), handler::class.annotations, handler).apply { decoratedHandler = decorators.wrap(handler) }
-    addContext(prefix, this) { runHandler(this, route, PathParams.EMPTY) }
+    addContext(prefix, this) { runHandler(this, "", route, PathParams.EMPTY) }
   }
 
   private fun addContext(prefix: String, config: RouterConfig, handler: HttpExchange.() -> Unit) {
@@ -90,7 +92,8 @@ class Server(
     }
   }
 
-  private fun runHandler(exchange: HttpExchange, route: Route, pathParams: PathParams) {
+  private fun runHandler(exchange: HttpExchange, prefix: String, route: Route, pathParams: PathParams) {
+    val start = nanoTime()
     try {
       requestsActive.incrementAndGet()
       exchange.route = route
@@ -104,6 +107,7 @@ class Server(
     } finally {
       exchange.close()
       requestsActive.decrementAndGet()
+      requestMetrics.record(exchange, prefix, route, nanoTime() - start)
     }
   }
 

@@ -20,6 +20,7 @@ import kotlin.time.Duration.Companion.seconds
  * Simple DB connection pool that opens connections on demand up to [maxSize].
  * Optional [leakCheckThreshold] can be used for debugging of possibly leaked connections.
  * ApplicationName is set to the name of the retrieving thread/request, so that you can see who is holding the connection on the DB side.
+ * Metrics are published with [metricsPrefix], e.g. use "hikaricp" to match HikariCP dashboards.
  */
 @Suppress("UNCHECKED_CAST")
 class PooledDataSource(
@@ -27,18 +28,28 @@ class PooledDataSource(
   val maxSize: Int = Config.dbPoolMaxSize,
   val timeout: Duration = 5.seconds,
   val queryTimeout: Duration = timeout * 2,
-  val leakCheckThreshold: Duration? = null
+  val leakCheckThreshold: Duration? = null,
+  val metricsPrefix: String = "db_pool"
 ): DataSource by db, AutoCloseable {
   private val log = logger()
   private val counter = AtomicInteger()
   private val dropped = AtomicInteger()
+  private val pending = AtomicInteger()
+  private val timeouts = AtomicInteger()
+  private val acquireTimer = Timer()
+  private val usageTimer = Timer()
   internal val size = AtomicInteger()
   internal val available = ArrayBlockingQueue<PooledConnection>(maxSize)
   internal val used = ConcurrentHashMap<PooledConnection, Used>(maxSize)
 
   init {
-    Metrics.register("dbPool") {
-      mapOf("max" to maxSize, "size" to size.get(), "available" to available.size, "used" to used.size, "total" to counter.get(), "dropped" to dropped.get())
+    Metrics.register(metricsPrefix) {
+      mapOf(
+        "connections" to size.get(), "connections_idle" to available.size, "connections_active" to used.size,
+        "connections_max" to maxSize, "connections_pending" to pending.get(), "connections_timeout_total" to timeouts.get(),
+        "connections_created_total" to counter.get(), "connections_dropped_total" to dropped.get(),
+        "connections_acquire_seconds" to acquireTimer.snapshot(), "connections_usage_seconds" to usageTimer.snapshot()
+      )
     }
   }
 
@@ -67,7 +78,9 @@ class PooledDataSource(
   }
 
   override fun getConnection(username: String?, password: String?) = throw SQLFeatureNotSupportedException("Use getConnection()")
-  override fun getConnection(): PooledConnection {
+  override fun getConnection() = acquireTimer.time { acquire() }
+
+  private fun acquire(): PooledConnection {
     var conn: PooledConnection?
     do {
       conn = available.poll() ?: size.incrementAndGet().let { newSize ->
@@ -77,8 +90,13 @@ class PooledDataSource(
           size.decrementAndGet(); throw e
         } else {
           val newSize = size.decrementAndGet()
-          available.poll(timeout.inWholeMilliseconds, MILLISECONDS) ?:
-            throw SQLTimeoutException("No available connection after $timeout; used: ${used.size}/$newSize")
+          pending.incrementAndGet()
+          try {
+            available.poll(timeout.inWholeMilliseconds, MILLISECONDS) ?: run {
+              timeouts.incrementAndGet()
+              throw SQLTimeoutException("No available connection after $timeout; used: ${used.size}/$newSize")
+            }
+          } finally { pending.decrementAndGet() }
         }
       }
       try { conn.checkBySetApplicationName() } catch (e: Exception) {
@@ -114,7 +132,9 @@ class PooledDataSource(
     override fun close() {
       try {
         longUsed = false
-        if (used.remove(this) != null) {
+        val usedBy = used.remove(this)
+        if (usedBy != null) {
+          usageTimer.record((currentTimeMillis() - usedBy.since) * 1_000_000)
           if (!conn.autoCommit) conn.rollback()
           available += this
         } else log.warn("Trying to close already returned $this")

@@ -5,9 +5,12 @@ import com.sun.management.UnixOperatingSystemMXBean
 import klite.RequestMethod.GET
 import java.io.File
 import java.io.OutputStream
+import java.lang.System.nanoTime
 import java.lang.management.ManagementFactory
 import java.lang.management.MemoryUsage
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.LongAdder
 
 object Metrics {
   private val resolvers = ConcurrentHashMap<String, () -> Any?>()
@@ -20,7 +23,47 @@ object Metrics {
   val data: Map<String, Any?> get() = resolvers.mapValues { it.value() }
 }
 
-class Labeled(val label: String, values: Map<String, Any?>): Map<String, Any?> by values
+data class Labeled(val labels: Map<String, Any?>, val value: Any?)
+
+class Timer {
+  private val count = LongAdder()
+  private val totalNanos = LongAdder()
+  private val maxNanos = AtomicLong()
+
+  fun record(nanos: Long) {
+    count.increment()
+    totalNanos.add(nanos)
+    maxNanos.accumulateAndGet(nanos, Math::max)
+  }
+
+  inline fun <T> time(block: () -> T): T {
+    val start = nanoTime()
+    try { return block() } finally { record(nanoTime() - start) }
+  }
+
+  fun snapshot() = mapOf("count" to count.sum(), "sum" to totalNanos.sum() / 1e9, "max" to maxNanos.getAndSet(0) / 1e9)
+}
+
+internal class RequestMetrics(private val pathParamRegexer: PathParamRegexer) {
+  private data class Key(val method: RequestMethod, val prefix: String, val route: Route, val status: Int)
+  private val timers = ConcurrentHashMap<Key, Timer>()
+
+  init {
+    Metrics.register("http_server_requests_seconds") { timers.map { (key, timer) -> Labeled(labels(key), timer.snapshot()) } }
+  }
+
+  fun record(e: HttpExchange, prefix: String, route: Route, nanos: Long) =
+    timers.getOrPut(Key(e.method, prefix, route, e.statusCode?.value ?: 500)) { Timer() }.record(nanos)
+
+  private fun labels(key: Key) = mapOf(
+    "method" to key.method,
+    "uri" to if (key.route is NotFoundRoute) "NOT_FOUND" else key.prefix + pathParamRegexer.toOpenApi(key.route.path),
+    "status" to key.status,
+    "outcome" to outcomes[key.status / 100 - 1]
+  )
+
+  private val outcomes = listOf("INFORMATIONAL", "SUCCESS", "REDIRECTION", "CLIENT_ERROR", "SERVER_ERROR")
+}
 
 fun Server.metrics(path: String = "/metrics", befores: Router.() -> Unit = {}) {
   context(path) {
@@ -62,13 +105,12 @@ private fun registerJvmMetrics() {
   Metrics.register("system_cpu_count") { os.availableProcessors }
   Metrics.register("system_load_average_1m") { os.systemLoadAverage }
 
-  fun byArea(value: (MemoryUsage) -> Long) = Labeled("area", mapOf("heap" to value(memory.heapMemoryUsage), "nonheap" to value(memory.nonHeapMemoryUsage)))
+  fun byArea(value: (MemoryUsage) -> Long) = listOf(Labeled(mapOf("area" to "heap"), value(memory.heapMemoryUsage)), Labeled(mapOf("area" to "nonheap"), value(memory.nonHeapMemoryUsage)))
   Metrics.register("jvm_memory_used_bytes") { byArea { it.used } }
   Metrics.register("jvm_memory_committed_bytes") { byArea { it.committed } }
   Metrics.register("jvm_memory_max_bytes") { byArea { it.max } }
 
-  Metrics.register("jvm_gc_collection_seconds_count") { Labeled("gc", gcs.associate { it.name to it.collectionCount }) }
-  Metrics.register("jvm_gc_collection_seconds_sum") { Labeled("gc", gcs.associate { it.name to it.collectionTime / 1000.0 }) }
+  Metrics.register("jvm_gc_collection_seconds") { gcs.map { Labeled(mapOf("gc" to it.name), mapOf("count" to it.collectionCount, "sum" to it.collectionTime / 1000.0)) } }
 
   Metrics.register("jvm_threads_live_threads") { threads.threadCount }
   Metrics.register("jvm_threads_daemon_threads") { threads.daemonThreadCount }
@@ -87,21 +129,32 @@ class OpenMetricsRenderer(
 
   override fun render(output: OutputStream, value: Any?) {
     val data = value as? Map<*, *> ?: return
-    render(output, keyPrefix, data)
+    val families = linkedMapOf<String, MutableList<String>>()
+    collect(families, keyPrefix, data, emptyMap())
+    families.values.forEach { it.forEach(output::writeln) }
     output.writeln("# EOF")
   }
 
-  fun render(out: OutputStream, prefix: String, data: Map<*, *>) {
+  private fun collect(families: MutableMap<String, MutableList<String>>, prefix: String, data: Map<*, *>, labels: Map<String, Any?>) {
     data.forEach { (k, v) ->
       val snake = SnakeCase.to(k.toString())
-      val key = if (prefix.isEmpty()) snake else "${prefix}_$snake"
-      when (v) {
-        null -> {}
-        is Labeled -> v.forEach { (label, n) -> out.writeln("$key{${v.label}=\"$label\"} $n") }
-        is Map<*, *> -> render(out, key, v)
-        is Number -> out.writeln("$key $v")
-        else -> out.writeln("$key{value=\"$v\"} 1")
-      }
+      collect(families, if (prefix.isEmpty()) snake else "${prefix}_$snake", v, labels)
     }
   }
+
+  private fun collect(families: MutableMap<String, MutableList<String>>, key: String, value: Any?, labels: Map<String, Any?>) {
+    when (value) {
+      null -> {}
+      is Labeled -> collect(families, key, value.value, labels + value.labels)
+      is Iterable<*> -> value.forEach { collect(families, key, it, labels) }
+      is Map<*, *> -> collect(families, key, value, labels)
+      is Number -> families.getOrPut(key) { mutableListOf() } += "$key${render(labels)} $value"
+      else -> families.getOrPut(key) { mutableListOf() } += "$key${render(labels + ("value" to value))} 1"
+    }
+  }
+
+  private fun render(labels: Map<String, Any?>) =
+    if (labels.isEmpty()) "" else labels.entries.joinToString(",", "{", "}") { (k, v) -> "$k=\"${escape(v.toString())}\"" }
+
+  private fun escape(value: String) = value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
 }

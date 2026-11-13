@@ -1,6 +1,9 @@
 # Unreleased
 * server: `metrics()` exposes JVM metrics under standard Micrometer/Prometheus names (e.g. `jvm_memory_used_bytes{area="heap"}`, `process_start_time_seconds`, `jvm_threads_live_threads`), so that pre-defined Grafana JVM dashboards work. `startedAt` and `heapMb` are replaced
-* server: `Labeled` metric values are rendered as OpenMetrics labels, null metric values are skipped
+* server: `metrics()` exposes `http_server_requests_seconds` timer (count/sum/max) with `method`, `uri` (route template), `status`, `outcome` labels, compatible with Micrometer dashboards
+* server: `Labeled` metric values are rendered as OpenMetrics labels (with escaping), `Timer` can be used for custom timing metrics, null metric values are skipped
+* jdbc: `PooledDataSource` metrics renamed to HikariCP-like names under `metricsPrefix` (default `db_pool`), e.g. `db_pool_connections_active`, `db_pool_connections_pending`, `db_pool_connections_timeout_total`, `db_pool_connections_acquire_seconds_*`; use `metricsPrefix = "hikaricp"` for HikariCP dashboards
+* jobs: `JobRunner` metrics renamed to standard `executor_*{name="jobs"}`
 * server: `OpenMetricsRenderer` now responds with `application/openmetrics-text` based on the `Accept` header (was checking request `Content-Type`)
 * json: TSGenerator no longer prints a type twice when it was already printed as a referenced type
 

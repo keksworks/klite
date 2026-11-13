@@ -48,8 +48,11 @@ open class JobRunner(
 
   init {
     (workerPool as? ThreadPoolExecutor)?.let {
-      Metrics.register("jobs") {
-        mapOf("active" to it.activeCount, "size" to it.poolSize, "max" to it.corePoolSize, "runs" to seq.get())
+      Metrics.register("executor") {
+        Labeled(mapOf("name" to "jobs"), mapOf(
+          "active_threads" to it.activeCount, "pool_size_threads" to it.poolSize, "pool_core_threads" to it.corePoolSize, "pool_max_threads" to it.maximumPoolSize,
+          "queued_tasks" to it.queue.size, "completed_tasks_total" to it.completedTaskCount
+        ))
       }
     }
   }
