@@ -125,6 +125,7 @@ See [the sample project](sample) on how to build apps with Klite and run them in
 There are open-source fully-fledged applications built with Klite (using Klite for backend):
 * [StoryTracker](https://github.com/keksworks/storytracker) - an agile project management tool
 * [TimeTracker](https://github.com/pikkerdev/time-tracker) - project time tracking and invoicing tool
+* [Jamming](https://github.com/keksworks/jamming) - a musical jam session app for playing together in sync
 * [AitaValida](https://github.com/keksworks/aitavalida) - voting compass application for Estonian elections
 * [Klite-starter](https://github.com/keksworks/klite-starter) - use it as a template for new projects, with frontend and auth
 
