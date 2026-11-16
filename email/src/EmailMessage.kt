@@ -8,6 +8,7 @@ import javax.mail.Message.RecipientType
 import javax.mail.Multipart
 import javax.mail.Part
 import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeUtility
 
 data class EmailMessage(
   val from: Named,
@@ -68,6 +69,9 @@ private fun MutableMap<String, ByteArray>.add(name: String, content: ByteArray) 
 }
 
 private fun Part.contentAsString() = content.let { if (it is String) it else readBytes().toString(Charsets.UTF_8) }
+
+/** Decodes RFC 2047 encoded words (e.g. `=?UTF-8?B?VGVyZQ==?=`) in a raw header value, returning it as is when decoding fails */
+fun decodeHeader(value: String) = if (value.startsWith("=?")) runCatching { MimeUtility.decodeText(value) }.getOrDefault(value) else value
 
 private fun Part.readBytes(): ByteArray = when (val content = content) {
   is ByteArray -> content
