@@ -6,6 +6,7 @@ import klite.publicProperties
 import klite.trimToNull
 import java.io.Reader
 import java.text.ParseException
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.findAnnotation
@@ -59,7 +60,7 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     val typeClass = type?.classifier as? KClass<*>
     val typeParams = typeClass?.typeParameters?.mapIndexed { i, t -> t.name to type.arguments[i].type }?.toMap() ?: emptyMap()
     val mapTypes = if (typeClass == Map::class) type.arguments.let { it[0].type to it[1].type } else null
-    val props = if (mapTypes == null) typeClass?.publicProperties?.values?.associateBy { prop -> prop.jsonName } else null
+    val props = if (mapTypes == null) typeClass?.jsonProperties else null
     val subTypes = subTypes ?: typeClass?.findAnnotation<JsonSubTypes>() ?: typeClass?.takeIf { it.isSealed }?.let { JsonSubTypes() }
     var subTypeValue: String? = null
 
@@ -93,8 +94,9 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
     resolvedType?.takeIfSpecific()?.createFrom(map as Map<String, Any?>) ?: map
   }
 
-  private fun substituteArguments(type: KType?, typeParams: Map<String, KType?>): KType? = typeParams[type.toString()] ?:
-    if (typeParams.isNotEmpty() && type?.arguments?.isNotEmpty() == true) KTypeWithKnownArguments(type, typeParams) else type
+  private fun substituteArguments(type: KType?, typeParams: Map<String, KType?>): KType? =
+    if (typeParams.isEmpty()) type else typeParams[type.toString()] ?:
+      if (type?.arguments?.isNotEmpty() == true) KTypeWithKnownArguments(type, typeParams) else type
 
   private fun readArray(type: KType?) = collectionOf(type).also { readArrayElements<Any>(type?.arguments?.firstOrNull()?.type, it::add) }
 
@@ -157,6 +159,9 @@ class JsonParser(private val reader: Reader, private val opts: JsonMapper) {
   private fun KType?.from(s: String?) = if (this != null && s != null) Converter.from<Any>(s, this) else s
   private fun KType.takeIfSpecific() = takeIf { classifier != Any::class && classifier != Map::class }
 }
+
+private val jsonPropsCache = ConcurrentHashMap<KClass<*>, Map<String, KProperty1<*, *>>>()
+private val KClass<*>.jsonProperties get() = jsonPropsCache.getOrPut(this) { publicProperties.values.associateBy { it.jsonName } }
 
 class JsonParseException(msg: String, line: Int, pos: Int): ParseException("$msg at $line:$pos", line)
 
