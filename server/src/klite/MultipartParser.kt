@@ -82,7 +82,7 @@ class MultipartParser(
     var fileName: String? = null
     var contentType: String? = null
     val content = TrimmableOutputStream(4096)
-    val isText get() = contentType?.let { MimeTypes.isText(it) } ?: false
+    val isText get() = contentType?.let { MimeTypes.isText(it) } ?: (fileName == null)
   }
 }
 

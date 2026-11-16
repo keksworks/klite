@@ -16,7 +16,6 @@ class MultipartParserTest {
     val body = """
       --$boundary
       Content-Disposition: form-data; name="text"
-      Content-Type: text/plain
 
       text default
       --$boundary
