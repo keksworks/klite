@@ -11,7 +11,7 @@ import kotlin.reflect.full.superclasses
 import kotlin.reflect.jvm.javaField
 
 class JsonRenderer(private val out: Writer, private val opts: JsonMapper): AutoCloseable {
-  private val buf = StringBuilder(bufSize)
+  private val buf = StringBuilder()
 
   fun render(o: Any?) = try { writeValue(o) } finally { flush() }
 

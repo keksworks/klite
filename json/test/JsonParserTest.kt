@@ -39,6 +39,7 @@ class JsonParserTest {
   }
 
   @Test fun `parse invalid`() {
+    expect { mapper.parse<Any>("") }.toThrow<JsonParseException>().messageToContain("Unexpected EOF at 1:0")
     expect { mapper.parse<Any>("""z""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'z' at 1:1")
     expect { mapper.parse<Any>("""{"hello": x""") }.toThrow<JsonParseException>().messageToContain("Unexpected 'x' at 1:11")
     expect { mapper.parse<Any>("""{"hello": """") }.toThrow<JsonParseException>().messageToContain("Unterminated string at 1:11")

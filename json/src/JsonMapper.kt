@@ -26,12 +26,12 @@ data class JsonMapper(
   val values: ValueConverter<Any?> = ValueConverter()
 ) {
   fun <T> parse(json: Reader, type: KType?): T = JsonParser(json, this).readValue(type) as T
-  fun <T> parse(@Language("JSON") json: String, type: KType?): T = parse(json.reader(), type) as T
+  fun <T> parse(@Language("JSON") json: String, type: KType?): T = JsonParser(json.reader(), this, minOf(bufSize, json.length + 2)).readValue(type) as T
   fun <T> parse(json: InputStream, type: KType?): T = parse(json.reader(), type) as T
 
   fun render(o: Any?, out: Writer) = JsonRenderer(out, this).render(o)
   fun render(o: Any?, out: OutputStream) = render(o, OutputStreamWriter(out, Charsets.UTF_8)) // TODO: MimeTypes.textCharset
-  @Language("JSON") fun render(o: Any?): String = StringWriter(bufSize).also { render(o, it) }.toString() // TODO: test bufSize
+  @Language("JSON") fun render(o: Any?): String = StringWriter().also { render(o, it) }.toString()
 
   internal val inlineClassesAsString = ConcurrentHashMap<KClass<*>, Boolean>()
 }
