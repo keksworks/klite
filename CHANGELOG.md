@@ -1,10 +1,10 @@
-# Unreleased
+# 2.1.4
 * server: session is no longer loaded from `SessionStore` on every response, only if the request has actually used it - saves a DB query per request with `DBSessionStore`
+* server: regex routes containing only escapes as special chars (e.g. `"/v\\d".toRegex()`) are matched again - fix after 2.1.0
+* server: MultipartParser defaults for fields to `text/plain` if no `Content-Type` is provided, as per the RFC
 * json: `JsonParser` caches properties of parsed classes, making parsing into typed objects up to 2x faster
 * json: rendering and parsing of small Strings no longer allocates full 8K buffers, making them several times faster
-* server: regex routes containing only escapes as special chars (e.g. `"/v\\d".toRegex()`) are matched again - fix after 2.1.0
 * oauth: `OAuthClient` no longer logs request payloads and responses, which contained client secret, tokens and user profile
-* server: MultipartParser defaults for fields to `text/plain` if no `Content-Type` is provided, as per the RFC
 * email: `decodeHeader()` is now provided for decoding of `=?UTF-8?B?...?=` encoded headers
 
 # 2.1.3
