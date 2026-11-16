@@ -4,7 +4,7 @@ Findings from a hot-path scan (JSON, JDBC, server). Ordered by impact.
 
 ## High impact (per-request / per-object)
 
-### 1. Uncached reflection annotations in JSON path
+### 1. Uncached reflection annotations in JSON path — measured, low impact
 `json/src/JsonRenderer.kt:107-108`, `json/src/JsonParser.kt:74-76`
 
 ```kotlin
@@ -13,6 +13,8 @@ internal val KProperty1<*, *>.jsonName get() = findAnnotation<JsonProperty>()?.v
 ```
 
 Every rendered property does `hasAnnotation` + `findAnnotation` again. JDBC already caches this (`colNameCache` in `JdbcExtensions.kt:220`); JSON does not. `EntityBenchmarkTest` calls `findAnnotation` “the core bottleneck”.
+
+Measured: each `findAnnotation`/`hasAnnotation` is ~40ns, rendering an object is only ~6% slower than the same data as a Map, so a metadata cache is not worth the complexity. The parser now caches properties by json name per class (`jsonProperties`).
 
 ### 2. `unboxInline()` re-resolves a Method every call - done
 `core/src/Extensions.kt:20`
@@ -59,7 +61,7 @@ Routes are bucketed by `RequestMethod`. Static paths (no regex metacharacters) a
 
 Reuse one buffer instance for the parse.
 
-### 8. Unicode escape path allocates list + string
+### 8. Unicode escape path allocates list + string — done
 `json/src/JsonParser.kt:48`
 
 ```kotlin
@@ -82,12 +84,12 @@ converters.contains(cls) -> (converters[cls] as ToJdbcConverter<Any>).invoke(v, 
 
 Use `converters[cls]?.let { ... }` or `getOrDefault` once.
 
-### 11. `MultipartParser.readLine` is byte-at-a-time `read()`
+### 11. `MultipartParser.readLine` is byte-at-a-time `read()` — done
 `server/src/klite/MultipartParser.kt:55-65`
 
-Also buffers whole parts in memory. Fine for small forms; painful for large uploads.
+Lines are now read from a buffer, but whole parts are still kept in memory. Fine for small forms; painful for large uploads.
 
-### 12. `PathParams.get` uses `runCatching` for missing names
+### 12. `PathParams.get` uses `runCatching` for missing names — done
 `server/src/klite/Router.kt:137`
 
 ```kotlin
@@ -133,4 +135,15 @@ Missing optional columns throw/catch via `runCatching` on every entity. Cheaper:
 - Cached SQL constants (`selectFrom`, etc.)
 - `Decimal` fixed-point arithmetic (intentionally faster than `BigDecimal`)
 
-Biggest wins if you optimize: **cache JSON property metadata** (mirror `colNameCache`), **cache `unbox-impl` Method**, **cache `PrefixedColumns` Method lookup**. Those three remove repeated reflection from every request/row/object.
+## Found by measuring — done
+
+| Spot | Issue | Gain |
+|------|-------|------|
+| `HttpExchange.startResponse` | forced the lazy `session` on every response, even if unused | cookie decrypt (~1.4µs) or a DB query with `DBSessionStore` per request |
+| `JsonParser.substituteArguments` | `KType.toString()` (~400ns) for every property, even for non-generic classes | typed parse ~2x faster |
+| `JsonRenderer`/`JsonParser`/`JsonMapper.render` | 8K buffers allocated (zeroed) for every call | render `{"a":1}` to String 920 -> 90ns, parse 1200 -> 380ns |
+| `annotations.Param` | `isSubclassOf(Iterable::class)` (~140ns) per `@QueryParam` per request | computed once |
+
+## Measured, not worth optimizing
+- JDBC row mapping: `ResultSet.create` ~1µs per 7-column row, no dominant part; `JdbcConverter.to`/`from` 30-65ns per value
+- `PooledDataSource` sets `ApplicationName` on every acquire (a DB round trip on Postgres), but it is the liveness check and makes connections traceable on the DB side
