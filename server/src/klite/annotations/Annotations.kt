@@ -15,7 +15,6 @@ import kotlin.reflect.full.callSuspendBy
 import kotlin.reflect.full.functions
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaMethod
-import kotlin.reflect.jvm.jvmErasure
 
 @Target(CLASS) annotation class Path(val value: String)
 @Target(FUNCTION) annotation class GET(val value: String = "")
@@ -79,6 +78,7 @@ class Param(val p: KParameter) {
   val cls = p.type.classifier as KClass<*>
   val source: Annotation? = p.kliteAnnotation
   val name: String = source?.value ?: p.name ?: ""
+  private val isList = cls.isSubclassOf(Iterable::class)
 
   fun valueFrom(e: HttpExchange, instance: Any) = try {
     if (p.kind == INSTANCE) instance
@@ -89,7 +89,7 @@ class Param(val p: KParameter) {
       when (source) {
         is PathParam -> e.path(name)?.toType()
         is QueryParam ->
-          if (p.type.jvmErasure.isSubclassOf(Iterable::class)) e.queryList(name)
+          if (isList) e.queryList(name)
             .map { Converter.from<Any>(it, p.type.arguments[0].type!!) }.takeIf { it.isNotEmpty() || !p.type.isMarkedNullable }
           else (e.query(name)).let { if (e.isValueLessQueryParam(it)) true else it?.toType()
         }
