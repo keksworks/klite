@@ -85,7 +85,7 @@ class Router(
     decorateWith(decorators)
     val routes = routesByMethod.getOrPut(method) { MethodRoutes() }
     val pattern = path.pattern
-    if (pattern.none { it in "[]{}()*+?^$|" }) routes.static.putIfAbsent(pattern, this)
+    if (pattern.none { it in "\\[]{}()*+?^$|" }) routes.static.putIfAbsent(pattern, this)
     else routes.dynamic += this
     log.info("$method $prefix$path")
   }

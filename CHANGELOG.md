@@ -2,6 +2,7 @@
 * server: session is no longer loaded from `SessionStore` on every response, only if the request has actually used it - saves a DB query per request with `DBSessionStore`
 * json: `JsonParser` caches properties of parsed classes, making parsing into typed objects up to 2x faster
 * json: rendering and parsing of small Strings no longer allocates full 8K buffers, making them several times faster
+* server: regex routes containing only escapes as special chars (e.g. `"/v\\d".toRegex()`) are matched again - they were treated as static paths since 2.1.0
 
 # 2.1.3
 * server: `metrics()` exposes JVM metrics under standard Micrometer/Prometheus names (e.g. `jvm_memory_used_bytes{area="heap"}`, `process_start_time_seconds`, `jvm_threads_live_threads`), so that pre-defined Grafana JVM dashboards work, e.g. [JVM (Micrometer)](https://grafana.com/grafana/dashboards/4701)
