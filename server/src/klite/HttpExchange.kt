@@ -86,7 +86,8 @@ open class HttpExchange(
   fun cookie(cookie: Cookie) = responseHeaders.add("Set-Cookie", cookie.toString().checkHeaderValue())
   operator fun plusAssign(cookie: Cookie) = cookie(cookie)
 
-  val session: Session by lazy(NONE) { sessionStore?.load(this) ?: error("No sessionStore defined") }
+  private val lazySession = lazy(NONE) { sessionStore?.load(this) ?: error("No sessionStore defined") }
+  val session: Session by lazySession
   inline fun <reified T: Any> session(key: String): T? = session.get<T>(key)
 
   val statusCode: StatusCode? get() = StatusCode(original.responseCode).takeIf { isResponseStarted }
@@ -121,7 +122,7 @@ open class HttpExchange(
    * @param length 0 -> no response, null -> use chunked encoding
    */
   fun startResponse(code: StatusCode, length: Long? = null, contentType: String? = null, fileName: String? = null): OutputStream {
-    sessionStore?.save(this, session)
+    if (lazySession.isInitialized()) sessionStore?.save(this, session)
     fileName?.let { fileName(it) }
     contentType?.let { responseType = it }
     val bodyNotAllowed = method == HEAD || method == OPTIONS

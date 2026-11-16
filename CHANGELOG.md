@@ -1,3 +1,6 @@
+# Unreleased
+* server: session is no longer loaded from `SessionStore` on every response, only if the request has actually used it - saves a DB query per request with `DBSessionStore`
+
 # 2.1.3
 * server: `metrics()` exposes JVM metrics under standard Micrometer/Prometheus names (e.g. `jvm_memory_used_bytes{area="heap"}`, `process_start_time_seconds`, `jvm_threads_live_threads`), so that pre-defined Grafana JVM dashboards work, e.g. [JVM (Micrometer)](https://grafana.com/grafana/dashboards/4701)
 * server: `metrics()` also exposes memory pools, buffer pools, thread states, `process_memory_*_bytes`, `process_threads`

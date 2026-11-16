@@ -170,6 +170,20 @@ class HttpExchangeTest {
     }
   }
 
+  @Test fun `session is saved only if it was used`() {
+    val session = Session()
+    val sessionStore = mockk<SessionStore>(relaxed = true) {
+      every { load(any()) } returns session
+    }
+    val exchange = HttpExchange(original, routerConfig, sessionStore, "req-id")
+    exchange.send(OK)
+    verify(exactly = 0) { sessionStore.load(any()) }
+
+    expect(exchange.session).toEqual(session)
+    exchange.send(OK)
+    verify { sessionStore.save(exchange, session) }
+  }
+
   @Test fun onComplete() {
     val handler1 = mockk<Runnable>(relaxed = true)
     val handler2 = mockk<Runnable>(relaxed = true)
