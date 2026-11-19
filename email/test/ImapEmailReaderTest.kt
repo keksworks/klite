@@ -118,6 +118,17 @@ class ImapEmailReaderTest {
     expect(email.replyTo).toEqual(Named(Email("reply@example.com"), "Reply"))
   }
 
+  @Test fun `parses delivered-to headers`() {
+    val email = message {
+      setRecipient(TO, InternetAddress("arved@acme.ee"))
+      addHeader("Delivered-To", "invoices+abc@debi.ee")
+      addHeader("Delivered-To", "<arved@acme.ee>")
+    }.toEmailMessage()
+
+    expect(email.deliveredTo).toContainExactly(Email("invoices+abc@debi.ee"), Email("arved@acme.ee"))
+    expect(message().toEmailMessage().deliveredTo).toEqual(emptyList())
+  }
+
   @Test fun `leaves reply-to empty when the email names none`() {
     expect(message().toEmailMessage().replyTo).toEqual(null)
   }
