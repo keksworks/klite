@@ -1,5 +1,6 @@
 package klite.email
 
+import klite.Email
 import java.io.InputStream
 import java.time.Instant
 import javax.mail.Address
@@ -21,6 +22,7 @@ data class EmailMessage(
   val attachments: Map<String, ByteArray> = emptyMap(),
   val id: String?,
   val replyTo: Named? = null,
+  val deliveredTo: List<Email> = emptyList(),
 )
 
 fun Message.toEmailMessage(): EmailMessage {
@@ -39,10 +41,15 @@ fun Message.toEmailMessage(): EmailMessage {
     attachments,
     getHeader("Message-ID")?.firstOrNull(),
     if (getHeader("Reply-To") == null) null else getReplyTo()?.firstOrNull()?.toNamed(),
+    deliveredTo(),
   )
 }
 
 private fun Message.recipientsOfType(type: RecipientType) = getRecipients(type).addresses
+
+private fun Message.deliveredTo() = getHeader("Delivered-To").orEmpty().mapNotNull {
+  runCatching { Email(InternetAddress(it.trim(), false).address) }.getOrNull()
+}
 
 private val Array<Address>?.addresses get() = this?.filterIsInstance<InternetAddress>()?.map { it.toNamed() } ?: emptyList()
 
