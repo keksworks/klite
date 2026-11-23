@@ -30,7 +30,7 @@ dependencyResolutionManagement {
       library("junit-engine", "org.junit.jupiter", "junit-jupiter-engine").versionRef(junit5)
       library("junit-launcher", "org.junit.platform", "junit-platform-launcher").versionRef(junit5)
       library("atrium", "ch.tutteli.atrium:atrium-fluent:1.3.0")
-      library("mockk", "io.mockk:mockk:1.14.11")
+      library("mockk", "io.mockk:mockk:1.14.12")
 
       val slf4j = version("slf4j", "2.0.17")
       library("slf4j-api", "org.slf4j", "slf4j-api").versionRef(slf4j)
