@@ -1,6 +1,6 @@
 # Unreleased
 * email: SmtpEmailSender now logs also CC and BCC recipients
-* email: `EmailMessage` exposes all raw headers via `headers` and `header(name)` (decoded), `replyTo` is now derived from the `Reply-To` header
+* email: `EmailMessage` exposes raw headers via `headers(name)`, `replyTo` and `deliveredTo` are now derived from those headers
 
 # 2.1.4
 * server: session is no longer loaded from `SessionStore` on every response, only if the request has actually used it - saves a DB query per request with `DBSessionStore`

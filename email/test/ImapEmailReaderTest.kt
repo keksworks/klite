@@ -130,6 +130,15 @@ class ImapEmailReaderTest {
     expect(email.replyTo).toEqual(Named(Email("reply@example.com"), "Vastus, Nimi"))
   }
 
+  @Test fun `parses delivered-to address`() {
+    val email = message { setHeader("Delivered-To", "Someone <delivered@example.com>") }.toEmailMessage()
+    expect(email.deliveredTo).toEqual(Email("delivered@example.com"))
+  }
+
+  @Test fun `leaves delivered-to empty when the email names none`() {
+    expect(message().toEmailMessage().deliveredTo).toEqual(null)
+  }
+
   @Test fun `exposes all headers by lower-cased name`() {
     val email = message {
       setHeader("X-Custom", "value")
@@ -137,17 +146,16 @@ class ImapEmailReaderTest {
       addHeader("Received", "second")
     }.toEmailMessage()
 
-    expect(email.header("x-CUSTOM")).toEqual("value")
-    expect(email.headers["received"]?.toSet()).toEqual(setOf("first", "second"))
-    expect(email.header("Subject")).toEqual("Subject")
-    expect(email.headers["message-id"]?.single()).toEqual(email.id)
+    expect(email.headers("x-CUSTOM")).toContainExactly("value")
+    expect(email.headers("Received").toSet()).toEqual(setOf("first", "second"))
+    expect(email.id).toEqual(email.headers("message-id").single())
   }
 
-  @Test fun `decodes header values when read with header`() {
+  @Test fun `decodes encoded header values`() {
     val email = message { setHeader("X-Name", "=?UTF-8?B?VGVyZQ==?=") }.toEmailMessage()
 
-    expect(email.header("X-Name")).toEqual("Tere")
-    expect(email.headers["x-name"]).toEqual(listOf("=?UTF-8?B?VGVyZQ==?="))
+    expect(decodeHeader(email.headers("X-Name").single())).toEqual("Tere")
+    expect(email.headers("x-name")).toContainExactly("=?UTF-8?B?VGVyZQ==?=")
   }
 
   @Test fun `fetchUnseen does not mark messages as read`() {

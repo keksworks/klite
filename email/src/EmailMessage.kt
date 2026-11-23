@@ -1,5 +1,6 @@
 package klite.email
 
+import klite.Email
 import java.io.InputStream
 import java.time.Instant
 import javax.mail.Address
@@ -20,15 +21,13 @@ data class EmailMessage(
   val html: String? = null,
   val attachments: Map<String, ByteArray> = emptyMap(),
   val id: String?,
-  /** All raw message headers, keyed by lower-cased name */
-  val headers: Map<String, List<String>> = emptyMap(),
+  private val headers: Map<String, List<String>> = emptyMap(),
 ) {
-  val replyTo: Named? get() = rawHeader("Reply-To")?.let { InternetAddress.parse(it).firstOrNull() }?.toNamed()
+  val replyTo: Named? get() = header("reply-to")?.let { InternetAddress.parse(it).firstOrNull() }?.toNamed()
+  val deliveredTo: Email? get() = header("delivered-to")?.let { InternetAddress.parse(it).firstOrNull() }?.let { Email(it.address) }
 
-  /** First value of the header, with RFC 2047 encoded words decoded */
-  fun header(name: String) = rawHeader(name)?.let(::decodeHeader)
-
-  private fun rawHeader(name: String) = headers[name.lowercase()]?.firstOrNull()
+  fun headers(name: String) = headers[name.lowercase()] ?: emptyList()
+  fun header(name: String) = headers(name).firstOrNull()
 }
 
 fun Message.toEmailMessage(): EmailMessage {
@@ -36,7 +35,7 @@ fun Message.toEmailMessage(): EmailMessage {
   val html = StringBuilder()
   val attachments = mutableMapOf<String, ByteArray>()
   collectBody(text, html, attachments)
-  val headers = allHeadersByName()
+  val headers = headersLowercase()
   return EmailMessage(
     from.first().toNamed(),
     recipientsOfType(RecipientType.TO),
@@ -51,7 +50,7 @@ fun Message.toEmailMessage(): EmailMessage {
   )
 }
 
-private fun Part.allHeadersByName() = allHeaders.toList().groupBy({ it.name.lowercase() }, { it.value })
+private fun Part.headersLowercase() = allHeaders.toList().groupBy({ it.name.lowercase() }, { it.value })
 
 private fun Message.recipientsOfType(type: RecipientType) = getRecipients(type).addresses
 
