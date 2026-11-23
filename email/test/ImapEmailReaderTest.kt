@@ -122,6 +122,34 @@ class ImapEmailReaderTest {
     expect(message().toEmailMessage().replyTo).toEqual(null)
   }
 
+  @Test fun `decodes encoded reply-to name`() {
+    val email = message {
+      setHeader("Reply-To", "=?UTF-8?B?VmFzdHVzLCBOaW1p?= <reply@example.com>")
+    }.toEmailMessage()
+
+    expect(email.replyTo).toEqual(Named(Email("reply@example.com"), "Vastus, Nimi"))
+  }
+
+  @Test fun `exposes all headers by lower-cased name`() {
+    val email = message {
+      setHeader("X-Custom", "value")
+      addHeader("Received", "first")
+      addHeader("Received", "second")
+    }.toEmailMessage()
+
+    expect(email.header("x-CUSTOM")).toEqual("value")
+    expect(email.headers["received"]?.toSet()).toEqual(setOf("first", "second"))
+    expect(email.header("Subject")).toEqual("Subject")
+    expect(email.headers["message-id"]?.single()).toEqual(email.id)
+  }
+
+  @Test fun `decodes header values when read with header`() {
+    val email = message { setHeader("X-Name", "=?UTF-8?B?VGVyZQ==?=") }.toEmailMessage()
+
+    expect(email.header("X-Name")).toEqual("Tere")
+    expect(email.headers["x-name"]).toEqual(listOf("=?UTF-8?B?VGVyZQ==?="))
+  }
+
   @Test fun `fetchUnseen does not mark messages as read`() {
     val message = spyk(message())
     every { folder.search(any()) } returns arrayOf(message)

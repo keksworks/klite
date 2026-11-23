@@ -20,14 +20,23 @@ data class EmailMessage(
   val html: String? = null,
   val attachments: Map<String, ByteArray> = emptyMap(),
   val id: String?,
-  val replyTo: Named? = null,
-)
+  /** All raw message headers, keyed by lower-cased name */
+  val headers: Map<String, List<String>> = emptyMap(),
+) {
+  val replyTo: Named? get() = rawHeader("Reply-To")?.let { InternetAddress.parse(it).firstOrNull() }?.toNamed()
+
+  /** First value of the header, with RFC 2047 encoded words decoded */
+  fun header(name: String) = rawHeader(name)?.let(::decodeHeader)
+
+  private fun rawHeader(name: String) = headers[name.lowercase()]?.firstOrNull()
+}
 
 fun Message.toEmailMessage(): EmailMessage {
   val text = StringBuilder()
   val html = StringBuilder()
   val attachments = mutableMapOf<String, ByteArray>()
   collectBody(text, html, attachments)
+  val headers = allHeadersByName()
   return EmailMessage(
     from.first().toNamed(),
     recipientsOfType(RecipientType.TO),
@@ -37,10 +46,12 @@ fun Message.toEmailMessage(): EmailMessage {
     text.toString().takeIf { it.isNotEmpty() },
     html.toString().takeIf { it.isNotEmpty() },
     attachments,
-    getHeader("Message-ID")?.firstOrNull(),
-    if (getHeader("Reply-To") == null) null else getReplyTo()?.firstOrNull()?.toNamed(),
+    headers["message-id"]?.firstOrNull(),
+    headers,
   )
 }
+
+private fun Part.allHeadersByName() = allHeaders.toList().groupBy({ it.name.lowercase() }, { it.value })
 
 private fun Message.recipientsOfType(type: RecipientType) = getRecipients(type).addresses
 
