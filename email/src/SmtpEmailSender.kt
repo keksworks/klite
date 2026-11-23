@@ -63,10 +63,14 @@ open class SmtpEmailSender(
       setSubject(subject, MimeTypes.textCharset.name())
       block()
       Transport.send(this)
-      log.info("Email sent to $to, subject=$subject")
+      log.info("Email sent to $to${recipientsInfo()}, subject=$subject")
     } catch (e: Exception) {
-      log.error("Failed to send to $to, subject=$subject: $e")
+      log.error("Failed to send to $to${recipientsInfo()}, subject=$subject: $e")
       throw e
     }
+  }
+
+  private fun MimeMessage.recipientsInfo() = listOf(CC to "cc", BCC to "bcc").joinToString("") { (type, label) ->
+    getRecipients(type)?.takeIf { it.isNotEmpty() }?.joinToString(", ", ", $label=") ?: ""
   }
 }

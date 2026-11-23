@@ -1,3 +1,6 @@
+# Unreleased
+* email: SmtpEmailSender now logs also CC and BCC recipients
+
 # 2.1.4
 * server: session is no longer loaded from `SessionStore` on every response, only if the request has actually used it - saves a DB query per request with `DBSessionStore`
 * server: regex routes containing only escapes as special chars (e.g. `"/v\\d".toRegex()`) are matched again - fix after 2.1.0
