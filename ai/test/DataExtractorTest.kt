@@ -8,6 +8,7 @@ import io.mockk.mockk
 import klite.StatusCode
 import klite.http.HttpException
 import org.junit.jupiter.api.Test
+import java.net.URI
 
 class DataExtractorTest {
   val response = AIClient.Response("r1", "success", "test-model", """{"key": "value"}""")
@@ -32,6 +33,35 @@ class DataExtractorTest {
 
     expect(extractor.extract<TestClass>("test").key).toEqual("recovered")
     expect(attempts).toEqual(3)
+  }
+
+  @Test fun `extract sends files only once when retrying with the previous response id`() {
+    val file = URI("data:application/pdf;base64,AAAA")
+    var attempts = 0
+    val sentFiles = mutableListOf<Int>()
+    every { aiClient.query(any(), *anyVararg(), prevResponseId = any(), params = any()) } answers {
+      attempts++
+      sentFiles += (invocation.args[1] as Array<*>).size
+      if (attempts == 1) response.copy(text = "not json") else response.copy(text = """{"key": "recovered"}""")
+    }
+
+    expect(extractor.extract<TestClass>("test", file).key).toEqual("recovered")
+    expect(sentFiles.toList()).toEqual(listOf(1, 0))
+  }
+
+  @Test fun `extract resends files when the previous attempt failed before answering`() {
+    val file = URI("data:application/pdf;base64,AAAA")
+    var attempts = 0
+    val sentFiles = mutableListOf<Int>()
+    every { aiClient.query(any(), *anyVararg(), prevResponseId = any(), params = any()) } answers {
+      attempts++
+      sentFiles += (invocation.args[1] as Array<*>).size
+      if (attempts == 1) throw RuntimeException("API error")
+      response.copy(text = """{"key": "recovered"}""")
+    }
+
+    expect(extractor.extract<TestClass>("test", file).key).toEqual("recovered")
+    expect(sentFiles.toList()).toEqual(listOf(1, 1))
   }
 
   @Test fun `extract does not retry on a malformed request`() {

@@ -1,4 +1,5 @@
 # Unreleased
+* ai: `DataExtractor` avoids sending large files to AI clients when retrying if previous_request_id is available
 * email: SmtpEmailSender now logs also CC and BCC recipients
 * email: `EmailMessage` exposes raw headers via `headers(name)`, `replyTo` and `deliveredTo` are now derived from those headers
 
