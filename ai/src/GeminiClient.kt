@@ -39,10 +39,9 @@ open class GeminiClient(
   fun query(input: Any /* String | List<Content | Step> */, params: Node = emptyMap(), prevInteractionId: String? = null): Response =
     http.post("/interactions?key=$apiKey", mapOf(
       "model" to model,
-      "input" to input,
       "generation_config" to GenerationConfig(),
       "previous_interaction_id" to prevInteractionId
-    ) + this.params + params)
+    ) + this.params + params + ("input" to input))
 
   data class GenerationConfig(val thinkingLevel: String? = null, val temperature: Int = 1, val maxOutputTokens: Int? = null)
   data class Step(val type: String, val content: List<Content>? = null, val signature: String? = null)

@@ -44,7 +44,7 @@ open class OpenAIClient(
 
   // TODO: try structured output with "text": {"format": {"type": "json_schema"}}}
   open fun query(input: Any /* String | List<Input | Output> */, params: Node = emptyMap(), prevResponseId: String? = null): Response =
-    http.post("/responses", mapOf("model" to model, "input" to input, "previous_response_id" to prevResponseId) + this.params + params)
+    http.post("/responses", mapOf("model" to model, "previous_response_id" to prevResponseId) + this.params + params + ("input" to input))
 
   data class Input(val content: List<Content>, val role: String = "user")
   data class Output(val id: String, val type: String, val content: List<Content> = emptyList(), val role: String? = null)
