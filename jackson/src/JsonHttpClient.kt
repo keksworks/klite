@@ -24,10 +24,11 @@ open class JsonHttpClient(
   retryCount: Int = 0,
   retryAfter: Duration = 1.seconds,
   maxLoggedLen: Int = 1000,
+  logStart: Boolean = false,
   registry: Registry? = null,
   http: HttpClient = registry!!.require(),
   val json: JsonMapper = registry!!.require()
-): TypedHttpClient(urlPrefix, reqModifier, errorHandler, retryCount, retryAfter, maxLoggedLen, http, MimeTypes.json) {
+): TypedHttpClient(urlPrefix, reqModifier, errorHandler, retryCount, retryAfter, maxLoggedLen, logStart, http, MimeTypes.json) {
   override fun render(o: Any?) = o as? String ?: json.stringify(o)
 
   @Suppress("UNCHECKED_CAST")

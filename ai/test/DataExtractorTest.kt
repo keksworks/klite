@@ -1,5 +1,7 @@
 package klite.ai
 
+import ch.tutteli.atrium.api.fluent.en_GB.notToContain
+import ch.tutteli.atrium.api.fluent.en_GB.toContain
 import ch.tutteli.atrium.api.fluent.en_GB.toEqual
 import ch.tutteli.atrium.api.fluent.en_GB.toThrow
 import ch.tutteli.atrium.api.verbs.expect
@@ -9,6 +11,7 @@ import klite.StatusCode
 import klite.http.HttpException
 import org.junit.jupiter.api.Test
 import java.net.URI
+import java.time.Instant
 
 class DataExtractorTest {
   val response = AIClient.Response("r1", "success", "test-model", """{"key": "value"}""")
@@ -21,6 +24,33 @@ class DataExtractorTest {
     every { aiClient.query(any()) } returns response.copy(text = "```json\n{\"key\": \"value\"}\n```")
 
     expect(extractor.extract<TestClass>("test").key).toEqual("value")
+  }
+
+  @Test fun `extract skips defaulted system fields in the prompt schema`() {
+    var prompt = ""
+    every { aiClient.query(any()) } answers {
+      prompt = invocation.args[0] as String
+      response.copy(text = """{"number": "1", "items": []}""")
+    }
+
+    extractor.extract<Tracked>("test")
+
+    expect(prompt).toContain("number=")
+    expect(prompt).notToContain("id=")
+    expect(prompt).notToContain("createdAt")
+    expect(prompt).notToContain("updatedAt")
+  }
+
+  @Test fun `extract keeps system fields without default values in the prompt schema`() {
+    var prompt = ""
+    every { aiClient.query(any()) } answers {
+      prompt = invocation.args[0] as String
+      response.copy(text = """{"id": "1"}""")
+    }
+
+    extractor.extract<Identified>("test")
+
+    expect(prompt).toContain("id=")
   }
 
   @Test fun `extract retries on failure`() {
@@ -87,4 +117,8 @@ class DataExtractorTest {
   }
 
   data class TestClass(val key: String)
+  data class Identified(val id: String)
+  data class Tracked(val number: String, val items: List<Item>, val id: String = "1",
+                     val createdAt: Instant = Instant.now(), val updatedAt: Instant? = null)
+  data class Item(val name: String, val id: String = "1")
 }

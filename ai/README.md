@@ -44,7 +44,7 @@ val answer = client.query("What is 2 + 2?")
 val extractor = DataExtractor(CloudFlareClient(httpClient))
 ```
 
-Clairic takes a text state plus up to four images or PDFs and returns typed fields, so `DataExtractor` converts the Kotlin data class schema into Clairic fields automatically. Nested objects are supported only one level deep (and their properties must be text, number, boolean or enum). `id`, `createdAt` and `updatedAt` are skipped when they have default values.
+Clairic takes a text state plus up to four images or PDFs and returns typed fields, so `DataExtractor` converts the Kotlin data class schema into Clairic fields automatically. `DataExtractor` skips `id`, `createdAt` and `updatedAt` when they have default values, for every AI client. Nested objects are supported only one level deep (and their properties must be text, number, boolean or enum).
 
 Register the client you want to use:
 ```kotlin

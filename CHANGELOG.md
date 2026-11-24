@@ -1,6 +1,8 @@
 # Unreleased
 * ai: `DataExtractor` avoids sending large files to AI clients when retrying if previous_request_id is available
+* ai: `DataExtractor` skips `id`, `createdAt` and `updatedAt` fields that have default values, for all AI clients
 * ai: Introduced `CloudFlareClient` for Clairic model, which can extract structured data from documents and images
+* json: `JsonHttpClient` has a `logStart` option to log the request separately from the response, enabled for AI clients
 * email: SmtpEmailSender now logs also CC and BCC recipients
 * email: `EmailMessage` exposes raw headers via `headers(name)`, `replyTo` and `deliveredTo` are now derived from those headers
 

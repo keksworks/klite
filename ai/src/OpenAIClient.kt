@@ -26,9 +26,9 @@ open class OpenAIClient(
   val model: String = Config["OPENAI_MODEL"],
   val params: Node = emptyMap()
 ): AIClient {
-  private val auth = "Bearer " + apiKey
+  private val auth = "Bearer $apiKey"
   private val http = JsonHttpClient(baseUrl, http = httpClient, json = JsonMapper(keys = SnakeCase, values = instantAsInt),
-    maxLoggedLen = maxLoggedLen, reqModifier = { header("Authorization", auth).timeout(timeout) })
+    maxLoggedLen = maxLoggedLen, logStart = true, reqModifier = { header("Authorization", auth).timeout(timeout) })
 
   override fun query(input: String, vararg fileUrl: URI, prevResponseId: String?, params: Node): AIClient.Response =
     query(toInput(input, fileUrl), params, prevResponseId).toGenericResponse(params).also { it.usage?.let(TokenMetrics::record) }

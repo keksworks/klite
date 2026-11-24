@@ -22,7 +22,7 @@ open class GeminiClient(
   val params: Node = emptyMap()
 ): AIClient {
   private val http = JsonHttpClient(baseUrl, http = httpClient, json = JsonMapper(keys = SnakeCase),
-    maxLoggedLen = maxLoggedLen, reqModifier = { timeout(timeout) })
+    maxLoggedLen = maxLoggedLen, logStart = true, reqModifier = { timeout(timeout) })
 
   override fun query(input: String, vararg fileUrl: URI, prevResponseId: String?, params: Node): AIClient.Response =
     query(toInput(input, fileUrl), params, prevResponseId).toGenericResponse(params).also { it.usage?.let(TokenMetrics::record) }

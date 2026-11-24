@@ -26,7 +26,7 @@ open class CloudFlareClient(
   val params: Node = emptyMap()
 ): AIClient, TypedExtractionClient {
   private val http = JsonHttpClient(Config.optional("CLOUDFLARE_URL", "https://api.cloudflare.com/client/v4/accounts/$accountId/ai/run"),
-    http = httpClient, json = JsonMapper(), maxLoggedLen = maxLoggedLen,
+    http = httpClient, json = JsonMapper(), maxLoggedLen = maxLoggedLen, logStart = true,
     reqModifier = { header("Authorization", "Bearer $apiKey").timeout(timeout) })
   private val path = if (model.startsWith("@")) "/$model" else "/@cf/cloudflare/$model"
 
@@ -46,13 +46,11 @@ open class CloudFlareClient(
   fun extract(state: String, fields: Node, vararg fileUrl: URI, params: Node = emptyMap()): Response {
     val images = fileUrl.filter { it.isImage }
     val documents = fileUrl.filterNot { it.isImage }
-    val body = mapOf(
-      "model" to model,
+    val body = mapOf("model" to model, "fields" to fields) + this.params + params + mapOf(
       "state" to state,
-      "fields" to fields,
       "images" to images.map { it.toClairicMedia() }.takeIf { it.isNotEmpty() },
       "documents" to documents.map { it.toClairicMedia() }.takeIf { it.isNotEmpty() }
-    ) + this.params + params
+    )
     return http.post<Envelope>(path, body).result
   }
 
@@ -83,14 +81,9 @@ internal fun Map<String, Any?>.toClairicFields(): Node? {
   val properties = this["properties"] as? Map<*, *> ?: return null
   val required = (this["required"] as? Collection<*>)?.mapTo(HashSet()) { it.toString() }.orEmpty()
   return properties.entries.mapNotNull { (name, value) ->
-    val fieldName = name.toString()
-    // System fields are normally generated locally, so only extract them when they have no default value
-    if (fieldName in skippedDefaultFields && fieldName !in required) return@mapNotNull null
-    (value as? Map<*, *>)?.toClairicField(fieldName in required)?.let { fieldName to it }
+    (value as? Map<*, *>)?.toClairicField(name.toString() in required)?.let { name.toString() to it }
   }.toMap().takeIf { it.isNotEmpty() }
 }
-
-private val skippedDefaultFields = setOf("id", "createdAt", "updatedAt")
 
 private val notNullableTypes = setOf("text", "number", "boolean", "enum", "object")
 
@@ -124,15 +117,10 @@ private fun Map<*, *>.toClairicListItems(): Node? = when (this["type"]) {
 /** Clairic object properties support only scalar values: text, number, boolean and enum */
 private fun Map<*, *>.toClairicObjectProperties(): Node? {
   val properties = this["properties"] as? Map<*, *> ?: return null
-  val required = (this["required"] as? Collection<*>)?.mapTo(HashSet()) { it.toString() }.orEmpty()
-  val entries = properties.entries.filterNot { (name, _) ->
-    val fieldName = name.toString()
-    fieldName in skippedDefaultFields && fieldName !in required
-  }
-  val fields = entries.mapNotNull { (name, value) ->
+  val fields = properties.entries.mapNotNull { (name, value) ->
     (value as? Map<*, *>)?.toClairicScalarField()?.let { name.toString() to it }
   }
-  return fields.takeIf { it.size == entries.size }?.toMap()?.takeIf { it.isNotEmpty() }
+  return fields.takeIf { it.size == properties.size }?.toMap()?.takeIf { it.isNotEmpty() }
 }
 
 private fun Map<*, *>.toClairicScalarField(): Node? = when (this["type"]) {

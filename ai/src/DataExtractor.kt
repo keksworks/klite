@@ -28,9 +28,9 @@ class DataExtractor(
 
   fun <T: Any> extractResponse(text: String, type: KType, vararg fileUrl: URI, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), params: Node = emptyMap(), numAttempts: Int = 3): Pair<T, AIClient.Response> {
     val providedText = if (provided.isNotEmpty()) ", use these provided values: " + provided.entries.joinToString { "${it.key.name}=${it.value}" } else ""
-    val schema = type.toJsonSchema()
+    val schema = type.toJsonSchema()?.withoutDefaultFields()
     val typedClient = aiClient as? TypedExtractionClient
-    var prompt = "Extract $type data as plain json, schema $schema, skip 'id' and non-required fields if not available:\n$text\n$providedText"
+    var prompt = "Extract $type data as plain json, schema $schema, skip non-required fields if not available:\n$text\n$providedText"
     var state = text + providedText
     var files: Array<out URI> = fileUrl
     var response: AIClient.Response? = null
@@ -54,3 +54,25 @@ class DataExtractor(
 
   private fun String.stripMarkdown() = substringAfter("```json").substringBeforeLast("```")
 }
+
+private val skippedDefaultFields = setOf("id", "createdAt", "updatedAt")
+
+/** Removes system fields that have default values, as they are normally generated locally rather than extracted */
+@Suppress("UNCHECKED_CAST")
+private fun Map<String, Any?>.withoutDefaultFields(): Map<String, Any?> {
+  val properties = this["properties"] as? Map<*, *>
+  val result = if (properties == null) this else {
+    val required = (this["required"] as? Collection<*>)?.mapTo(HashSet()) { it.toString() }.orEmpty()
+    val fields = properties.entries.mapNotNull { (name, value) ->
+      val fieldName = name.toString()
+      if (fieldName in skippedDefaultFields && fieldName !in required) null
+      else fieldName to value.withoutDefaultFields()
+    }.toMap()
+    this + ("properties" to fields)
+  }
+  val items = result["items"] as? Map<String, Any?>
+  return if (items == null) result else result + ("items" to items.withoutDefaultFields())
+}
+
+@Suppress("UNCHECKED_CAST")
+private fun Any?.withoutDefaultFields(): Any? = if (this is Map<*, *>) (this as Map<String, Any?>).withoutDefaultFields() else this

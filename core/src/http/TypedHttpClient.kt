@@ -30,6 +30,7 @@ open class TypedHttpClient(
   val retryCount: Int = 0,
   val retryAfter: Duration = 1.seconds,
   private val maxLoggedLen: Int = 1000,
+  private val logStart: Boolean = false,
   val http: HttpClient,
   val contentType: String,
   loggerName: String = StackWalker.getInstance(RETAIN_CLASS_REFERENCE).walk { stack -> stack
@@ -56,15 +57,18 @@ open class TypedHttpClient(
   private fun <T> request(urlSuffix: String, payload: String? = null, bodyHandler: HttpResponse.BodyHandler<T>, modifier: RequestModifier): T {
     val req = buildReq(urlSuffix).apply(modifier).build()
     val start = System.nanoTime()
+    if (logStart) logger.info("${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""}")
     val res = http.send(req, bodyHandler)
     val ms = (System.nanoTime() - start) / 1000_000
     val body = res.body()
+    val payloadLog = if (logStart) "" else " ${payload?.trimToLog() ?: ""}"
     if (res.statusCode() < 300) {
-      logger.info("${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: " + (if (body is InputStream) "streaming" else body.toString().trimToLog()))
+      val status = if (logStart) "${res.statusCode()} " else ""
+      logger.info("${req.method()} $urlSuffix$payloadLog in $ms ms: $status" + (if (body is InputStream) "streaming" else body.toString().trimToLog()))
       return res.body()
     } else {
       val errorBody = if (body is InputStream) body.readAllBytes().decodeToString() else body.toString()
-      logger.error("Failed ${req.method()} $urlSuffix ${payload?.trimToLog() ?: ""} in $ms ms: ${res.statusCode()}: ${errorBody.trimToLog()}")
+      logger.error("Failed ${req.method()} $urlSuffix$payloadLog in $ms ms: ${res.statusCode()}: ${errorBody.trimToLog()}")
       errorHandler(res, errorBody)
     }
   }

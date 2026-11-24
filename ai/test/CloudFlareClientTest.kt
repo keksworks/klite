@@ -24,8 +24,12 @@ class CloudFlareClientTest {
       "items" to mapOf("type" to "list", "items" to mapOf("type" to "object", "properties" to mapOf(
         "name" to mapOf("type" to "text"),
         "qty" to mapOf("type" to "number", "integer" to true),
-        "price" to mapOf("type" to "number")
-      )))
+        "price" to mapOf("type" to "number"),
+        "id" to mapOf("type" to "text")
+      ))),
+      "id" to mapOf("type" to "text"),
+      "createdAt" to mapOf("type" to "datetime"),
+      "updatedAt" to mapOf("type" to "datetime")
     ))
   }
 
@@ -63,8 +67,23 @@ class CloudFlareClientTest {
     expect(DataExtractor(TypedAIClient()).extract<TestClass>("test").key).toEqual("typed")
   }
 
-  @Test fun `system fields without default values are extracted`() {
-    expect(typeOf<Identified>().toJsonSchema()!!.toClairicFields()).toEqual(mapOf("id" to mapOf("type" to "text", "nullable" to false)))
+  @Test fun `extraction excludes defaulted system fields from the typed schema`() {
+    val client = TypedAIClient("""{"number": "1", "items": []}""")
+
+    DataExtractor(client).extract<Tracked>("test")
+
+    val properties = client.schema["properties"] as Map<*, *>
+    expect(properties.keys).toEqual(setOf("number", "items"))
+    expect(((properties["items"] as Map<*, *>)["items"] as Map<*, *>)["properties"])
+      .toEqual(mapOf("name" to mapOf("type" to "string")))
+  }
+
+  @Test fun `extraction keeps system fields without default values in the typed schema`() {
+    val client = TypedAIClient("""{"id": "1"}""")
+
+    DataExtractor(client).extract<Identified>("test")
+
+    expect((client.schema["properties"] as Map<*, *>).keys).toEqual(setOf("id"))
   }
 
   enum class Status { OPEN, PAID }
@@ -83,16 +102,23 @@ class CloudFlareClientTest {
   }
 
   data class Identified(val id: String)
+  data class Tracked(val number: String, val items: List<Item>, val id: String = "1",
+                     val createdAt: Instant = Instant.now(), val updatedAt: Instant? = null)
+  data class Item(val name: String, val id: String = "1")
 
   data class TestClass(val key: String)
 }
 
-private class TypedAIClient : AIClient, TypedExtractionClient {
+private class TypedAIClient(private val text: String = """{"key": "typed"}"""): AIClient, TypedExtractionClient {
+  lateinit var schema: Map<String, Any?>
+
   override fun query(input: String, vararg fileUrl: URI, prevResponseId: String?, params: Node) =
     AIClient.Response(null, "success", "test-model", """{"key": "queried"}""")
 
   override fun stream(input: String, vararg fileUrl: URI, params: Node) = emptySequence<String>()
 
-  override fun extractTyped(state: String, schema: Map<String, Any?>, vararg fileUrl: URI, params: Node) =
-    AIClient.Response(null, "success", "test-model", """{"key": "typed"}""")
+  override fun extractTyped(state: String, schema: Map<String, Any?>, vararg fileUrl: URI, params: Node): AIClient.Response {
+    this.schema = schema
+    return AIClient.Response(null, "success", "test-model", text)
+  }
 }
