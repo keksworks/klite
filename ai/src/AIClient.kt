@@ -40,6 +40,14 @@ object TokenMetrics {
 
 operator fun TokenUsage?.plus(other: TokenUsage?): TokenUsage? = if (this == null) other else other?.let { this + it } ?: this
 
+/** AI clients that support typed extraction models (e.g. [CloudFlareClient] with Clairic) instead of text generation */
+interface TypedExtractionClient {
+  /**
+   * Extracts values of the given JSON [schema] from the input state and returns them as a JSON object in [AIClient.Response.text].
+   */
+  fun extractTyped(state: String, schema: Map<String, Any?>, vararg fileUrl: URI, params: Node = emptyMap()): AIClient.Response
+}
+
 internal fun Node.tokens(key: String) = child<Number>(key).toLong()
 
 internal val URI.isImage get() = mimeType.orEmpty().startsWith("image/")

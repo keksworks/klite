@@ -28,12 +28,16 @@ class DataExtractor(
 
   fun <T: Any> extractResponse(text: String, type: KType, vararg fileUrl: URI, provided: Map<KProperty1<*, *>, Any?> = emptyMap(), params: Node = emptyMap(), numAttempts: Int = 3): Pair<T, AIClient.Response> {
     val providedText = if (provided.isNotEmpty()) ", use these provided values: " + provided.entries.joinToString { "${it.key.name}=${it.value}" } else ""
-    var prompt = "Extract $type data as plain json, schema ${type.toJsonSchema()}, skip 'id' and non-required fields if not available:\n$text\n$providedText"
+    val schema = type.toJsonSchema()
+    val typedClient = aiClient as? TypedExtractionClient
+    var prompt = "Extract $type data as plain json, schema $schema, skip 'id' and non-required fields if not available:\n$text\n$providedText"
+    var state = text + providedText
     var files: Array<out URI> = fileUrl
     var response: AIClient.Response? = null
     repeat(numAttempts) {
       try {
-        response = aiClient.query(prompt, *files, prevResponseId = response?.id, params = params)
+        response = if (typedClient != null && schema != null) typedClient.extractTyped(state, schema, *files, params = params)
+          else aiClient.query(prompt, *files, prevResponseId = response?.id, params = params)
         val jsonStr = response.text.stripMarkdown()
         return json.parse<T>(jsonStr, type) to response
       } catch (e: Exception) {
@@ -41,6 +45,7 @@ class DataExtractor(
         log.warn("Failed to extract $type, retrying: $e")
         val continued = response?.id != null
         prompt = (if (continued) "" else prompt) + "\nTry again, got $e"
+        state += "\nTry again, got $e"
         if (continued) files = emptyArray()
       }
     }

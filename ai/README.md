@@ -18,16 +18,33 @@ Experimental AI client integrations and structured data extraction.
 | `GEMINI_API_KEY` | yes | Google AI API key |
 | `GEMINI_MODEL` | yes | Default model, e.g. `gemini-2.5-pro` |
 
+### Cloudflare Workers AI (Clairic)
+
+| Env var / System property | Required | Description |
+|---|---|---|
+| `CLOUDFLARE_ACCOUNT_ID` | yes | Cloudflare account ID |
+| `CLOUDFLARE_API_TOKEN` | yes | API token with Workers AI access |
+| `CLOUDFLARE_MODEL` | no | Model ID, `@cf/cloudflare/clairic` by default (can be `clairic-flash`) |
+| `CLOUDFLARE_URL` | no | Overrides the account-scoped `.../ai/run` URL |
+
 ## Usage
 
 ### AI Clients
 
-Both `OpenAIClient` and `GeminiClient` implement the `AIClient` interface:
+`OpenAIClient` and `GeminiClient` implement the `AIClient` interface:
 
 ```kotlin
 val client: AIClient = OpenAIClient(httpClient)
 val answer = client.query("What is 2 + 2?")
 ```
+
+`CloudFlareClient` uses the Clairic extraction model instead of generating text, so it implements `TypedExtractionClient` and is meant to be passed to `DataExtractor`:
+
+```kotlin
+val extractor = DataExtractor(CloudFlareClient(httpClient))
+```
+
+Clairic takes a text state plus up to four images or PDFs and returns typed fields, so `DataExtractor` converts the Kotlin data class schema into Clairic fields automatically. Nested objects are supported only one level deep (and their properties must be text, number, boolean or enum). `id`, `createdAt` and `updatedAt` are skipped when they have default values.
 
 Register the client you want to use:
 ```kotlin
