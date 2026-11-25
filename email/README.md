@@ -31,7 +31,9 @@ You can redefine HTML email template by extending `EmailContent` class.
 
 ## Reading email over IMAP
 
-Configure the mailbox via `IMAP_HOST`, `IMAP_PORT` (defaults to 993), `IMAP_USER`, `IMAP_PASS` and optional `IMAP_FOLDER` (defaults to `INBOX`).
+Configure the mailbox via `IMAP_HOST`, `IMAP_PORT` (defaults to 993), `IMAP_USER`, `IMAP_PASS` and optional `IMAP_FOLDER` (defaults to `INBOX`)
+and `IMAP_TIMEOUT_SEC` (connection, read and write timeouts, defaults to 30).
+The timeout can also be passed to the constructor, e.g. `ImapEmailReader(timeout = 1.minutes)`.
 
 ```kotlin
 val reader = ImapEmailReader()
