@@ -52,8 +52,8 @@ class AnnotationsTest {
   @Test fun `method annotations win class annotations`() {
     router.annotated(Routes())
     verify {
-      router.add(match { it.path.toString() == "/context" && it.findAnnotation<CustomAnnotation>()!!.hello == "class" })
-      router.add(match { it.path.toString() == "/context/hello/specific" && it.findAnnotation<CustomAnnotation>()!!.hello == "method" })
+      router.add(match { it.pathRegex.toString() == "/context" && it.findAnnotation<CustomAnnotation>()!!.hello == "class" })
+      router.add(match { it.pathRegex.toString() == "/context/hello/specific" && it.findAnnotation<CustomAnnotation>()!!.hello == "method" })
     }
   }
 

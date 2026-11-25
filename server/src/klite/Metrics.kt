@@ -46,7 +46,7 @@ class Timer {
   fun snapshot() = mapOf("count" to count.sum(), "sum" to totalNanos.sum() / 1e9, "max" to maxNanos.getAndSet(0) / 1e9)
 }
 
-internal class RequestMetrics(private val pathParamRegexer: PathParamRegexer) {
+internal class RequestMetrics {
   private data class Key(val method: RequestMethod, val prefix: String, val route: Route, val status: Int)
   private val timers = ConcurrentHashMap<Key, Timer>()
 
@@ -59,7 +59,7 @@ internal class RequestMetrics(private val pathParamRegexer: PathParamRegexer) {
 
   private fun labels(key: Key) = mapOf(
     "method" to key.method,
-    "uri" to if (key.route is NotFoundRoute) "NOT_FOUND" else key.prefix + pathParamRegexer.toOpenApi(key.route.path),
+    "uri" to if (key.route is NotFoundRoute) "NOT_FOUND" else key.prefix + key.route.path,
     "status" to key.status,
     "outcome" to outcomes[key.status / 100 - 1]
   )
@@ -77,7 +77,7 @@ fun Server.metrics(path: String = "/metrics", befores: Router.() -> Unit = {}) {
 fun Router.metrics(path: String = "/metrics", keyPrefix: String = "", annotations: List<Annotation> = emptyList()) {
   registerJvmMetrics()
   val renderer = OpenMetricsRenderer(keyPrefix = keyPrefix)
-  add(Route(GET, pathParamRegexer.from(path), annotations) {
+  add(Route(GET, path, annotations) {
     if (accept(renderer.contentType) || accept(MimeTypes.text) || accept.isRelaxed) renderer.render(this, OK, Metrics.data)
     else Metrics.data
   })

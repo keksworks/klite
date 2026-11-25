@@ -37,7 +37,7 @@ internal fun Router.generateOpenAPI() = mapOf(
       s.name to s.toNonEmptyValues { it.name != "paramName" }.let { it + ("name" to s.paramName) }
     }.takeIf { it.isNotEmpty() }
   ).takeIf { it.isNotEmpty() },
-  "paths" to routes.filter { !it.hasAnnotation<Hidden>() }.groupBy { pathParamRegexer.toOpenApi(it.path) }.mapValues { (_, routes) ->
+  "paths" to routes.filter { !it.hasAnnotation<Hidden>() }.groupBy { pathParamRegexer.toOpenApi(it.pathRegex) }.mapValues { (_, routes) ->
     routes.associate(::toOperation)
   },
 ) + (e.route.findAnnotation<OpenAPIDefinition>()?.let {

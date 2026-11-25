@@ -76,15 +76,16 @@ class Router(
     if (routes == null) return null
     routes.static[path]?.let { return it to PathParams.EMPTY }
     for (route in routes.dynamic) {
-      route.path.matchEntire(path)?.let { return route to PathParams(it.groups, route.namedGroups) }
+      route.pathRegex.matchEntire(path)?.let { return route to PathParams(it.groups, route.namedGroups) }
     }
     return null
   }
 
   fun add(route: Route) = route.apply {
+    prepare(pathParamRegexer)
     decorateWith(decorators)
     val routes = routesByMethod.getOrPut(method) { MethodRoutes() }
-    val pattern = path.pattern
+    val pattern = pathRegex.pattern
     if (pattern.none { it in "\\[]{}()*+?^$|" }) routes.static.putIfAbsent(pattern, this)
     else routes.dynamic += this
     log.info("$method $prefix$path")
@@ -96,32 +97,48 @@ class Router(
   }
 
   fun get(path: Regex, handler: Handler) = add(Route(GET, path, handler = handler))
-  fun get(path: String = "", handler: Handler) = get(pathParamRegexer.from(path), handler)
+  fun get(path: String = "", handler: Handler) = add(Route(GET, path, handler = handler))
 
   fun post(path: Regex, handler: Handler) = add(Route(POST, path, handler = handler))
-  fun post(path: String = "", handler: Handler) = post(pathParamRegexer.from(path), handler)
+  fun post(path: String = "", handler: Handler) = add(Route(POST, path, handler = handler))
 
   fun put(path: Regex, handler: Handler) = add(Route(PUT, path, handler = handler))
-  fun put(path: String = "", handler: Handler) = put(pathParamRegexer.from(path), handler)
+  fun put(path: String = "", handler: Handler) = add(Route(PUT, path, handler = handler))
 
   fun patch(path: Regex, handler: Handler) = add(Route(PATCH, path, handler = handler))
-  fun patch(path: String = "", handler: Handler) = patch(pathParamRegexer.from(path), handler)
+  fun patch(path: String = "", handler: Handler) = add(Route(PATCH, path, handler = handler))
 
   fun delete(path: Regex, handler: Handler) = add(Route(DELETE, path, handler = handler))
-  fun delete(path: String = "", handler: Handler) = delete(pathParamRegexer.from(path), handler)
+  fun delete(path: String = "", handler: Handler) = add(Route(DELETE, path, handler = handler))
 
   fun options(path: Regex, handler: Handler) = add(Route(OPTIONS, path, handler = handler))
-  fun options(path: String = "", handler: Handler) = options(pathParamRegexer.from(path), handler)
+  fun options(path: String = "", handler: Handler) = add(Route(OPTIONS, path, handler = handler))
 }
 
 enum class RequestMethod(val hasBody: Boolean = true) {
   GET(false), POST, PUT, PATCH, DELETE, OPTIONS, HEAD(false)
 }
 
-open class Route(val method: RequestMethod, val path: Regex, annotations: List<Annotation> = emptyList(), val handler: Handler): KAnnotatedElement {
+open class Route(
+  val method: RequestMethod,
+  val path: String,
+  annotations: List<Annotation> = emptyList(),
+  val handler: Handler
+): KAnnotatedElement {
+  lateinit var pathRegex: Regex; internal set
+
+  constructor(method: RequestMethod, path: Regex, annotations: List<Annotation> = emptyList(), originalPath: String = path.pattern,
+              handler: Handler): this(method, originalPath, annotations, handler) {
+    this.pathRegex = path
+  }
+
   internal var decoratedHandler: Handler = handler
   override val annotations = anonymousHandlerAnnotations(handler) + annotations
-  internal val namedGroups = path.toPattern().namedGroups()
+  internal val namedGroups by lazy { pathRegex.toPattern().namedGroups() }
+
+  internal fun prepare(regexer: PathParamRegexer) {
+    if (!this::pathRegex.isInitialized) pathRegex = regexer.from(path)
+  }
 
   internal fun decorateWith(decorators: List<Decorator>) = this.also {
     decoratedHandler = decorators.wrap(decoratedHandler)
@@ -131,7 +148,7 @@ open class Route(val method: RequestMethod, val path: Regex, annotations: List<A
     handler.javaClass.methods.find { it.name.startsWith("invoke") && it.annotations.isNotEmpty() }?.annotations?.toList() ?: emptyList()
 }
 
-class NotFoundRoute(path: String, notFoundHandler: Handler): Route(OPTIONS, path.toRegex(), handler = notFoundHandler)
+class NotFoundRoute(path: String, notFoundHandler: Handler): Route(OPTIONS, path, handler = notFoundHandler)
 
 /** Converts parameterized paths like "/hello/:world/" to Regex with named parameters */
 open class PathParamRegexer(private val paramConverter: Regex = "(^|/):([^/]+)".toRegex()) {

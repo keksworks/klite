@@ -13,21 +13,41 @@ annotation class Public
 
 class RouteTest {
   @Test fun annotations() {
-    val route = Route(RequestMethod.GET, "".toRegex()) {}
+    val route = Route(GET, "".toRegex()) {}
     expect(route.findAnnotation<Public>()).toEqual(null)
 
-    val annotated = Route(RequestMethod.GET, "".toRegex(), listOf(Public())) {}
+    val annotated = Route(GET, "".toRegex(), listOf(Public())) {}
     expect(annotated.findAnnotation<Public>()).notToEqualNull()
   }
 
   @Test fun pathParams() {
-    val route = Route(RequestMethod.GET, PathParamRegexer().from("/hello/:name/:id")) {}
-    val match = route.path.matchEntire("/hello/world/42")!!
+    val route = Route(GET, PathParamRegexer().from("/hello/:name/:id")) {}
+    val match = route.pathRegex.matchEntire("/hello/world/42")!!
     val params = PathParams(match.groups, route.namedGroups)
     expect(params["name"]).toEqual("world")
     expect(params["id"]).toEqual("42")
     expect(params["missing"]).toEqual(null)
     expect(params.containsKey("missing")).toEqual(false)
+  }
+
+  @Test fun `string route remembers its original path`() {
+    val router = Router("/api", mockk(), PathParamRegexer(), emptyList(), emptyList(), emptyList())
+
+    expect(router.get("/users/:id") {}.path).toEqual("/users/:id")
+  }
+
+  @Test fun `metrics use original path syntax`() {
+    val router = Router("", mockk(), PathParamRegexer(), emptyList(), emptyList(), emptyList())
+    val route = router.get("/users/:id") {}
+    val exchange = mockk<HttpExchange> {
+      every { method } returns GET
+      every { statusCode } returns null
+    }
+
+    RequestMetrics().record(exchange, "", route, 0)
+
+    val metrics = Metrics.data["http_server_requests_seconds"] as List<Labeled>
+    expect(metrics.single().labels["uri"]).toEqual("/users/:id")
   }
 
   @Test fun `static and regex routes`() {

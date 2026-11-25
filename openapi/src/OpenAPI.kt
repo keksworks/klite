@@ -33,9 +33,9 @@ fun Router.openApi(path: String = "/openapi", annotations: List<Annotation> = em
     jsonBody.render(this, OK, generateOpenAPI())
   }
 
-  add(Route(GET, pathParamRegexer.from("$path.json"), hidden) { generateOpenAPIAsJson() })
-  add(Route(GET, pathParamRegexer.from("$path.html"), hidden) { swaggerUI(path, swaggerUIConfig) })
-  add(Route(GET, pathParamRegexer.from(path), hidden) {
+  add(Route(GET, "$path.json", hidden) { generateOpenAPIAsJson() })
+  add(Route(GET, "$path.html", hidden) { swaggerUI(path, swaggerUIConfig) })
+  add(Route(GET, path, hidden) {
     if (accept(MimeTypes.html)) swaggerUI(path, swaggerUIConfig)
     else generateOpenAPIAsJson()
   })

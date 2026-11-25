@@ -46,7 +46,7 @@ class Server(
 
   private val http = HttpServer.create().apply { executor = workerPool }
   private val requestsActive = AtomicInteger().also { Metrics.register("http_server_requests_active") { it.get() } }
-  private val requestMetrics = RequestMetrics(pathParamRegexer)
+  private val requestMetrics = RequestMetrics()
 
   val address: InetSocketAddress get() = http.address ?: error("Server not started")
 
@@ -80,7 +80,7 @@ class Server(
     }
 
   fun assets(prefix: String, handler: AssetsHandler) {
-    val route = Route(GET, prefix.toRegex(), handler::class.annotations, handler).apply { decoratedHandler = decorators.wrap(handler) }
+    val route = Route(GET, prefix.toRegex(), handler::class.annotations, handler = handler, originalPath = prefix).apply { decoratedHandler = decorators.wrap(handler) }
     addContext(prefix, this) { runHandler(this, "", route, PathParams.EMPTY) }
   }
 

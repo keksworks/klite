@@ -1,4 +1,5 @@
 # Unreleased
+* server: routes log and metrics report the original path definitions (e.g. `/users/:id`) instead of derived regex/OpenAPI paths
 * ai: `DataExtractor` avoids sending large files to AI clients when retrying if previous_request_id is available
 * ai: `DataExtractor` skips `id`, `createdAt` and `updatedAt` fields that have default values, for all AI clients
 * ai: Introduced `CloudFlareClient` for Clairic model, which can extract structured data from documents and images
