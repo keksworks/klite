@@ -10,15 +10,21 @@ import javax.mail.Flags.Flag.SEEN
 import javax.mail.Folder.*
 import javax.mail.search.FlagTerm
 import javax.mail.search.SearchTerm
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 open class ImapEmailReader(
   imapUser: String = Config.required("IMAP_USER"),
+  timeout: Duration = Config.optional("IMAP_TIMEOUT_SEC", "30").toInt().seconds,
   props: Properties = Properties().also {
     it["mail.store.protocol"] = "imaps"
-    it["mail.imaps.host"] = Config.optional("IMAP_HOST")
+    it["mail.imaps.host"] = Config.required("IMAP_HOST")
     it["mail.imaps.port"] = Config.optional("IMAP_PORT", "993")
     it["mail.imaps.ssl.protocols"] = "TLSv1.2"
     it["mail.imaps.auth"] = true
+    it["mail.imaps.connectiontimeout"] = timeout.inWholeMilliseconds.toString()
+    it["mail.imaps.timeout"] = timeout.inWholeMilliseconds.toString()
+    it["mail.imaps.writetimeout"] = timeout.inWholeMilliseconds.toString()
   },
   private val authenticator: Authenticator = object: Authenticator() {
     override fun getPasswordAuthentication() = PasswordAuthentication(imapUser, Config.required("IMAP_PASS"))
