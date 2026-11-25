@@ -5,6 +5,7 @@
 * json: `JsonHttpClient` has a `logStart` option to log the request separately from the response, enabled for AI clients
 * email: SmtpEmailSender now logs also CC and BCC recipients
 * email: `EmailMessage` exposes raw headers via `headers(name)`, `replyTo` and `deliveredTo` are now derived from those headers
+* email: `IMAP_HOST` is now required
 
 # 2.1.4
 * server: session is no longer loaded from `SessionStore` on every response, only if the request has actually used it - saves a DB query per request with `DBSessionStore`

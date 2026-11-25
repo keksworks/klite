@@ -15,7 +15,7 @@ open class ImapEmailReader(
   imapUser: String = Config.required("IMAP_USER"),
   props: Properties = Properties().also {
     it["mail.store.protocol"] = "imaps"
-    it["mail.imaps.host"] = Config.optional("IMAP_HOST")
+    it["mail.imaps.host"] = Config.required("IMAP_HOST")
     it["mail.imaps.port"] = Config.optional("IMAP_PORT", "993")
     it["mail.imaps.ssl.protocols"] = "TLSv1.2"
     it["mail.imaps.auth"] = true
