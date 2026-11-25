@@ -40,7 +40,7 @@ open class CloudFlareClient(
 
   override fun extractTyped(state: String, schema: Map<String, Any?>, vararg fileUrl: URI, params: Node): AIClient.Response {
     val fields = schema.toClairicFields() ?: error("Clairic cannot extract fields from schema $schema")
-    return extract(state, fields, *fileUrl, params = params).toGenericResponse().also { it.usage?.let(TokenMetrics::record) }
+    return extract(state, fields, *fileUrl, params = params).toGenericResponse(schema).also { it.usage?.let(TokenMetrics::record) }
   }
 
   fun extract(state: String, fields: Node, vararg fileUrl: URI, params: Node = emptyMap()): Response {
@@ -65,8 +65,8 @@ open class CloudFlareClient(
 
   data class Response(val model: String, val answers: Map<String, Answer>, val truncated: Boolean = false,
                       val usage: Usage) {
-    fun toGenericResponse() = AIClient.Response(null, if (truncated) "truncated" else "success", model,
-      JsonMapper().render(answers.mapNotNull { (name, answer) -> answer.value?.let { name to it } }.toMap()),
+    fun toGenericResponse(schema: Map<String, Any?>? = null) = AIClient.Response(null, if (truncated) "truncated" else "success", model,
+      JsonMapper().render(answers.mapNotNull { (name, answer) -> answer.value?.let { name to it } }.toMap().normalizeLists(schema)),
       usage.toTokenUsage(model))
   }
 }
@@ -118,9 +118,15 @@ private fun Map<*, *>.toClairicListItems(): Node? = when (this["type"]) {
 private fun Map<*, *>.toClairicObjectProperties(): Node? {
   val properties = this["properties"] as? Map<*, *> ?: return null
   val fields = properties.entries.mapNotNull { (name, value) ->
-    (value as? Map<*, *>)?.toClairicScalarField()?.let { name.toString() to it }
+    (value as? Map<*, *>)?.toClairicObjectProperty()?.let { name.toString() to it }
   }
   return fields.takeIf { it.size == properties.size }?.toMap()?.takeIf { it.isNotEmpty() }
+}
+
+/** Row properties cannot be lists, so nested lists are extracted as text and split back in [normalizeLists] */
+private fun Map<*, *>.toClairicObjectProperty(): Node? = when (this["type"]) {
+  "array" -> mapOf("type" to "text")
+  else -> toClairicScalarField()
 }
 
 private fun Map<*, *>.toClairicScalarField(): Node? = when (this["type"]) {
@@ -129,4 +135,37 @@ private fun Map<*, *>.toClairicScalarField(): Node? = when (this["type"]) {
   "integer" -> mapOf("type" to "number", "integer" to true)
   "number" -> mapOf("type" to "number")
   else -> null
+}
+
+/** Splits list properties of object rows back into lists, filling absent ones with empty lists */
+@Suppress("UNCHECKED_CAST")
+internal fun Map<String, Any?>.normalizeLists(schema: Map<String, Any?>?): Map<String, Any?> {
+  val properties = schema?.get("properties") as? Map<*, *> ?: return this
+  return mapValues { (name, value) ->
+    val property = properties[name] as? Map<*, *>
+    if (property?.get("type") == "array") value.normalizeList(property["items"] as? Map<*, *>) else value
+  }
+}
+
+private fun Any?.normalizeList(items: Map<*, *>?): Any? =
+  if (this is Collection<*> && items?.get("type") == "object") map { (it as? Map<*, *>)?.normalizeRow(items) ?: it }
+  else this
+
+@Suppress("UNCHECKED_CAST")
+private fun Map<*, *>.normalizeRow(schema: Map<*, *>): Map<String, Any?> {
+  val properties = schema["properties"] as? Map<*, *> ?: return this as Map<String, Any?>
+  val row = entries.associate { (name, value) ->
+    val property = properties[name] as? Map<*, *>
+    name.toString() to if (property?.get("type") == "array") value.toListOrEmpty() else value
+  }.toMutableMap()
+  properties.forEach { (name, property) ->
+    if ((property as? Map<*, *>)?.get("type") == "array") row.putIfAbsent(name.toString(), emptyList<Any?>())
+  }
+  return row
+}
+
+private fun Any?.toListOrEmpty(): Any? = when (this) {
+  is String -> split(',', ';', '\n').map { it.trim() }.filter { it.isNotEmpty() }
+  is Collection<*> -> this
+  else -> emptyList()
 }

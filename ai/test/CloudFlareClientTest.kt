@@ -25,6 +25,7 @@ class CloudFlareClientTest {
         "name" to mapOf("type" to "text"),
         "qty" to mapOf("type" to "number", "integer" to true),
         "price" to mapOf("type" to "number"),
+        "serials" to mapOf("type" to "text"),
         "id" to mapOf("type" to "text")
       ))),
       "id" to mapOf("type" to "text"),
@@ -42,6 +43,18 @@ class CloudFlareClientTest {
 
     expect(response.toGenericResponse()).toEqual(AIClient.Response(null, "success", "clairic-27b",
       """{"number":"INV-1","amount":10.5}""", AIClient.TokenUsage("clairic-27b", 655, 0)))
+  }
+
+  @Test fun `row list properties are split and filled`() {
+    val response = CloudFlareClient.Response("clairic-27b", mapOf(
+      "items" to CloudFlareClient.Answer("list", value = listOf(
+        mapOf("name" to "A", "qty" to 1, "price" to 2, "serials" to "S1, S2"),
+        mapOf("name" to "B", "qty" to 1, "price" to 2)
+      ))
+    ), usage = CloudFlareClient.Usage(1, 0))
+
+    expect(response.toGenericResponse(typeOf<Invoice>().toJsonSchema()).text).toEqual(
+      """{"items":[{"name":"A","qty":1,"price":2,"serials":["S1","S2"]},{"name":"B","qty":1,"price":2,"serials":[]}]}""")
   }
 
   @Test fun `truncated response is reported as such`() {
@@ -75,7 +88,10 @@ class CloudFlareClientTest {
     val properties = client.schema["properties"] as Map<*, *>
     expect(properties.keys).toEqual(setOf("number", "items"))
     expect(((properties["items"] as Map<*, *>)["items"] as Map<*, *>)["properties"])
-      .toEqual(mapOf("name" to mapOf("type" to "string")))
+      .toEqual(mapOf(
+        "name" to mapOf("type" to "string"),
+        "serials" to mapOf("type" to "array", "items" to mapOf("type" to "string"))
+      ))
   }
 
   @Test fun `extraction keeps system fields without default values in the typed schema`() {
@@ -98,13 +114,13 @@ class CloudFlareClientTest {
     val createdAt: Instant = Instant.now(),
     val updatedAt: Instant? = null
   ) {
-    data class Item(val name: String, val qty: Int, val price: Decimal, val id: String = "1")
+    data class Item(val name: String, val qty: Int, val price: Decimal, val serials: List<String>, val id: String = "1")
   }
 
   data class Identified(val id: String)
   data class Tracked(val number: String, val items: List<Item>, val id: String = "1",
                      val createdAt: Instant = Instant.now(), val updatedAt: Instant? = null)
-  data class Item(val name: String, val id: String = "1")
+  data class Item(val name: String, val serials: List<String>, val id: String = "1")
 
   data class TestClass(val key: String)
 }
