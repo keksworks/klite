@@ -71,12 +71,12 @@ private val URI.fileName: String? get() = when (scheme) {
   else -> path?.substringAfterLast('/')?.takeIf { it.isNotEmpty() }
 }
 
-private val instantAsInt = object: ValueConverter<Any?>() {
+internal val instantAsInt = object: ValueConverter<Any?>() {
   override fun to(o: Any?) = when (o) {
     is Instant -> o.epochSecond
     is Enum<*> -> o.name.lowercase()
     else -> o
   }
   override fun from(o: Any?, type: KType?) =
-    if (o is String && type?.classifier == Instant::class) Instant.ofEpochSecond(o.toLong()) else o
+    if (o is String && type?.classifier == Instant::class) Instant.ofEpochSecond(o.toDouble().toLong()) else o
 }

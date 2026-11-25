@@ -39,6 +39,12 @@ class OpenAIClientTest {
     expect(response.toGenericResponse().usage).toEqual(null)
   }
 
+  @Test fun `created at is parsed from fractional epoch seconds returned by Mistral`() {
+    val json = """{"id":"r1","created_at":1795618693.0,"status":"completed","model":"deepseek","output":[]}"""
+
+    expect(JsonMapper(keys = SnakeCase, values = instantAsInt).parse<OpenAIClient.Response>(json).createdAt).toEqual(Instant.ofEpochSecond(1795618693))
+  }
+
   @Test fun `remote document is referenced by url`() {
     val url = URI("https://files.pixit.vet/p1/visit/report.pdf")
 
