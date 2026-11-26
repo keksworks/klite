@@ -22,13 +22,13 @@ open class GeminiClient(
   val params: Node = emptyMap()
 ): AIClient {
   private val http = JsonHttpClient(baseUrl, http = httpClient, json = JsonMapper(keys = SnakeCase),
-    maxLoggedLen = maxLoggedLen, logStart = true, reqModifier = { timeout(timeout) })
+    maxLoggedLen = maxLoggedLen, logStart = true, reqModifier = { header("x-goog-api-key", apiKey).timeout(timeout) })
 
   override fun query(input: String, vararg fileUrl: URI, prevResponseId: String?, params: Node): AIClient.Response =
     query(toInput(input, fileUrl), params, prevResponseId).toGenericResponse(params).also { it.usage?.let(TokenMetrics::record) }
 
   override fun stream(input: String, vararg fileUrl: URI, params: Node): Sequence<String> =
-    http.postSSE<Node>("/interactions?key=$apiKey", mapOf("model" to model, "input" to toInput(input, fileUrl), "stream" to true) + this.params + params, eventName = "step.delta").mapNotNull { node ->
+    http.postSSE<Node>("/interactions", mapOf("model" to model, "input" to toInput(input, fileUrl), "stream" to true) + this.params + params, eventName = "step.delta").mapNotNull { node ->
       node.at("delta").textOrNull("text")
     }
 
@@ -37,7 +37,7 @@ open class GeminiClient(
   ) + fileUrl.map { it.toGeminiContent() } else input
 
   fun query(input: Any /* String | List<Content | Step> */, params: Node = emptyMap(), prevInteractionId: String? = null): Response =
-    http.post("/interactions?key=$apiKey", mapOf(
+    http.post("/interactions", mapOf(
       "model" to model,
       "generation_config" to GenerationConfig(),
       "previous_interaction_id" to prevInteractionId
