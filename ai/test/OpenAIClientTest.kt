@@ -72,4 +72,15 @@ class OpenAIClientTest {
     val data = URI("data:application/pdf;base64,AAAA")
     expect(data.toOpenAIContent()).toEqual(OpenAIClient.Content(type = "input_file", fileData = data, filename = "file.pdf"))
   }
+
+  @Test fun `error message is taken from a rejected request`() {
+    val body = """{"error":{"message":"Your input exceeds the context window of this model.","type":"invalid_request_error",
+      "param":"input","code":"context_length_exceeded"}}"""
+
+    expect(JsonMapper().errorMessageOrNull(body)).toEqual("Your input exceeds the context window of this model.")
+  }
+
+  @Test fun `error message is absent for a body that is not an error json`() {
+    expect(JsonMapper().errorMessageOrNull("Bad Gateway")).toEqual(null)
+  }
 }

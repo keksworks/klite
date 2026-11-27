@@ -1,22 +1,19 @@
 package klite.ai
 
-import klite.Config
-import klite.SnakeCase
-import klite.ValueConverter
+import klite.*
 import klite.ai.AIClient.TokenUsage
+import klite.http.HttpException
 import klite.http.timeout
 import klite.json.JsonHttpClient
 import klite.json.JsonMapper
-import klite.nodes.Node
-import klite.nodes.atOrNull
-import klite.nodes.childOrNull
-import klite.nodes.text
-import klite.toBase64Url
+import klite.nodes.*
 import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
+import java.net.http.HttpResponse
 import java.time.Instant
 import kotlin.reflect.KType
+import kotlin.reflect.typeOf
 
 // https://platform.openai.com/docs/api-reference/making-requests
 open class OpenAIClient(
@@ -27,8 +24,13 @@ open class OpenAIClient(
   val params: Node = emptyMap()
 ): AIClient {
   private val auth = "Bearer $apiKey"
-  private val http = JsonHttpClient(baseUrl, http = httpClient, json = JsonMapper(keys = SnakeCase, values = instantAsInt),
-    maxLoggedLen = maxLoggedLen, logStart = true, reqModifier = { header("Authorization", auth).timeout(timeout) })
+  private val json = JsonMapper(keys = SnakeCase, values = instantAsInt)
+  private val http = JsonHttpClient(baseUrl, http = httpClient, json = json, maxLoggedLen = maxLoggedLen, logStart = true,
+    reqModifier = { header("Authorization", auth).timeout(timeout) }, errorHandler = ::throwError)
+
+  /** OpenAI states why it rejected a request in `error.message`, which is what the user needs, not the whole error json */
+  private fun throwError(response: HttpResponse<*>, body: String): Nothing =
+    throw HttpException(StatusCode(response.statusCode()), json.errorMessageOrNull(body) ?: body)
 
   override fun query(input: String, vararg fileUrl: URI, prevResponseId: String?, params: Node): AIClient.Response =
     query(toInput(input, fileUrl), params, prevResponseId).toGenericResponse(params).also { it.usage?.let(TokenMetrics::record) }
@@ -65,6 +67,10 @@ internal fun URI.toOpenAIContent(): OpenAIClient.Content = when {
   scheme == "http" || scheme == "https" -> OpenAIClient.Content(fileUrl = this, type = "input_file")
   else -> OpenAIClient.Content(fileData = if (scheme == "file") File(path).toBase64Url() else this, filename = fileName, type = "input_file")
 }
+
+/** The reason OpenAI gives for a rejected request (e.g. that its input exceeded the context window, or a parameter is invalid) */
+internal fun JsonMapper.errorMessageOrNull(body: String): String? =
+  runCatching { parse<Node>(body, typeOf<Node>()).atOrNull("error")?.textOrNull("message") }.getOrNull()?.takeIf(String::isNotBlank)
 
 private val URI.fileName: String? get() = when (scheme) {
   "data" -> "file." + (mimeType?.substringAfter('/') ?: "bin")
