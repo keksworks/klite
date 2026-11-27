@@ -32,7 +32,7 @@ open class CloudFlareClient(
 
   override fun query(input: String, vararg fileUrl: URI, prevResponseId: String?, params: Node): AIClient.Response {
     val fields = params["fields"] as? Node ?: throw IllegalArgumentException("Clairic requires typed 'fields' in params, use extractTyped() for a Kotlin type")
-    return extract(input, fields, *fileUrl, params = params - "fields").toGenericResponse().also { it.usage?.let(TokenMetrics::record) }
+    return respond(extract(input, fields, *fileUrl, params = params - "fields"))
   }
 
   override fun stream(input: String, vararg fileUrl: URI, params: Node): Sequence<String> =
@@ -40,7 +40,7 @@ open class CloudFlareClient(
 
   override fun extractTyped(state: String, schema: Map<String, Any?>, vararg fileUrl: URI, params: Node): AIClient.Response {
     val fields = schema.toClairicFields() ?: error("Clairic cannot extract fields from schema $schema")
-    return extract(state, fields, *fileUrl, params = params).toGenericResponse(schema).also { it.usage?.let(TokenMetrics::record) }
+    return respond(extract(state, fields, *fileUrl, params = params), schema)
   }
 
   fun extract(state: String, fields: Node, vararg fileUrl: URI, params: Node = emptyMap()): Response {
@@ -54,27 +54,31 @@ open class CloudFlareClient(
     return http.post<Envelope>(path, body).result
   }
 
+  private fun respond(response: Response, schema: Map<String, Any?>? = null) =
+    response.toGenericResponse(schema).also { it.usage?.let(TokenMetrics::record) }
+
   data class Envelope(val result: Response)
-  data class Media(@JsonProperty("content_type") val contentType: String, val base64: String)
-  data class Answer(val type: String, val value: Any? = null, val guess: Any? = null, val confidence: Double? = null,
-                    @JsonProperty("p_null") val pNull: Double? = null, val span: List<Int>? = null)
-  data class Usage(@JsonProperty("input_tokens") val inputTokens: Long, @JsonProperty("output_tokens") val outputTokens: Long,
-                   val passes: Int? = null) {
+  data class Answer(val value: Any? = null)
+  data class Usage(@JsonProperty("input_tokens") val inputTokens: Long, @JsonProperty("output_tokens") val outputTokens: Long) {
     fun toTokenUsage(model: String) = TokenUsage(model, inputTokens, outputTokens)
   }
 
   data class Response(val model: String, val answers: Map<String, Answer>, val truncated: Boolean = false,
                       val usage: Usage) {
     fun toGenericResponse(schema: Map<String, Any?>? = null) = AIClient.Response(null, if (truncated) "truncated" else "success", model,
-      JsonMapper().render(answers.mapNotNull { (name, answer) -> answer.value?.let { name to it } }.toMap().normalizeLists(schema)),
+      clairicJson.render(answers.mapNotNull { (name, answer) -> answer.value?.let { name to it } }.toMap().normalizeLists(schema)),
       usage.toTokenUsage(model))
   }
 }
 
-internal fun URI.toClairicMedia() = CloudFlareClient.Media(
-  mimeType ?: "application/octet-stream",
-  inlineBase64()
+internal fun URI.toClairicMedia(): Node = mapOf(
+  "content_type" to (mimeType ?: "application/octet-stream"),
+  "base64" to inlineBase64()
 )
+
+private val clairicJson = JsonMapper()
+private val notNullableTypes = setOf("text", "number", "boolean", "enum", "object")
+private val rowFieldTypes = notNullableTypes - "object"
 
 /** Converts a JSON schema (e.g. from [klite.json.toJsonSchema]) into Clairic typed field specs */
 internal fun Map<String, Any?>.toClairicFields(): Node? {
@@ -85,11 +89,14 @@ internal fun Map<String, Any?>.toClairicFields(): Node? {
   }.toMap().takeIf { it.isNotEmpty() }
 }
 
-private val notNullableTypes = setOf("text", "number", "boolean", "enum", "object")
-
 private fun Map<*, *>.toClairicField(required: Boolean): Node? {
   val field = when (this["type"]) {
-    "string" -> toClairicStringField()
+    "string" -> when (this["format"]) {
+      "date", "time", "date-time", "duration" -> mapOf("type" to (this["format"] as String).replace("date-time", "datetime"))
+      else -> (this["enum"] as? Collection<*>)?.let { values ->
+        mapOf("type" to "enum", "enum" to values.map { (it as? Enum<*>)?.name ?: it.toString() })
+      } ?: mapOf("type" to "text")
+    }
     "boolean" -> mapOf("type" to "boolean")
     "integer" -> mapOf("type" to "number", "integer" to true)
     "number" -> mapOf("type" to "number")
@@ -100,13 +107,6 @@ private fun Map<*, *>.toClairicField(required: Boolean): Node? {
   return field?.let { if (required && it["type"] in notNullableTypes) it + ("nullable" to false) else it }
 }
 
-private fun Map<*, *>.toClairicStringField(): Node = when (this["format"]) {
-  "date", "time", "date-time", "duration" -> mapOf("type" to (this["format"] as String).replace("date-time", "datetime"))
-  else -> (this["enum"] as? Collection<*>)?.let { values ->
-    mapOf("type" to "enum", "enum" to values.map { (it as? Enum<*>)?.name ?: it.toString() })
-  } ?: mapOf("type" to "text")
-}
-
 private fun Map<*, *>.toClairicListItems(): Node? = when (this["type"]) {
   "string" -> mapOf("items" to if (this["format"] == "date") "date" else "text")
   "integer", "number" -> mapOf("items" to "number")
@@ -114,49 +114,32 @@ private fun Map<*, *>.toClairicListItems(): Node? = when (this["type"]) {
   else -> null
 }
 
-/** Clairic object properties support only scalar values: text, number, boolean and enum */
+/** Clairic rows support only scalar values, so nested lists are extracted as text and restored by [normalizeLists] */
 private fun Map<*, *>.toClairicObjectProperties(): Node? {
   val properties = this["properties"] as? Map<*, *> ?: return null
   val fields = properties.entries.mapNotNull { (name, value) ->
-    (value as? Map<*, *>)?.toClairicObjectProperty()?.let { name.toString() to it }
+    val schema = value as? Map<*, *> ?: return@mapNotNull null
+    val field = if (schema["type"] == "array") mapOf("type" to "text")
+      else schema.toClairicField(false)?.takeIf { it["type"] in rowFieldTypes }
+    field?.let { name.toString() to it }
   }
   return fields.takeIf { it.size == properties.size }?.toMap()?.takeIf { it.isNotEmpty() }
 }
 
-/** Row properties cannot be lists, so nested lists are extracted as text and split back in [normalizeLists] */
-private fun Map<*, *>.toClairicObjectProperty(): Node? = when (this["type"]) {
-  "array" -> mapOf("type" to "text")
-  else -> toClairicScalarField()
-}
-
-private fun Map<*, *>.toClairicScalarField(): Node? = when (this["type"]) {
-  "string" -> toClairicStringField().takeIf { it["type"] == "text" || it["type"] == "enum" }
-  "boolean" -> mapOf("type" to "boolean")
-  "integer" -> mapOf("type" to "number", "integer" to true)
-  "number" -> mapOf("type" to "number")
-  else -> null
-}
-
-/** Splits list properties of object rows back into lists, filling absent ones with empty lists */
-@Suppress("UNCHECKED_CAST")
+/** Restores list properties of object rows, filling absent ones with empty lists */
 internal fun Map<String, Any?>.normalizeLists(schema: Map<String, Any?>?): Map<String, Any?> {
   val properties = schema?.get("properties") as? Map<*, *> ?: return this
   return mapValues { (name, value) ->
-    val property = properties[name] as? Map<*, *>
-    if (property?.get("type") == "array") value.normalizeList(property["items"] as? Map<*, *>) else value
+    val items = (properties[name] as? Map<*, *>)?.takeIf { it["type"] == "array" }?.get("items") as? Map<*, *>
+    if (value !is Collection<*> || items?.get("type") != "object") value
+    else value.map { row -> (row as? Map<*, *>)?.normalizeRow(items) ?: row }
   }
 }
 
-private fun Any?.normalizeList(items: Map<*, *>?): Any? =
-  if (this is Collection<*> && items?.get("type") == "object") map { (it as? Map<*, *>)?.normalizeRow(items) ?: it }
-  else this
-
-@Suppress("UNCHECKED_CAST")
 private fun Map<*, *>.normalizeRow(schema: Map<*, *>): Map<String, Any?> {
   val properties = schema["properties"] as? Map<*, *> ?: return this as Map<String, Any?>
   val row = entries.associate { (name, value) ->
-    val property = properties[name] as? Map<*, *>
-    name.toString() to if (property?.get("type") == "array") value.toListOrEmpty() else value
+    name.toString() to if ((properties[name] as? Map<*, *>)?.get("type") == "array") value.toListOrEmpty() else value
   }.toMutableMap()
   properties.forEach { (name, property) ->
     if ((property as? Map<*, *>)?.get("type") == "array") row.putIfAbsent(name.toString(), emptyList<Any?>())

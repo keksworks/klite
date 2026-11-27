@@ -36,9 +36,9 @@ class CloudFlareClientTest {
 
   @Test fun `answers are converted to json text without nulls`() {
     val response = CloudFlareClient.Response("clairic-27b", mapOf(
-      "number" to CloudFlareClient.Answer("text", value = "INV-1"),
-      "amount" to CloudFlareClient.Answer("number", value = 10.5),
-      "missing" to CloudFlareClient.Answer("text")
+      "number" to CloudFlareClient.Answer(value = "INV-1"),
+      "amount" to CloudFlareClient.Answer(value = 10.5),
+      "missing" to CloudFlareClient.Answer()
     ), usage = CloudFlareClient.Usage(655, 0))
 
     expect(response.toGenericResponse()).toEqual(AIClient.Response(null, "success", "clairic-27b",
@@ -47,7 +47,7 @@ class CloudFlareClientTest {
 
   @Test fun `row list properties are split and filled`() {
     val response = CloudFlareClient.Response("clairic-27b", mapOf(
-      "items" to CloudFlareClient.Answer("list", value = listOf(
+      "items" to CloudFlareClient.Answer(value = listOf(
         mapOf("name" to "A", "qty" to 1, "price" to 2, "serials" to "S1, S2"),
         mapOf("name" to "B", "qty" to 1, "price" to 2)
       ))
@@ -64,7 +64,8 @@ class CloudFlareClientTest {
   }
 
   @Test fun `data url is passed as embedded media`() {
-    expect(URI("data:image/png;base64,AAAA").toClairicMedia()).toEqual(CloudFlareClient.Media("image/png", "AAAA"))
+    expect(URI("data:image/png;base64,AAAA").toClairicMedia())
+      .toEqual(mapOf("content_type" to "image/png", "base64" to "AAAA"))
   }
 
   @Test fun `workers ai response is parsed`() {
@@ -73,7 +74,7 @@ class CloudFlareClientTest {
       "usage":{"state_tokens":61,"input_tokens":10,"output_tokens":0,"passes":1}},"success":true}""")
 
     expect(envelope.result.answers["number"]?.value).toEqual("INV-1")
-    expect(envelope.result.usage).toEqual(CloudFlareClient.Usage(10, 0, 1))
+    expect(envelope.result.usage).toEqual(CloudFlareClient.Usage(10, 0))
   }
 
   @Test fun `extraction uses typed client when it supports it`() {
